@@ -1,0 +1,5 @@
+{
+  "name": "Class Bank",
+  "description": "A web application for simulating a classroom economy system, inspired by modern fintech apps. Teachers can manage students, accounts, jobs, and virtual assets, while students can perform transactions, trade stocks, and manage savings.",
+  "requestFramePermissions": []
+}
