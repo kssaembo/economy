@@ -522,15 +522,130 @@ const AccountDetailView: React.FC<{ student: User & { account: Account | null },
 };
 
 // --- Job Management View ---
+const AddJobModal: React.FC<{ onClose: () => void; onComplete: () => void; }> = ({ onClose, onComplete }) => {
+    const [jobName, setJobName] = useState('');
+    const [description, setDescription] = useState('');
+    const [salary, setSalary] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [result, setResult] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
+    const handleSubmit = async () => {
+        if (!jobName || !salary) {
+            setResult({ type: 'error', text: '직업명과 주급을 입력해주세요.' });
+            return;
+        }
+        setLoading(true);
+        setResult(null);
+        try {
+            await api.addJob(jobName, description, parseInt(salary));
+            setResult({ type: 'success', text: '직업을 추가했습니다.' });
+            setTimeout(() => {
+                onComplete();
+                onClose();
+            }, 1500);
+        } catch (err: any) {
+            setResult({ type: 'error', text: err.message });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
+                 <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-xl font-bold">새 직업 추가</h3>
+                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200"><XIcon className="w-6 h-6 text-gray-600" /></button>
+                </div>
+                <div className="space-y-3">
+                    <input type="text" value={jobName} onChange={e => setJobName(e.target.value)} placeholder="직업명" className="w-full p-3 border rounded-lg"/>
+                    <input type="text" value={description} onChange={e => setDescription(e.target.value)} placeholder="소개" className="w-full p-3 border rounded-lg"/>
+                    <input type="number" value={salary} onChange={e => setSalary(e.target.value)} placeholder="주급" className="w-full p-3 border rounded-lg"/>
+                </div>
+                <button onClick={handleSubmit} disabled={loading} className="mt-6 w-full p-3 bg-indigo-600 text-white font-bold rounded-lg disabled:bg-gray-300">
+                    {loading ? '추가 중...' : '확인'}
+                </button>
+                 {result && (
+                    <div className={`mt-4 p-3 rounded-lg flex items-center ${result.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                        {result.type === 'success' ? <CheckIcon className="w-5 h-5 mr-2" /> : <ErrorIcon className="w-5 h-5 mr-2" />}
+                        <p className="text-sm">{result.text}</p>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+const AssignStudentModal: React.FC<{ job: Job; allStudents: User[]; onClose: () => void; onComplete: () => void; }> = ({ job, allStudents, onClose, onComplete }) => {
+    const [selectedIds, setSelectedIds] = useState<string[]>(() => job.assigned_students.map(s => s.userId));
+    const [loading, setLoading] = useState(false);
+
+    const handleToggle = (studentId: string) => {
+        setSelectedIds(prev => 
+            prev.includes(studentId) 
+            ? prev.filter(id => id !== studentId) 
+            : [...prev, studentId]
+        );
+    };
+
+    const handleSubmit = async () => {
+        setLoading(true);
+        try {
+            await api.manageJobAssignment(job.id, selectedIds);
+            onComplete();
+            onClose();
+        } catch (err: any) {
+            alert(`오류: ${err.message}`);
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm flex flex-col max-h-[80vh]">
+                 <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-xl font-bold">{job.jobName} 담당자 지정</h3>
+                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200"><XIcon className="w-6 h-6 text-gray-600" /></button>
+                </div>
+                <div className="space-y-2 overflow-y-auto flex-grow pr-2">
+                    {allStudents.map(student => (
+                        <label key={student.userId} className="flex items-center p-3 rounded-lg hover:bg-gray-100 cursor-pointer">
+                            <input 
+                                type="checkbox"
+                                className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                checked={selectedIds.includes(student.userId)}
+                                onChange={() => handleToggle(student.userId)}
+                            />
+                            <span className="ml-3 text-gray-700">{student.name}</span>
+                        </label>
+                    ))}
+                </div>
+                <button onClick={handleSubmit} disabled={loading} className="mt-6 w-full p-3 bg-indigo-600 text-white font-bold rounded-lg disabled:bg-gray-300">
+                    {loading ? '저장 중...' : '확인'}
+                </button>
+            </div>
+        </div>
+    )
+}
+
 const JobManagementView: React.FC<{ allStudents: (User & { account: Account | null })[] }> = ({ allStudents }) => {
     const [jobs, setJobs] = useState<Job[]>([]);
     const [loading, setLoading] = useState(true);
+    const [bonuses, setBonuses] = useState<Record<string, number>>({});
+    const [showAddJobModal, setShowAddJobModal] = useState(false);
+    const [showAssignStudentModal, setShowAssignStudentModal] = useState<Job | null>(null);
 
     const fetchJobs = useCallback(async () => {
         setLoading(true);
         try {
             const data = await api.getJobs();
             setJobs(data);
+            const initialBonuses = data.reduce((acc, job) => {
+                acc[job.id] = job.incentive || 0;
+                return acc;
+            }, {} as Record<string, number>);
+            setBonuses(initialBonuses);
         } catch (error) {
             console.error("Failed to fetch jobs", error);
         } finally {
@@ -542,17 +657,28 @@ const JobManagementView: React.FC<{ allStudents: (User & { account: Account | nu
         fetchJobs();
     }, [fetchJobs]);
 
-    const handlePayAll = async () => {
-        if(window.confirm('모든 직업의 급여를 일괄 지급하시겠습니까?')) {
-            try {
-                const message = await api.payAllSalaries();
-                alert(message);
-                fetchJobs();
-            } catch(err: any) {
-                alert(`오류: ${err.message}`);
-            }
+    const handlePaySingle = async (jobId: string) => {
+         try {
+            const message = await api.payJobSalary(jobId);
+            alert(message);
+            fetchJobs();
+        } catch(err: any) {
+            alert(`오류: ${err.message}`);
         }
-    }
+    };
+
+    const handleBonusBlur = async (jobId: string, value: number) => {
+        const originalBonus = jobs.find(j => j.id === jobId)?.incentive || 0;
+        if (value === originalBonus) return;
+        try {
+            await api.updateJobIncentive(jobId, value);
+            fetchJobs(); // Refresh data to confirm change
+        } catch(err: any) {
+            alert(`보너스 업데이트 실패: ${err.message}`);
+            // Revert local state on failure
+            setBonuses(prev => ({...prev, [jobId]: originalBonus}));
+        }
+    };
 
     if (loading) return <div className="text-center p-8">직업 정보를 불러오는 중...</div>;
 
@@ -561,66 +687,59 @@ const JobManagementView: React.FC<{ allStudents: (User & { account: Account | nu
              <div className="flex justify-between items-center mb-4">
                 <h2 className="text-2xl font-bold text-gray-800">1인 1역 관리</h2>
                 <div>
-                     <button onClick={handlePayAll} className="px-3 py-2 bg-green-600 text-white text-xs font-semibold rounded-lg shadow hover:bg-green-700 mr-2">일괄 지급</button>
-                     {/* Placeholder for Add Job */}
-                     <button onClick={() => alert('직업 추가 기능 준비 중')} className="px-3 py-2 bg-indigo-600 text-white text-xs font-semibold rounded-lg shadow hover:bg-indigo-700">직업 추가</button>
+                     <button onClick={() => setShowAddJobModal(true)} className="px-3 py-2 bg-indigo-600 text-white text-xs font-semibold rounded-lg shadow hover:bg-indigo-700">직업 추가</button>
                 </div>
             </div>
-            <div className="space-y-3">
-                {jobs.map(job => (
-                    <JobCard key={job.id} job={job} allStudents={allStudents} refreshJobs={fetchJobs} />
-                ))}
+            
+            <div className="bg-white rounded-xl shadow-md overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                    <thead className="bg-gray-50 text-gray-600">
+                        <tr>
+                            <th className="p-3 whitespace-nowrap w-[35%]">직업명</th>
+                            <th className="p-3 whitespace-nowrap w-[15%]">주급</th>
+                            <th className="p-3 whitespace-nowrap w-[20%]">학생명</th>
+                            <th className="p-3 whitespace-nowrap w-[15%]">보너스</th>
+                            <th className="p-3 text-center whitespace-nowrap w-[15%]">지급</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                        {jobs.map(job => (
+                            <tr key={job.id}>
+                                <td className="p-3 font-medium">{job.jobName}</td>
+                                <td className="p-3">{job.salary.toLocaleString()}</td>
+                                <td className="p-3">
+                                    <button onClick={() => setShowAssignStudentModal(job)} className="text-indigo-600 hover:underline text-left">
+                                        {job.assigned_students.map(s => s.name).join(' ') || '없음'}
+                                    </button>
+                                </td>
+                                <td className="p-3">
+                                    <input
+                                        type="number"
+                                        className="w-14 p-1 border rounded text-right"
+                                        value={bonuses[job.id] ?? 0}
+                                        onChange={(e) => {
+                                            const value = e.target.valueAsNumber >= 0 ? e.target.valueAsNumber : 0;
+                                            setBonuses(prev => ({ ...prev, [job.id]: value }));
+                                        }}
+                                        onBlur={(e) => handleBonusBlur(job.id, e.target.valueAsNumber >= 0 ? e.target.valueAsNumber : 0)}
+                                    />
+                                </td>
+                                <td className="p-3 text-center">
+                                    <button onClick={() => handlePaySingle(job.id)} className="w-full px-2 py-1.5 bg-blue-500 text-white text-sm font-semibold rounded-md shadow-sm hover:bg-blue-600 whitespace-nowrap">
+                                        지급
+                                    </button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
             </div>
+
+            {showAddJobModal && <AddJobModal onClose={() => setShowAddJobModal(false)} onComplete={fetchJobs} />}
+            {showAssignStudentModal && <AssignStudentModal job={showAssignStudentModal} allStudents={allStudents} onClose={() => setShowAssignStudentModal(null)} onComplete={fetchJobs} />}
         </div>
     );
 };
-
-const JobCard: React.FC<{ job: Job; allStudents: User[]; refreshJobs: () => void; }> = ({ job, allStudents, refreshJobs }) => {
-    
-    const handlePay = async () => {
-        try {
-            const message = await api.payJobSalary(job.id);
-            alert(message);
-            refreshJobs();
-        } catch(err: any) {
-            alert(`오류: ${err.message}`);
-        }
-    }
-    
-    return (
-        <div className="bg-white p-4 rounded-xl shadow-md">
-            <div className="flex justify-between items-start">
-                <div>
-                    <h3 className="font-bold text-lg">{job.jobName}</h3>
-                    <p className="text-sm text-gray-500">{job.description}</p>
-                </div>
-                {/* Placeholder for Delete Job */}
-                <button onClick={() => alert('삭제 기능 준비 중')} className="p-1 rounded-full hover:bg-gray-200"><XIcon className="w-5 h-5 text-gray-500"/></button>
-            </div>
-            <div className="mt-4 space-y-3 text-sm">
-                <div className="flex items-center">
-                    <label className="w-20 font-semibold">기본급</label>
-                    <p>{job.salary.toLocaleString()}권</p>
-                </div>
-                <div className="flex items-center">
-                    <label className="w-20 font-semibold">인센티브</label>
-                    {/* Placeholder for Incentive input */}
-                    <input type="number" defaultValue={job.incentive} className="w-24 p-1 border rounded" />
-                </div>
-                 <div className="flex items-start">
-                    <label className="w-20 font-semibold mt-2">담당 학생</label>
-                    {/* Placeholder for Student Select */}
-                    <div className="flex-1 p-2 border rounded bg-gray-50 text-gray-600">
-                        {job.assigned_students.map(s => s.name).join(', ') || '담당 학생 없음'}
-                    </div>
-                </div>
-            </div>
-            <div className="mt-4 flex justify-end">
-                <button onClick={handlePay} className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg shadow hover:bg-blue-700">급여 지급</button>
-            </div>
-        </div>
-    );
-}
 
 
 export default TeacherDashboard;

@@ -1,15 +1,16 @@
 
+
 import React, { useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
-import { Account, Transaction, StockProduct, StudentStock, SavingsProduct, StudentSaving, User } from '../types';
-import { HomeIcon, TransferIcon, StockIcon, PiggyBankIcon, LogoutIcon, BackIcon, XIcon, CheckIcon, ErrorIcon, PlusIcon, MinusIcon } from '../components/icons';
+import { Account, Transaction, StockProduct, StudentStock, SavingsProduct, StudentSaving, User, Job } from '../types';
+import { HomeIcon, TransferIcon, StockIcon, PiggyBankIcon, BackIcon, XIcon, CheckIcon, ErrorIcon, PlusIcon, MinusIcon, BriefcaseIcon } from '../components/icons';
 
 type View = 'home' | 'transfer' | 'stocks' | 'savings';
 
 // --- Main Student Page Component ---
 const StudentPage: React.FC = () => {
-    const { currentUser, logout } = useContext(AuthContext);
+    const { currentUser } = useContext(AuthContext);
     const [view, setView] = useState<View>('home');
     const [account, setAccount] = useState<Account | null>(null);
     const [loading, setLoading] = useState(true);
@@ -36,7 +37,7 @@ const StudentPage: React.FC = () => {
         if (loading || !currentUser || !account) return <div className="text-center p-8">로딩 중...</div>;
         switch (view) {
             case 'home':
-                return <HomeView account={account} />;
+                return <HomeView account={account} currentUser={currentUser} />;
             case 'transfer':
                 return <TransferView currentUser={currentUser} refreshAccount={fetchAccount} />;
             case 'stocks':
@@ -44,7 +45,7 @@ const StudentPage: React.FC = () => {
             case 'savings':
                 return <SavingsView currentUser={currentUser} refreshAccount={fetchAccount} />;
             default:
-                return <HomeView account={account} />;
+                return <HomeView account={account} currentUser={currentUser} />;
         }
     };
     
@@ -54,9 +55,6 @@ const StudentPage: React.FC = () => {
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800">{currentUser?.name}님</h1>
                 </div>
-                <button onClick={logout} className="p-2 rounded-full hover:bg-gray-100">
-                    <LogoutIcon className="w-6 h-6 text-gray-600" />
-                </button>
             </header>
 
             <main className="flex-grow overflow-y-auto p-4 bg-gray-100">
@@ -82,26 +80,37 @@ const NavButton: React.FC<{ label: string, Icon: React.FC<any>, active: boolean,
 );
 
 // --- Home View ---
-const HomeView: React.FC<{ account: Account }> = ({ account }) => {
+const HomeView: React.FC<{ account: Account; currentUser: User }> = ({ account, currentUser }) => {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [myJobs, setMyJobs] = useState<Job[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchTransactions = async () => {
+        const fetchData = async () => {
             setLoading(true);
             try {
+                // Fetch transactions
                 const trans = await api.getTransactionsByAccountId(account.accountId);
-                setTransactions(trans.slice(0, 10)); // Show latest 10
+                setTransactions(trans.slice(0, 10));
+
+                // Fetch jobs
+                if (currentUser) {
+                    const allJobs = await api.getJobs();
+                    const assignedJobs = allJobs.filter(job =>
+                        job.assigned_students.some(student => student.userId === currentUser.userId)
+                    );
+                    setMyJobs(assignedJobs);
+                }
             } catch (error) {
-                console.error("Failed to fetch transactions", error);
+                console.error("Failed to fetch home view data", error);
             } finally {
                 setLoading(false);
             }
         };
-        fetchTransactions();
-    }, [account.accountId]);
+        fetchData();
+    }, [account.accountId, currentUser]);
 
-    if (loading) return <div className="text-center p-8">거래 내역을 불러오는 중...</div>;
+    if (loading) return <div className="text-center p-8">데이터를 불러오는 중...</div>;
 
     return (
         <div>
@@ -112,6 +121,24 @@ const HomeView: React.FC<{ account: Account }> = ({ account }) => {
                     <span className="text-2xl font-medium ml-1">권</span>
                 </p>
             </div>
+
+            {myJobs.length > 0 && (
+                <div className="bg-white p-4 rounded-2xl shadow-md mb-6">
+                    <div className="flex items-center mb-3">
+                        <BriefcaseIcon className="w-6 h-6 text-indigo-500 mr-2"/>
+                        <h2 className="text-lg font-bold text-gray-800">나의 직업</h2>
+                    </div>
+                    <div className="space-y-2">
+                        {myJobs.map(job => (
+                            <div key={job.id} className="p-3 bg-gray-50 rounded-lg">
+                                <p className="font-semibold text-gray-700">{job.jobName}</p>
+                                {job.description && <p className="text-sm text-gray-500 mt-1">{job.description}</p>}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             <h2 className="text-xl font-bold text-gray-800 mb-2">최근 거래 내역</h2>
             {transactions.length > 0 ? (
                 <ul className="space-y-2">

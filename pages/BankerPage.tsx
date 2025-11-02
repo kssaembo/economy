@@ -90,11 +90,11 @@ const DepositWithdrawView: React.FC = () => {
                             <tr key={s.userId} className="border-t">
                                 <td className="p-2">{s.grade}-{s.class} {s.number}</td>
                                 <td className="p-2 font-medium">{s.name}</td>
-                                <td className="p-2 font-mono text-xs">{s.account?.accountId}</td>
+                                <td className="p-2 font-mono text-xs">{s.account?.accountId.replace('권쌤은행 ', '')}</td>
                                 <td className="p-2 text-center">
                                     <div className="flex justify-center gap-2">
-                                        <button onClick={() => { setSelectedStudent(s); setMode('deposit'); }} className="px-6 py-4 bg-blue-500 text-white font-semibold rounded-md hover:bg-blue-600 text-[8px] whitespace-nowrap">입금</button>
-                                        <button onClick={() => { setSelectedStudent(s); setMode('withdraw'); }} className="px-6 py-4 bg-red-500 text-white font-semibold rounded-md hover:bg-red-600 text-[8px] whitespace-nowrap">출금</button>
+                                        <button onClick={() => { setSelectedStudent(s); setMode('deposit'); }} className="px-4 py-2 bg-blue-500 text-white font-semibold rounded-md hover:bg-blue-600 text-base whitespace-nowrap">입금</button>
+                                        <button onClick={() => { setSelectedStudent(s); setMode('withdraw'); }} className="px-4 py-2 bg-red-500 text-white font-semibold rounded-md hover:bg-red-600 text-base whitespace-nowrap">출금</button>
                                     </div>
                                 </td>
                             </tr>
@@ -221,7 +221,7 @@ const StockExchangeView: React.FC = () => {
                             <th className="p-3 text-right">현재가</th>
                             <th className="p-3 text-right">전체 수량</th>
                             <th className="p-3 text-right">평가 금액</th>
-                            <th className="p-3 text-center">가격 입력</th>
+                            <th className="p-3 text-center leading-tight">가격<br/>입력</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -237,7 +237,7 @@ const StockExchangeView: React.FC = () => {
                                 </td>
                                 <td className="p-3 text-right font-mono">{s.valuation.toLocaleString()}권</td>
                                 <td className="p-3 text-center">
-                                    <button onClick={() => { setSelectedStock(s); setShowModal('price'); }} className="px-3 py-1 bg-gray-200 text-gray-800 text-xs font-semibold rounded-md hover:bg-gray-300">입력</button>
+                                    <button onClick={() => { setSelectedStock(s); setShowModal('price'); }} className="px-3 py-1 bg-gray-200 text-gray-800 text-[8px] font-semibold rounded-md hover:bg-gray-300 whitespace-nowrap">입력</button>
                                 </td>
                             </tr>
                         ))}

@@ -291,7 +291,7 @@ const TransferView: React.FC<{ martAccount: Account, refreshAccount: () => void 
     return (
         <div className="p-6">
             <div className="bg-white p-6 rounded-xl shadow-md">
-                <h2 className="text-2xl font-bold mb-4">송금하기 (학생에게)</h2>
+                <h2 className="text-2xl font-bold mb-4">송금하기</h2>
                 <div className="mb-4">
                     <p className="text-sm text-gray-500">마트 계좌 잔액</p>
                     <p className="text-2xl font-bold">{martAccount.balance.toLocaleString()}권</p>
@@ -300,8 +300,8 @@ const TransferView: React.FC<{ martAccount: Account, refreshAccount: () => void 
                     <div>
                         <label className="font-semibold text-gray-700">받는 학생 계좌번호</label>
                         <div className="flex items-center mt-1">
-                            <span className="p-3 bg-gray-100 border border-r-0 rounded-l-lg text-gray-600">권쌤은행</span>
-                            <input type="text" value={accountId} onChange={e => setAccountId(e.target.value)} placeholder="000-000" className="flex-grow p-3 border rounded-r-lg" />
+                            <span className="p-3 bg-gray-100 border border-r-0 rounded-l-lg text-gray-600 w-2/3 text-center">권쌤은행</span>
+                            <input type="text" value={accountId} onChange={e => setAccountId(e.target.value)} placeholder="000-000" className="w-1/3 p-3 border rounded-r-lg" />
                         </div>
                     </div>
                     <div>
@@ -354,7 +354,7 @@ const HistoryView: React.FC<{ martAccount: Account }> = ({ martAccount }) => {
                     {transactions.map(t => (
                         <li key={t.transactionId} className="bg-white p-3 rounded-lg shadow-sm flex justify-between items-center">
                             <div>
-                                <p className="font-semibold">{t.description}</p>
+                                <p className="font-semibold">{t.description.replace(' 학생으로부터', '')}</p>
                                 <p className="text-sm text-gray-500">{new Date(t.date).toLocaleString()}</p>
                             </div>
                             <p className={`font-bold ${t.amount > 0 ? 'text-blue-600' : 'text-red-600'}`}>
