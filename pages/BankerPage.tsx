@@ -1,5 +1,3 @@
-
-
 import React, { useState, useContext, useEffect, useCallback, useMemo } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
@@ -43,7 +41,7 @@ const BankerPage: React.FC = () => {
                  <TabButton label="적금 관리" active={view === 'savings_management'} onClick={() => setView('savings_management')} />
             </nav>
 
-            <main className="flex-grow overflow-y-auto p-4 bg-gray-100">
+            <main className="flex-grow overflow-y-auto p-4 bg-[#D1D3D8]">
                 {renderView()}
             </main>
         </div>
@@ -581,7 +579,7 @@ const SavingEnrolleesModal: React.FC<{ product: SavingsProduct, onClose: () => v
 const TabButton: React.FC<{ label: string; active: boolean; onClick: () => void }> = ({ label, active, onClick }) => (
     <button
         onClick={onClick}
-        className={`px-4 py-2 font-semibold rounded-lg transition-colors text-sm ${active ? 'bg-indigo-600 text-white' : 'bg-transparent text-gray-600 hover:bg-indigo-100'}`}
+        className={`px-4 py-2 font-semibold rounded-lg transition-colors text-sm ${active ? 'bg-[#2B548F] text-white' : 'bg-transparent text-gray-600 hover:bg-indigo-100'}`}
     >
         {label}
     </button>

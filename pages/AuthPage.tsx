@@ -2,7 +2,7 @@ import React, { useState, useContext, useEffect } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
 import { Role, User } from '../types';
-import { BankIcon, MartIcon, StudentIcon } from '../components/icons';
+import { BankIcon, MartIcon, StudentIcon, ManageIcon } from '../components/icons';
 
 type AuthMode = 'main' | 'login' | 'student-select';
 
@@ -54,7 +54,7 @@ const AuthPage: React.FC = () => {
         setError('');
     };
 
-    if (loading) {
+    if (loading && mode !== 'main') {
         return <div className="flex items-center justify-center h-full text-white bg-gray-800">로딩 중...</div>;
     }
     
@@ -84,13 +84,13 @@ const AuthPage: React.FC = () => {
     
     if (mode === 'student-select') {
          return (
-            <div className="flex flex-col h-full p-8 bg-white">
+            <div className="flex flex-col h-full p-8 bg-[#D1D3D8]">
                 <button onClick={reset} className="self-start mb-4 text-gray-500 hover:text-gray-800">{'<'} 뒤로</button>
                 <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">학생을 선택하세요</h2>
                 <div className="space-y-3 overflow-y-auto">
                     {students.map(student => (
                         <button key={student.userId} onClick={() => handleLogin(student.userId)}
-                            className="w-full p-4 bg-gray-100 rounded-lg text-lg text-gray-800 text-left hover:bg-gray-200 transition">
+                            className="w-full p-4 bg-white rounded-lg text-lg text-gray-800 text-left hover:bg-gray-100 transition shadow-sm">
                             {student.grade}-{student.class} {student.number}번 {student.name}
                         </button>
                     ))}
@@ -100,40 +100,71 @@ const AuthPage: React.FC = () => {
     }
 
     return (
-        <div className="flex flex-col h-full items-center justify-center p-6 bg-gradient-to-br from-gray-50 to-gray-200">
-            <div className="text-center mb-12 p-6 bg-white/60 backdrop-blur-sm rounded-xl shadow-lg border border-gray-200">
-                <h1 className="text-5xl font-black text-gray-800 tracking-tight">Class Bank</h1>
-                <p className="text-xl font-semibold text-gray-600 mt-6">권쌤과 경제활동</p>
-            </div>
-
-            <div className="w-full max-w-md space-y-4">
-                <button onClick={() => { setLoginTarget({ role: Role.TEACHER, title: "교사 관리자", userId: 'teacher-01' }); setMode('login'); }}
-                    className="w-full p-4 bg-white rounded-xl shadow-md font-bold text-gray-800 text-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-                    교사 관리자
-                </button>
-                <div className="grid grid-cols-2 gap-4">
-                    <button onClick={() => { setLoginTarget({ role: Role.BANKER, title: "은행원", userId: 'banker-01' }); setMode('login'); }}
-                        className="p-6 bg-white rounded-xl shadow-md flex flex-col items-center justify-center aspect-square hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-                        <BankIcon className="w-10 h-10 text-blue-500 mb-2" />
-                        <span className="font-bold text-gray-800">은행원</span>
-                    </button>
-                    <button onClick={() => { setLoginTarget({ role: Role.MART, title: "마트", userId: 'mart-01' }); setMode('login'); }}
-                        className="p-6 bg-white rounded-xl shadow-md flex flex-col items-center justify-center aspect-square hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-                        <MartIcon className="w-10 h-10 text-orange-500 mb-2" />
-                        <span className="font-bold text-gray-800">마트</span>
-                    </button>
+        <div className="flex flex-col h-full p-6 bg-gradient-to-br from-[#E6F0FA] to-[#c1d9f0]">
+            <div className="flex-grow flex flex-col items-center justify-center">
+                <div className="text-center mb-12">
+                    <h1 className="text-6xl font-extrabold text-gray-800 tracking-tight" style={{textShadow: '2px 2px 4px rgba(0,0,0,0.1)'}}>Class Bank</h1>
+                    <p className="text-2xl font-medium text-gray-600 mt-4">권쌤과 경제활동</p>
                 </div>
 
-                <div className="pt-4">
-                    <button onClick={() => setMode('student-select')}
-                        className="w-full p-4 bg-green-500 text-white rounded-xl shadow-lg font-bold text-lg hover:bg-green-600 hover:-translate-y-1 transition-all duration-300 flex items-center justify-center">
-                        <StudentIcon className="w-6 h-6 mr-2"/>
-                        학생 (QR 로그인)
+                <div className="w-full max-w-xs space-y-4">
+                    <button 
+                        onClick={() => { setLoginTarget({ role: Role.TEACHER, title: "교사 관리자", userId: 'teacher-01' }); setMode('login'); }}
+                        className="relative w-full py-6 rounded-2xl border-2 border-white/80 shadow-lg overflow-hidden group transition-all duration-300 hover:shadow-xl hover:shadow-blue-400/30 hover:-translate-y-1.5">
+                        <div 
+                            className="absolute inset-0 bg-cover bg-center filter blur-[4px] brightness-90 transition-all duration-500 group-hover:scale-110 group-hover:brightness-100"
+                            style={{ backgroundImage: `url('https://images.unsplash.com/photo-1580582932707-520aed937b7b?q=80&w=1932&auto=format&fit=crop')` }}
+                        />
+                        <div className="absolute inset-0 bg-black/30"></div>
+                        <div className="shimmer absolute top-0 -left-full w-3/4 h-full bg-gradient-to-r from-transparent via-white/50 to-transparent transform -skew-x-12" />
+                        <div className="relative z-10 flex flex-col items-center justify-center">
+                            <ManageIcon className="w-10 h-10 text-white mb-2" style={{ filter: 'drop-shadow(1px 1px 2px rgba(0,0,0,0.5))' }}/>
+                            <span className="font-bold text-white text-xl" style={{ textShadow: '1px 1px 3px rgba(0,0,0,0.5)' }}>교사 관리자</span>
+                        </div>
+                    </button>
+                     <button
+                        onClick={() => { setLoginTarget({ role: Role.BANKER, title: "은행원", userId: 'banker-01' }); setMode('login'); }}
+                        className="relative w-full py-6 rounded-2xl border-2 border-white/80 shadow-lg overflow-hidden group transition-all duration-300 hover:shadow-xl hover:shadow-blue-400/30 hover:-translate-y-1.5">
+                        <div 
+                            className="absolute inset-0 bg-cover bg-center filter blur-[4px] brightness-90 transition-all duration-500 group-hover:scale-110 group-hover:brightness-100"
+                            style={{ backgroundImage: `url('https://cdn.pixabay.com/photo/2024/08/30/23/40/ai-generated-9010160_1280.jpg')` }}
+                        />
+                        <div className="absolute inset-0 bg-black/30"></div>
+                        <div className="shimmer absolute top-0 -left-full w-3/4 h-full bg-gradient-to-r from-transparent via-white/50 to-transparent transform -skew-x-12" />
+                        <div className="relative z-10 flex flex-col items-center justify-center">
+                            <BankIcon className="w-10 h-10 text-white mb-2" style={{ filter: 'drop-shadow(1px 1px 2px rgba(0,0,0,0.5))' }}/>
+                            <span className="font-bold text-white text-xl" style={{ textShadow: '1px 1px 3px rgba(0,0,0,0.5)' }}>은행원</span>
+                        </div>
+                    </button>
+                     <button
+                        onClick={() => { setLoginTarget({ role: Role.MART, title: "마트", userId: 'mart-01' }); setMode('login'); }}
+                        className="relative w-full py-6 rounded-2xl border-2 border-white/80 shadow-lg overflow-hidden group transition-all duration-300 hover:shadow-xl hover:shadow-blue-400/30 hover:-translate-y-1.5">
+                        <div 
+                            className="absolute inset-0 bg-cover bg-center filter blur-[4px] brightness-90 transition-all duration-500 group-hover:scale-110 group-hover:brightness-100"
+                            style={{ backgroundImage: `url('https://images.unsplash.com/photo-1583258292688-d0213dc5a3a8?q=80&w=1974&auto=format&fit=crop')` }}
+                        />
+                        <div className="absolute inset-0 bg-black/30"></div>
+                        <div className="shimmer absolute top-0 -left-full w-3/4 h-full bg-gradient-to-r from-transparent via-white/50 to-transparent transform -skew-x-12" />
+                        <div className="relative z-10 flex flex-col items-center justify-center">
+                            <MartIcon className="w-10 h-10 text-white mb-2" style={{ filter: 'drop-shadow(1px 1px 2px rgba(0,0,0,0.5))' }}/>
+                            <span className="font-bold text-white text-xl" style={{ textShadow: '1px 1px 3px rgba(0,0,0,0.5)' }}>마트</span>
+                        </div>
                     </button>
                 </div>
             </div>
             
-            <footer className="mt-auto pt-6 text-center text-gray-500">
+            <div className="w-full max-w-xs mx-auto mb-4">
+                <button
+                    onClick={() => setMode('student-select')}
+                    className="relative w-full p-4 bg-[#4CAF50] text-white rounded-2xl shadow-lg font-bold text-lg overflow-hidden group transition-all duration-300 hover:shadow-xl hover:shadow-green-500/40 hover:-translate-y-1 hover:bg-opacity-95 flex items-center justify-center"
+                >
+                    <div className="shimmer absolute top-0 -left-full w-3/4 h-full bg-gradient-to-r from-transparent via-white/50 to-transparent transform -skew-x-12" />
+                    <StudentIcon className="w-6 h-6 mr-3"/>
+                    학생 (QR 로그인)
+                </button>
+            </div>
+            
+            <footer className="text-center text-gray-500/80">
                 <p className="text-sm font-semibold">ⓒ 2025. Kwon's class. All rights reserved.</p>
             </footer>
         </div>

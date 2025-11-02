@@ -2,7 +2,7 @@ import React, { useState, useContext, useEffect, useCallback, useMemo } from 're
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
 import { User, Role, Account, Transaction, Job, AssignedStudent } from '../types';
-import { LogoutIcon, UsersIcon, QrCodeIcon, UserAddIcon, XIcon, CheckIcon, ErrorIcon, DashboardIcon, BackIcon, BriefcaseIcon } from '../components/icons';
+import { LogoutIcon, QrCodeIcon, UserAddIcon, XIcon, CheckIcon, ErrorIcon, BackIcon, NewDashboardIcon, NewBriefcaseIcon, NewManageAccountsIcon } from '../components/icons';
 
 type View = 'dashboard' | 'students' | 'jobs' | 'accounts';
 
@@ -72,7 +72,7 @@ const TeacherDashboard: React.FC = () => {
     };
 
     return (
-        <div className="flex flex-col h-full bg-gray-50">
+        <div className="flex flex-col h-full bg-[#E8E9EB]">
             <header className="p-4 flex justify-between items-center bg-white border-b sticky top-0 z-10">
                 <div>
                     <h1 className="text-xl font-bold text-gray-800">교사 관리자</h1>
@@ -83,22 +83,22 @@ const TeacherDashboard: React.FC = () => {
                 </button>
             </header>
 
-            <main className="flex-grow overflow-y-auto p-4 bg-gray-100">
+            <main className="flex-grow overflow-y-auto p-4 bg-[#d1d3d8]">
                 {renderView()}
             </main>
 
             <nav className="grid grid-cols-4 bg-white p-1 border-t sticky bottom-0 z-10">
-                <NavButton label="대시보드" Icon={DashboardIcon} active={view === 'dashboard'} onClick={() => setView('dashboard')} />
+                <NavButton label="대시보드" Icon={NewDashboardIcon} active={view === 'dashboard'} onClick={() => setView('dashboard')} />
                 <NavButton label="학생 등록" Icon={UserAddIcon} active={view === 'students'} onClick={() => setView('students')} />
-                <NavButton label="1인 1역" Icon={BriefcaseIcon} active={view === 'jobs'} onClick={() => setView('jobs')} />
-                <NavButton label="계좌 관리" Icon={UsersIcon} active={view === 'accounts'} onClick={() => setView('accounts')} />
+                <NavButton label="1인 1역" Icon={NewBriefcaseIcon} active={view === 'jobs'} onClick={() => setView('jobs')} />
+                <NavButton label="계좌 관리" Icon={NewManageAccountsIcon} active={view === 'accounts'} onClick={() => setView('accounts')} />
             </nav>
         </div>
     );
 };
 
 const NavButton: React.FC<{ label: string, Icon: React.FC<any>, active: boolean, onClick: () => void }> = ({ label, Icon, active, onClick }) => (
-    <button onClick={onClick} className={`flex flex-col items-center justify-center w-full py-2 rounded-lg transition-colors ${active ? 'text-indigo-600' : 'text-gray-500 hover:bg-indigo-50'}`}>
+    <button onClick={onClick} className={`flex flex-col items-center justify-center w-full py-2 rounded-lg transition-colors ${active ? 'text-[#2B548F]' : 'text-gray-500 hover:bg-blue-50'}`}>
         <Icon className="w-6 h-6 mb-1" />
         <span className="text-xs font-medium">{label}</span>
     </button>
@@ -137,29 +137,17 @@ const DashboardView: React.FC<ReturnType<typeof useStudentsWithAccounts>> = ({ s
         });
 
         const rich = [...students].sort((a, b) => (b.account?.balance || 0) - (a.account?.balance || 0)).slice(0, 5);
+        const maxBalance = rich[0]?.account?.balance || 1;
+
         const active = [...activity].sort((a, b) => b.activityCount - a.activityCount).slice(0, 5);
+        const maxActivity = active[0]?.activityCount || 1;
+        
         const inactive = [...activity].sort((a, b) => a.activityCount - b.activityCount).slice(0, 5);
 
-        return { rich, active, inactive };
+        return { rich, active, inactive, maxBalance, maxActivity };
     }, [students, transactions]);
 
-    const notifications = useMemo(() => {
-        const alerts = [];
-        const today = new Date();
-        const dayOfWeek = today.getDay(); // 0:Sun, 1:Mon, ..., 4:Thu, 5:Fri
-
-        if (dayOfWeek === 4) {
-            alerts.push({ id: 'salary-d1', type: '급여', text: '급여 지급 D-1일 입니다.' });
-        }
-        if (dayOfWeek === 5) {
-            alerts.push({ id: 'salary-d0', type: '급여', text: '오늘은 급여 지급일입니다!' });
-        }
-        // Placeholder for other notifications
-        // alerts.push({id: 'dummy1', type: '적금만기', text: '김민준 학생의 적금이 만기되었습니다.'});
-        return alerts;
-    }, []);
-
-    if (loading) return <div className="text-center p-8">대시보드 데이터를 불러오는 중...</div>;
+    if (loading) return <div className="text-center p-8 text-gray-500">대시보드 데이터를 불러오는 중...</div>;
 
     return (
         <div className="space-y-4">
@@ -169,23 +157,10 @@ const DashboardView: React.FC<ReturnType<typeof useStudentsWithAccounts>> = ({ s
                 <SystemStatusCard title="평균 잔액" value={`${Math.round(avgBalance).toLocaleString()}권`} />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <RankingCard title="부자 랭킹" items={rankings.rich.map(s => ({...s, id: s.userId}))} onClick={(item) => handleRankingClick(item, 'balance')} />
-                <RankingCard title="활동성 랭킹" items={rankings.active.map(s => ({...s, id: s.userId}))} onClick={(item) => handleRankingClick(item, 'transactions')} />
-                <RankingCard title="비활동성 랭킹" items={rankings.inactive.map(s => ({...s, id: s.userId}))} onClick={(item) => handleRankingClick(item, 'transactions')} />
-            </div>
-
-            <div className="bg-white p-4 rounded-xl shadow-md">
-                <h3 className="font-bold text-lg mb-2">주요 활동 알림</h3>
-                 {notifications.length > 0 ? (
-                    <ul className="space-y-2 text-sm">
-                       {notifications.map(n => (
-                           <li key={n.id} className="p-2 bg-indigo-50 rounded-md">
-                               <span className={`font-semibold ${n.type === '급여' ? 'text-green-600' : 'text-blue-600'}`}>{`[${n.type}]`}</span> {n.text}
-                           </li>
-                       ))}
-                    </ul>
-                ) : <p className="text-sm text-gray-500">새로운 알림이 없습니다.</p>}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <RankingCard title="부자 랭킹" items={rankings.rich} maxValue={rankings.maxBalance} onClick={(item) => handleRankingClick(item, 'balance')} />
+                <RankingCard title={<>활동성<br/>랭킹</>} items={rankings.active} maxValue={rankings.maxActivity} onClick={(item) => handleRankingClick(item, 'transactions')} />
+                <RankingCard title="비활동성 랭킹" items={rankings.inactive} maxValue={rankings.maxActivity} onClick={(item) => handleRankingClick(item, 'transactions')} />
             </div>
 
             {selectedStudent && modalContent && (
@@ -200,37 +175,46 @@ const DashboardView: React.FC<ReturnType<typeof useStudentsWithAccounts>> = ({ s
 };
 
 const SystemStatusCard: React.FC<{ title: string, value: string }> = ({ title, value }) => (
-    <div className="bg-white p-4 rounded-xl shadow-md text-center">
+    <div className="bg-white p-4 rounded-xl shadow-sm text-center flex flex-col justify-center">
         <h3 className="text-sm font-semibold text-gray-500 whitespace-nowrap">{title}</h3>
-        <p className="text-xl font-bold text-gray-800 mt-1">{value}</p>
+        <p className="text-lg font-extrabold text-[#2B548F] mt-2 whitespace-nowrap">{value}</p>
     </div>
 );
 
-const RankingCard: React.FC<{ title: string; items: (User & {id: string, account: Account | null})[]; onClick: (item: User & { account: Account | null }) => void }> = ({ title, items, onClick }) => {
-    const titleParts = title.split(' ');
+const RankingCard: React.FC<{
+    title: React.ReactNode;
+    items: (User & { id: string, account: Account | null, activityCount?: number })[];
+    maxValue: number;
+    onClick: (item: User & { account: Account | null }) => void
+}> = ({ title, items, onClick, maxValue }) => {
+    const isInactive = typeof title === 'string' && title.includes('비활동성');
+    const barColor = isInactive ? 'bg-amber-400' : 'bg-[#2B548F]';
+
     return (
-        <div className="bg-white p-4 rounded-xl shadow-md">
-            <h3 className="font-bold text-center mb-3">
-                {titleParts.length > 1 ? (
-                    <>
-                        {titleParts[0]}
-                        <br />
-                        {titleParts[1]}
-                    </>
-                ) : (
-                    title
-                )}
-            </h3>
-            <ol className="space-y-2 text-sm">
-                {items.map((item, index) => (
-                    <li key={item.id} className="flex items-center">
-                        <span className="font-bold w-6">{index + 1}.</span>
-                         <button onClick={() => onClick(item)} className="font-bold text-black hover:underline">
-                            {item.name}
-                        </button>
-                    </li>
-                ))}
-            </ol>
+        <div className="bg-white p-4 rounded-xl shadow-sm h-full">
+            <h3 className="font-bold text-gray-800 text-center mb-4 text-base leading-tight">{title}</h3>
+            {items.length > 0 ? (
+                <ul className="space-y-4 text-sm">
+                    {items.map((item, index) => {
+                        const isRichList = typeof title === 'string' && title.includes('부자');
+                        const value = isRichList ? (item.account?.balance || 0) : (item.activityCount ?? 0);
+                        const percentage = maxValue > 0 ? Math.max(1, (value / maxValue) * 100) : 0;
+
+                        return (
+                            <li key={item.id}>
+                                <div className="flex justify-between items-center mb-1">
+                                    <button onClick={() => onClick(item)} className="font-semibold text-gray-700 hover:text-[#2B548F] transition-colors truncate text-sm">
+                                        {index + 1}. {item.name}
+                                    </button>
+                                </div>
+                                <div className="w-full bg-gray-100 rounded-full h-1.5">
+                                    <div className={`${barColor} h-1.5 rounded-full`} style={{ width: `${percentage}%` }}></div>
+                                </div>
+                            </li>
+                        )
+                    })}
+                </ul>
+            ) : <p className="text-center text-gray-400 text-sm pt-4">데이터 없음</p>}
         </div>
     );
 };
@@ -289,24 +273,24 @@ const StudentManageView: React.FC<{ students: (User & { account: Account | null 
     const [showQrModal, setShowQrModal] = useState<(User & { account: Account | null }) | null>(null);
     const [showPrintModal, setShowPrintModal] = useState(false);
 
-    if (loading) return <div className="text-center p-8">학생 정보를 불러오는 중...</div>;
+    if (loading) return <div className="text-center p-8 text-gray-500">학생 정보를 불러오는 중...</div>;
     
     return (
         <div>
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-2xl font-bold text-gray-800">학생 목록</h2>
                 <div className="flex gap-2">
-                    <button onClick={() => setShowPrintModal(true)} className="flex items-center gap-2 px-3 py-2 bg-gray-600 text-white text-xs font-semibold rounded-lg shadow hover:bg-gray-700">
+                    <button onClick={() => setShowPrintModal(true)} className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 text-gray-700 text-xs font-semibold rounded-lg shadow-sm hover:bg-gray-50">
                         <QrCodeIcon className="w-4 h-4" />
                         일괄 출력
                     </button>
-                    <button onClick={() => setShowAddModal(true)} className="flex items-center gap-2 px-3 py-2 bg-indigo-600 text-white text-xs font-semibold rounded-lg shadow hover:bg-indigo-700">
+                    <button onClick={() => setShowAddModal(true)} className="flex items-center gap-2 px-3 py-2 bg-[#2B548F] text-white text-xs font-semibold rounded-lg shadow-sm hover:bg-opacity-90">
                         <UserAddIcon className="w-4 h-4" />
                         학생 추가
                     </button>
                 </div>
             </div>
-            <div className="bg-white rounded-xl shadow-md overflow-hidden">
+            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                         <thead className="bg-gray-50">
@@ -464,7 +448,7 @@ const PrintQrModal: React.FC<{ students: (User & { account: Account | null })[];
 const AccountManageView: React.FC<{ students: (User & { account: Account | null })[]; loading: boolean; }> = ({ students, loading }) => {
     const [selectedStudent, setSelectedStudent] = useState<(User & { account: Account | null }) | null>(null);
 
-    if (loading) return <div className="text-center p-8">학생 정보를 불러오는 중...</div>;
+    if (loading) return <div className="text-center p-8 text-gray-500">학생 정보를 불러오는 중...</div>;
 
     if (selectedStudent) {
         return <AccountDetailView student={selectedStudent} onBack={() => setSelectedStudent(null)} />
@@ -496,14 +480,14 @@ const AccountDetailView: React.FC<{ student: User & { account: Account | null },
 
     return (
         <div>
-            <button onClick={onBack} className="flex items-center text-gray-600 hover:text-gray-900 mb-4">
+            <button onClick={onBack} className="flex items-center text-gray-500 hover:text-gray-800 mb-4">
                 <BackIcon className="w-5 h-5 mr-1" />
                 뒤로가기
             </button>
-            <h2 className="text-2xl font-bold mb-1">{student.name}</h2>
+            <h2 className="text-2xl font-bold mb-1 text-gray-800">{student.name}</h2>
             <p className="text-gray-600 mb-4">잔액: <span className="font-bold">{student.account?.balance.toLocaleString() ?? 0}권</span></p>
 
-            <h3 className="font-bold text-lg mb-2">거래 내역</h3>
+            <h3 className="font-bold text-lg mb-2 text-gray-800">거래 내역</h3>
             <ul className="space-y-2">
                 {transactions.map(t => (
                      <li key={t.transactionId} className="bg-white p-3 rounded-lg shadow-sm flex justify-between items-center">
@@ -680,18 +664,18 @@ const JobManagementView: React.FC<{ allStudents: (User & { account: Account | nu
         }
     };
 
-    if (loading) return <div className="text-center p-8">직업 정보를 불러오는 중...</div>;
+    if (loading) return <div className="text-center p-8 text-gray-500">직업 정보를 불러오는 중...</div>;
 
     return (
         <div>
              <div className="flex justify-between items-center mb-4">
                 <h2 className="text-2xl font-bold text-gray-800">1인 1역 관리</h2>
                 <div>
-                     <button onClick={() => setShowAddJobModal(true)} className="px-3 py-2 bg-indigo-600 text-white text-xs font-semibold rounded-lg shadow hover:bg-indigo-700">직업 추가</button>
+                     <button onClick={() => setShowAddJobModal(true)} className="px-3 py-2 bg-[#3F649A] text-white text-xs font-semibold rounded-lg shadow hover:bg-[#32507b]">직업 추가</button>
                 </div>
             </div>
             
-            <div className="bg-white rounded-xl shadow-md overflow-x-auto">
+            <div className="bg-white rounded-xl shadow-sm overflow-x-auto">
                 <table className="w-full text-sm text-left">
                     <thead className="bg-gray-50 text-gray-600">
                         <tr>
@@ -725,7 +709,7 @@ const JobManagementView: React.FC<{ allStudents: (User & { account: Account | nu
                                     />
                                 </td>
                                 <td className="p-3 text-center">
-                                    <button onClick={() => handlePaySingle(job.id)} className="w-full px-2 py-1.5 bg-blue-500 text-white text-sm font-semibold rounded-md shadow-sm hover:bg-blue-600 whitespace-nowrap">
+                                    <button onClick={() => handlePaySingle(job.id)} className="w-full px-2 py-1.5 bg-[#3F649A] text-white text-sm font-semibold rounded-md shadow-sm hover:bg-[#32507b] whitespace-nowrap">
                                         지급
                                     </button>
                                 </td>

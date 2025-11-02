@@ -23,6 +23,15 @@
           width: 100%;
         }
       }
+      /* Shimmer effect animation */
+      @keyframes shimmer-effect {
+        100% {
+            left: 100%;
+        }
+      }
+      .group:hover .shimmer {
+          animation: shimmer-effect 1.2s ease-in-out;
+      }
     </style>
   <script type="importmap">
 {

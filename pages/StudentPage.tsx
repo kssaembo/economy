@@ -1,10 +1,11 @@
 
 
+
 import React, { useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
 import { Account, Transaction, StockProduct, StudentStock, SavingsProduct, StudentSaving, User, Job } from '../types';
-import { HomeIcon, TransferIcon, StockIcon, PiggyBankIcon, BackIcon, XIcon, CheckIcon, ErrorIcon, PlusIcon, MinusIcon, BriefcaseIcon } from '../components/icons';
+import { HomeIcon, TransferIcon, NewStockIcon, NewPiggyBankIcon, BackIcon, XIcon, CheckIcon, ErrorIcon, PlusIcon, MinusIcon, BriefcaseIcon } from '../components/icons';
 
 type View = 'home' | 'transfer' | 'stocks' | 'savings';
 
@@ -57,15 +58,15 @@ const StudentPage: React.FC = () => {
                 </div>
             </header>
 
-            <main className="flex-grow overflow-y-auto p-4 bg-gray-100">
+            <main className="flex-grow overflow-y-auto p-4 bg-[#D1D3D8]">
                 {renderView()}
             </main>
 
             <nav className="grid grid-cols-4 bg-white p-1 border-t sticky bottom-0 z-10">
                 <NavButton label="홈" Icon={HomeIcon} active={view === 'home'} onClick={() => setView('home')} />
                 <NavButton label="송금" Icon={TransferIcon} active={view === 'transfer'} onClick={() => setView('transfer')} />
-                <NavButton label="주식" Icon={StockIcon} active={view === 'stocks'} onClick={() => setView('stocks')} />
-                <NavButton label="적금" Icon={PiggyBankIcon} active={view === 'savings'} onClick={() => setView('savings')} />
+                <NavButton label="주식" Icon={NewStockIcon} active={view === 'stocks'} onClick={() => setView('stocks')} />
+                <NavButton label="적금" Icon={NewPiggyBankIcon} active={view === 'savings'} onClick={() => setView('savings')} />
             </nav>
         </div>
     );
@@ -114,8 +115,8 @@ const HomeView: React.FC<{ account: Account; currentUser: User }> = ({ account, 
 
     return (
         <div>
-            <div className="bg-gradient-to-br from-indigo-600 to-blue-500 text-white p-6 rounded-2xl shadow-lg mb-6">
-                <p className="text-sm font-mono text-indigo-200 opacity-80">{account.accountId}</p>
+            <div className="bg-[#2B548F] text-white p-6 rounded-2xl shadow-lg mb-6">
+                <p className="text-sm font-mono text-blue-200 opacity-80">{account.accountId}</p>
                 <p className="text-4xl font-bold mt-2 tracking-tight">
                     {account.balance.toLocaleString()}
                     <span className="text-2xl font-medium ml-1">권</span>
@@ -234,7 +235,7 @@ const TransferView: React.FC<{ currentUser: User; refreshAccount: () => void; }>
                 <p className="text-lg mb-2">받는 분: <span className="font-bold">{recipient.user.name}</span></p>
                 <p className="text-lg mb-4">보내는 금액: <span className="font-bold">{parseInt(amount).toLocaleString()}권</span></p>
                 {result && <p className={`text-sm mb-4 ${result.type === 'error' ? 'text-red-500' : 'text-green-500'}`}>{result.text}</p>}
-                <button onClick={handleTransfer} disabled={loading} className="w-full p-3 bg-indigo-600 text-white font-bold rounded-lg disabled:bg-gray-400">
+                <button onClick={handleTransfer} disabled={loading} className="w-full p-3 bg-[#2B548F] text-white font-bold rounded-lg disabled:bg-gray-400">
                     {loading ? '송금 중...' : '송금 실행'}
                 </button>
             </div>
@@ -247,7 +248,7 @@ const TransferView: React.FC<{ currentUser: User; refreshAccount: () => void; }>
                 {result?.type === 'success' ? <CheckIcon className="w-16 h-16 text-green-500 mx-auto mb-4" /> : <ErrorIcon className="w-16 h-16 text-red-500 mx-auto mb-4" />}
                 <h2 className="text-2xl font-bold mb-2">{result?.type === 'success' ? '송금 완료' : '송금 실패'}</h2>
                 <p className="mb-6">{result?.text}</p>
-                <button onClick={reset} className="w-full p-3 bg-indigo-600 text-white font-bold rounded-lg">확인</button>
+                <button onClick={reset} className="w-full p-3 bg-[#2B548F] text-white font-bold rounded-lg">확인</button>
             </div>
         )
     }
@@ -269,7 +270,7 @@ const TransferView: React.FC<{ currentUser: User; refreshAccount: () => void; }>
                 </div>
             </div>
             {result && <p className="text-red-500 text-sm mt-4">{result.text}</p>}
-            <button onClick={handleCheckRecipient} disabled={loading || !amount || parseInt(amount) <= 0} className="mt-6 w-full p-3 bg-indigo-600 text-white font-bold rounded-lg disabled:bg-gray-400">
+            <button onClick={handleCheckRecipient} disabled={loading || !amount || parseInt(amount) <= 0} className="mt-6 w-full p-3 bg-[#2B548F] text-white font-bold rounded-lg disabled:bg-gray-400">
                 {loading ? '조회 중...' : '다음'}
             </button>
         </div>

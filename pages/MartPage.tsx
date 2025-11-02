@@ -65,7 +65,7 @@ const MartPage: React.FC = () => {
                 <TabButton label="세부내역" active={view === 'history'} onClick={() => setView('history')} />
             </nav>
 
-            <main className="flex-grow overflow-y-auto">
+            <main className="flex-grow overflow-y-auto bg-[#D1D3D8]">
                 {renderContent()}
             </main>
         </div>
@@ -76,7 +76,7 @@ const MartPage: React.FC = () => {
 const TabButton: React.FC<{ label: string; active: boolean; onClick: () => void }> = ({ label, active, onClick }) => (
     <button
         onClick={onClick}
-        className={`px-4 py-2 font-semibold rounded-lg transition-colors text-sm ${active ? 'bg-indigo-600 text-white' : 'bg-transparent text-gray-600 hover:bg-indigo-100'}`}
+        className={`px-4 py-2 font-semibold rounded-lg transition-colors text-sm ${active ? 'bg-[#2B548F] text-white' : 'bg-transparent text-gray-600 hover:bg-indigo-100'}`}
     >
         {label}
     </button>
@@ -155,7 +155,7 @@ const PosView: React.FC<{currentUser: User | null}> = ({currentUser}) => {
                 {result?.type === 'success' ? <CheckIcon className="w-20 h-20 text-green-500 mb-6" /> : <ErrorIcon className="w-20 h-20 text-red-500 mb-6" />}
                 <h2 className="text-3xl font-bold mb-4">{result?.type === 'success' ? '결제 완료' : '결제 실패'}</h2>
                 <p className="text-lg text-gray-600 mb-8">{result?.text}</p>
-                <button onClick={reset} className="w-full max-w-xs p-4 bg-indigo-600 text-white font-bold rounded-xl text-lg">
+                <button onClick={reset} className="w-full max-w-xs p-4 bg-[#2B548F] text-white font-bold rounded-xl text-lg">
                     확인
                 </button>
             </div>
@@ -315,7 +315,7 @@ const TransferView: React.FC<{ martAccount: Account, refreshAccount: () => void 
                         <p className="text-sm">{result.text}</p>
                     </div>
                 )}
-                <button onClick={handleTransfer} disabled={loading} className="mt-6 w-full p-3 bg-indigo-600 text-white font-bold rounded-lg disabled:bg-gray-400">
+                <button onClick={handleTransfer} disabled={loading} className="mt-6 w-full p-3 bg-[#2B548F] text-white font-bold rounded-lg disabled:bg-gray-400">
                     {loading ? '송금 중...' : '확인'}
                 </button>
             </div>

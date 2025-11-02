@@ -1,6 +1,7 @@
 import React from 'react';
 
 type IconProps = React.SVGProps<SVGSVGElement>;
+type ImgIconProps = React.ImgHTMLAttributes<HTMLImageElement>;
 
 export const BankIcon: React.FC<IconProps> = (props) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
@@ -10,7 +11,7 @@ export const BankIcon: React.FC<IconProps> = (props) => (
 
 export const MartIcon: React.FC<IconProps> = (props) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 21v-7.5A.75.75 0 0114.25 12h.01a.75.75 0 01.75.75v7.5m-4.5 0v-7.5A.75.75 0 0110.5 12h.01a.75.75 0 01.75.75v7.5m-4.5 0v-7.5A.75.75 0 016.75 12h.01a.75.75 0 01.75.75v7.5m-4.5 0v-6.375c0-.621.504-1.125 1.125-1.125h13.5c.621 0 1.125.504 1.125 1.125v6.375m-15.75 0v-6.375c0-.621.504-1.125 1.125-1.125h13.5c.621 0 1.125.504 1.125 1.125v6.375m-1.5-15.375l-7.5-4.5-7.5 4.5m15 0v4.5A2.25 2.25 0 0018.75 12h-13.5A2.25 2.25 0 003 9.75v-4.5" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c.51 0 .962-.343 1.087-.835l1.823-6.44a1.125 1.125 0 0 0-.108-1.158A1.125 1.125 0 0 0 18.061 6H5.25L4.823 4.406A1.125 1.125 0 0 0 3.736 3.5H2.25m3.75 11.25a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm12.75 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
   </svg>
 );
 
@@ -133,4 +134,24 @@ export const BriefcaseIcon: React.FC<IconProps> = (props) => (
         <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 14.15v4.07a2.25 2.25 0 0 1-2.25 2.25H5.92a2.25 2.25 0 0 1-2.25-2.25v-4.07a2.25 2.25 0 0 1 2.25-2.25h1.5a2.25 2.25 0 0 1 2.25 2.25v.075a.75.75 0 0 0 1.5 0v-.075a2.25 2.25 0 0 1 2.25-2.25h1.5a2.25 2.25 0 0 1 2.25 2.25Z" />
         <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 18H18a2.25 2.25 0 0 0 2.25-2.25v-4.07a2.25 2.25 0 0 0-2.25-2.25h-1.5a2.25 2.25 0 0 0-2.25 2.25v.075a.75.75 0 0 1-1.5 0v-.075a2.25 2.25 0 0 0-2.25-2.25H6.75A2.25 2.25 0 0 0 4.5 9.43v4.07a2.25 2.25 0 0 0 2.25 2.25H9M12 3.75l.75 .75m-.75-.75L11.25 4.5m1.5-.75L12.75 4.5m-1.5-.75L12 3m0 0 .75.75m-.75-.75L11.25 4.5M12 3l.75.75M12 3l-.75.75" />
     </svg>
+);
+
+export const NewDashboardIcon: React.FC<ImgIconProps> = (props) => (
+    <img src="https://cdn-icons-png.flaticon.com/512/12238/12238085.png" alt="Dashboard" {...props} />
+);
+
+export const NewBriefcaseIcon: React.FC<ImgIconProps> = (props) => (
+    <img src="https://cdn-icons-png.flaticon.com/512/5146/5146077.png" alt="Jobs" {...props} />
+);
+
+export const NewManageAccountsIcon: React.FC<ImgIconProps> = (props) => (
+    <img src="https://cdn-icons-png.flaticon.com/512/10176/10176013.png" alt="Account Management" {...props} />
+);
+
+export const NewStockIcon: React.FC<ImgIconProps> = (props) => (
+    <img src="https://cdn-icons-png.flaticon.com/512/3843/3843966.png" alt="Stocks" {...props} />
+);
+
+export const NewPiggyBankIcon: React.FC<ImgIconProps> = (props) => (
+    <img src="https://cdn-icons-png.flaticon.com/512/2447/2447436.png" alt="Savings" {...props} />
 );
