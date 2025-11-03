@@ -1,11 +1,8 @@
-
-
-
 import React, { useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
 import { Account, Transaction, StockProduct, StudentStock, SavingsProduct, StudentSaving, User, Job } from '../types';
-import { HomeIcon, TransferIcon, NewStockIcon, NewPiggyBankIcon, BackIcon, XIcon, CheckIcon, ErrorIcon, PlusIcon, MinusIcon, BriefcaseIcon } from '../components/icons';
+import { HomeIcon, TransferIcon, NewStockIcon, NewPiggyBankIcon, BackIcon, XIcon, CheckIcon, ErrorIcon, PlusIcon, MinusIcon, NewJobIcon } from '../components/icons';
 
 type View = 'home' | 'transfer' | 'stocks' | 'savings';
 
@@ -51,23 +48,41 @@ const StudentPage: React.FC = () => {
     };
     
     return (
-        <div className="flex flex-col h-full bg-gray-50">
-            <header className="p-4 flex justify-between items-center bg-white border-b sticky top-0 z-10">
-                <div>
+        <div className="flex h-full bg-gray-50">
+            {/* Sidebar for Desktop */}
+            <aside className="hidden md:flex flex-col w-56 bg-white/80 backdrop-blur-sm border-r p-4">
+                <div className="px-2">
                     <h1 className="text-2xl font-bold text-gray-800">{currentUser?.name}님</h1>
                 </div>
-            </header>
-
-            <main className="flex-grow overflow-y-auto p-4 bg-[#D1D3D8]">
-                {renderView()}
-            </main>
-
-            <nav className="grid grid-cols-4 bg-white p-1 border-t sticky bottom-0 z-10">
-                <NavButton label="홈" Icon={HomeIcon} active={view === 'home'} onClick={() => setView('home')} />
-                <NavButton label="송금" Icon={TransferIcon} active={view === 'transfer'} onClick={() => setView('transfer')} />
-                <NavButton label="주식" Icon={NewStockIcon} active={view === 'stocks'} onClick={() => setView('stocks')} />
-                <NavButton label="적금" Icon={NewPiggyBankIcon} active={view === 'savings'} onClick={() => setView('savings')} />
-            </nav>
+                <nav className="mt-8 flex flex-col space-y-2">
+                    <DesktopNavButton label="홈" Icon={HomeIcon} active={view === 'home'} onClick={() => setView('home')} />
+                    <DesktopNavButton label="송금" Icon={TransferIcon} active={view === 'transfer'} onClick={() => setView('transfer')} />
+                    <DesktopNavButton label="주식" Icon={NewStockIcon} active={view === 'stocks'} onClick={() => setView('stocks')} />
+                    <DesktopNavButton label="적금" Icon={NewPiggyBankIcon} active={view === 'savings'} onClick={() => setView('savings')} />
+                </nav>
+            </aside>
+    
+            {/* Main Content Area */}
+            <div className="flex-1 flex flex-col h-full">
+                {/* Header for Mobile */}
+                <header className="md:hidden p-4 flex justify-between items-center bg-white border-b sticky top-0 z-10">
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-800">{currentUser?.name}님</h1>
+                    </div>
+                </header>
+    
+                <main className="flex-grow overflow-y-auto p-4 bg-[#D1D3D8]">
+                    {renderView()}
+                </main>
+    
+                {/* Bottom Nav for Mobile */}
+                <nav className="md:hidden grid grid-cols-4 bg-white p-1 border-t sticky bottom-0 z-10">
+                    <NavButton label="홈" Icon={HomeIcon} active={view === 'home'} onClick={() => setView('home')} />
+                    <NavButton label="송금" Icon={TransferIcon} active={view === 'transfer'} onClick={() => setView('transfer')} />
+                    <NavButton label="주식" Icon={NewStockIcon} active={view === 'stocks'} onClick={() => setView('stocks')} />
+                    <NavButton label="적금" Icon={NewPiggyBankIcon} active={view === 'savings'} onClick={() => setView('savings')} />
+                </nav>
+            </div>
         </div>
     );
 };
@@ -79,6 +94,14 @@ const NavButton: React.FC<{ label: string, Icon: React.FC<any>, active: boolean,
         <span className="text-xs font-medium">{label}</span>
     </button>
 );
+
+const DesktopNavButton: React.FC<{ label: string, Icon: React.FC<any>, active: boolean, onClick: () => void }> = ({ label, Icon, active, onClick }) => (
+    <button onClick={onClick} className={`flex items-center w-full p-3 rounded-lg transition-colors text-sm font-semibold ${active ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600 hover:bg-gray-100'}`}>
+        <Icon className="w-5 h-5 mr-3" />
+        <span>{label}</span>
+    </button>
+);
+
 
 // --- Home View ---
 const HomeView: React.FC<{ account: Account; currentUser: User }> = ({ account, currentUser }) => {
@@ -126,7 +149,7 @@ const HomeView: React.FC<{ account: Account; currentUser: User }> = ({ account, 
             {myJobs.length > 0 && (
                 <div className="bg-white p-4 rounded-2xl shadow-md mb-6">
                     <div className="flex items-center mb-3">
-                        <BriefcaseIcon className="w-6 h-6 text-indigo-500 mr-2"/>
+                        <NewJobIcon className="w-6 h-6 mr-2"/>
                         <h2 className="text-lg font-bold text-gray-800">나의 직업</h2>
                     </div>
                     <div className="space-y-2">

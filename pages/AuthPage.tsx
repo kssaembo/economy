@@ -100,11 +100,11 @@ const AuthPage: React.FC = () => {
     }
 
     return (
-        <div className="flex flex-col h-full p-6 bg-gradient-to-br from-[#E6F0FA] to-[#c1d9f0]">
+        <div className="flex flex-col h-full p-6 bg-[#D1D3D8]">
             <div className="flex-grow flex flex-col items-center justify-center">
                 <div className="text-center mb-12">
-                    <h1 className="text-6xl font-extrabold text-gray-800 tracking-tight" style={{textShadow: '2px 2px 4px rgba(0,0,0,0.1)'}}>Class Bank</h1>
-                    <p className="text-2xl font-medium text-gray-600 mt-4">권쌤과 경제활동</p>
+                    <h1 className="text-6xl font-extrabold text-gray-800 tracking-tight" style={{textShadow: '2px 2px 4px rgba(0,0,0,0.1)', fontFamily: "'Gamja Flower', cursive"}}>Class Bank</h1>
+                    <p className="text-2xl font-medium text-gray-600 mt-4" style={{ fontFamily: "'Gamja Flower', cursive" }}>권쌤과 경제활동</p>
                 </div>
 
                 <div className="w-full max-w-xs space-y-4">

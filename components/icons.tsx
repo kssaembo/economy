@@ -144,6 +144,10 @@ export const NewBriefcaseIcon: React.FC<ImgIconProps> = (props) => (
     <img src="https://cdn-icons-png.flaticon.com/512/5146/5146077.png" alt="Jobs" {...props} />
 );
 
+export const NewJobIcon: React.FC<ImgIconProps> = (props) => (
+    <img src="https://cdn-icons-png.flaticon.com/512/942/942749.png" alt="Jobs" {...props} />
+);
+
 export const NewManageAccountsIcon: React.FC<ImgIconProps> = (props) => (
     <img src="https://cdn-icons-png.flaticon.com/512/10176/10176013.png" alt="Account Management" {...props} />
 );

@@ -2,7 +2,7 @@ import React, { useState, useContext, useEffect, useCallback, useMemo } from 're
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
 import { Account, StockProduct, User, Role, SavingsProduct } from '../types';
-import { LogoutIcon, StockIcon, PiggyBankIcon, XIcon, PlusIcon, CheckIcon, ErrorIcon } from '../components/icons';
+import { LogoutIcon, StockIcon, PiggyBankIcon, XIcon, PlusIcon, CheckIcon, ErrorIcon, TransferIcon } from '../components/icons';
 
 type View = 'deposit_withdraw' | 'stock_exchange' | 'savings_management';
 
@@ -24,26 +24,50 @@ const BankerPage: React.FC = () => {
     };
 
     return (
-        <div className="flex flex-col h-full bg-gray-50">
-            <header className="p-4 flex justify-between items-center bg-white border-b sticky top-0 z-10">
-                <div>
+        <div className="flex h-full bg-gray-50">
+            {/* Sidebar for Desktop */}
+            <aside className="hidden md:flex flex-col w-56 bg-white/80 backdrop-blur-sm border-r p-4">
+                <div className="px-2">
                     <h1 className="text-xl font-bold text-gray-800">은행원 모드</h1>
                     <p className="text-sm text-gray-500">{currentUser?.name}</p>
                 </div>
-                <button onClick={logout} className="p-2 rounded-full hover:bg-gray-100">
-                    <LogoutIcon className="w-6 h-6 text-gray-600" />
-                </button>
-            </header>
-            
-            <nav className="flex justify-around bg-white p-2 border-b">
-                 <TabButton label="입/출금" active={view === 'deposit_withdraw'} onClick={() => setView('deposit_withdraw')} />
-                 <TabButton label="주식거래소" active={view === 'stock_exchange'} onClick={() => setView('stock_exchange')} />
-                 <TabButton label="적금 관리" active={view === 'savings_management'} onClick={() => setView('savings_management')} />
-            </nav>
+                <nav className="mt-8 flex flex-col space-y-2">
+                    <DesktopNavButton label="입/출금" Icon={TransferIcon} active={view === 'deposit_withdraw'} onClick={() => setView('deposit_withdraw')} />
+                    <DesktopNavButton label="주식거래소" Icon={StockIcon} active={view === 'stock_exchange'} onClick={() => setView('stock_exchange')} />
+                    <DesktopNavButton label="적금 관리" Icon={PiggyBankIcon} active={view === 'savings_management'} onClick={() => setView('savings_management')} />
+                </nav>
+                <div className="mt-auto">
+                    <button onClick={logout} className="w-full flex items-center p-3 text-sm text-gray-600 rounded-lg hover:bg-gray-200/50 transition-colors">
+                        <LogoutIcon className="w-5 h-5 mr-3" />
+                        로그아웃
+                    </button>
+                </div>
+            </aside>
 
-            <main className="flex-grow overflow-y-auto p-4 bg-[#D1D3D8]">
-                {renderView()}
-            </main>
+            {/* Main Content Area */}
+            <div className="flex-1 flex flex-col h-full">
+                {/* Header for Mobile */}
+                <header className="md:hidden p-4 flex justify-between items-center bg-white border-b sticky top-0 z-10">
+                    <div>
+                        <h1 className="text-xl font-bold text-gray-800">은행원 모드</h1>
+                        <p className="text-sm text-gray-500">{currentUser?.name}</p>
+                    </div>
+                    <button onClick={logout} className="p-2 rounded-full hover:bg-gray-100">
+                        <LogoutIcon className="w-6 h-6 text-gray-600" />
+                    </button>
+                </header>
+
+                <main className="flex-grow overflow-y-auto p-4 bg-[#D1D3D8]">
+                    {renderView()}
+                </main>
+
+                {/* Bottom Nav for Mobile */}
+                <nav className="md:hidden grid grid-cols-3 bg-white p-1 border-t sticky bottom-0 z-10">
+                    <NavButton label="입/출금" Icon={TransferIcon} active={view === 'deposit_withdraw'} onClick={() => setView('deposit_withdraw')} />
+                    <NavButton label="주식거래소" Icon={StockIcon} active={view === 'stock_exchange'} onClick={() => setView('stock_exchange')} />
+                    <NavButton label="적금 관리" Icon={PiggyBankIcon} active={view === 'savings_management'} onClick={() => setView('savings_management')} />
+                </nav>
+            </div>
         </div>
     );
 };
@@ -574,14 +598,18 @@ const SavingEnrolleesModal: React.FC<{ product: SavingsProduct, onClose: () => v
     );
 };
 
-
 // --- Common Components ---
-const TabButton: React.FC<{ label: string; active: boolean; onClick: () => void }> = ({ label, active, onClick }) => (
-    <button
-        onClick={onClick}
-        className={`px-4 py-2 font-semibold rounded-lg transition-colors text-sm ${active ? 'bg-[#2B548F] text-white' : 'bg-transparent text-gray-600 hover:bg-indigo-100'}`}
-    >
-        {label}
+const NavButton: React.FC<{ label: string, Icon: React.FC<any>, active: boolean, onClick: () => void }> = ({ label, Icon, active, onClick }) => (
+    <button onClick={onClick} className={`flex flex-col items-center justify-center w-full py-2 rounded-lg transition-colors ${active ? 'text-[#2B548F]' : 'text-gray-500 hover:bg-blue-50'}`}>
+        <Icon className="w-6 h-6 mb-1" />
+        <span className="text-xs font-medium">{label}</span>
+    </button>
+);
+
+const DesktopNavButton: React.FC<{ label: string, Icon: React.FC<any>, active: boolean, onClick: () => void }> = ({ label, Icon, active, onClick }) => (
+    <button onClick={onClick} className={`flex items-center w-full p-3 rounded-lg transition-colors text-sm font-semibold ${active ? 'bg-[#2B548F] text-white' : 'text-gray-600 hover:bg-gray-200/50'}`}>
+        <Icon className="w-5 h-5 mr-3" />
+        <span>{label}</span>
     </button>
 );
 

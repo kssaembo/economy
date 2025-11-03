@@ -72,27 +72,48 @@ const TeacherDashboard: React.FC = () => {
     };
 
     return (
-        <div className="flex flex-col h-full bg-[#E8E9EB]">
-            <header className="p-4 flex justify-between items-center bg-white border-b sticky top-0 z-10">
-                <div>
+        <div className="flex h-full bg-gray-100">
+            <aside className="hidden md:flex flex-col w-56 bg-white/80 backdrop-blur-sm border-r p-4">
+                <div className="px-2">
                     <h1 className="text-xl font-bold text-gray-800">교사 관리자</h1>
                     <p className="text-sm text-gray-500">{currentUser?.name}</p>
                 </div>
-                <button onClick={logout} className="p-2 rounded-full hover:bg-gray-100">
-                    <LogoutIcon className="w-6 h-6 text-gray-600" />
-                </button>
-            </header>
+                <nav className="mt-8 flex flex-col space-y-2">
+                    <DesktopNavButton label="대시보드" Icon={NewDashboardIcon} active={view === 'dashboard'} onClick={() => setView('dashboard')} />
+                    <DesktopNavButton label="학생 등록" Icon={UserAddIcon} active={view === 'students'} onClick={() => setView('students')} />
+                    <DesktopNavButton label="1인 1역" Icon={NewBriefcaseIcon} active={view === 'jobs'} onClick={() => setView('jobs')} />
+                    <DesktopNavButton label="계좌 관리" Icon={NewManageAccountsIcon} active={view === 'accounts'} onClick={() => setView('accounts')} />
+                </nav>
+                <div className="mt-auto">
+                    <button onClick={logout} className="w-full flex items-center p-3 text-sm text-gray-600 rounded-lg hover:bg-gray-200/50 transition-colors">
+                        <LogoutIcon className="w-5 h-5 mr-3" />
+                        로그아웃
+                    </button>
+                </div>
+            </aside>
+            
+            <div className="flex-1 flex flex-col h-full">
+                <header className="md:hidden p-4 flex justify-between items-center bg-white border-b sticky top-0 z-10">
+                    <div>
+                        <h1 className="text-xl font-bold text-gray-800">교사 관리자</h1>
+                        <p className="text-sm text-gray-500">{currentUser?.name}</p>
+                    </div>
+                    <button onClick={logout} className="p-2 rounded-full hover:bg-gray-100">
+                        <LogoutIcon className="w-6 h-6 text-gray-600" />
+                    </button>
+                </header>
 
-            <main className="flex-grow overflow-y-auto p-4 bg-[#d1d3d8]">
-                {renderView()}
-            </main>
+                <main className="flex-grow overflow-y-auto p-2 sm:p-4 bg-[#d1d3d8]">
+                    {renderView()}
+                </main>
 
-            <nav className="grid grid-cols-4 bg-white p-1 border-t sticky bottom-0 z-10">
-                <NavButton label="대시보드" Icon={NewDashboardIcon} active={view === 'dashboard'} onClick={() => setView('dashboard')} />
-                <NavButton label="학생 등록" Icon={UserAddIcon} active={view === 'students'} onClick={() => setView('students')} />
-                <NavButton label="1인 1역" Icon={NewBriefcaseIcon} active={view === 'jobs'} onClick={() => setView('jobs')} />
-                <NavButton label="계좌 관리" Icon={NewManageAccountsIcon} active={view === 'accounts'} onClick={() => setView('accounts')} />
-            </nav>
+                <nav className="md:hidden grid grid-cols-4 bg-white p-1 border-t sticky bottom-0 z-10">
+                    <NavButton label="대시보드" Icon={NewDashboardIcon} active={view === 'dashboard'} onClick={() => setView('dashboard')} />
+                    <NavButton label="학생 등록" Icon={UserAddIcon} active={view === 'students'} onClick={() => setView('students')} />
+                    <NavButton label="1인 1역" Icon={NewBriefcaseIcon} active={view === 'jobs'} onClick={() => setView('jobs')} />
+                    <NavButton label="계좌 관리" Icon={NewManageAccountsIcon} active={view === 'accounts'} onClick={() => setView('accounts')} />
+                </nav>
+            </div>
         </div>
     );
 };
@@ -103,6 +124,14 @@ const NavButton: React.FC<{ label: string, Icon: React.FC<any>, active: boolean,
         <span className="text-xs font-medium">{label}</span>
     </button>
 );
+
+const DesktopNavButton: React.FC<{ label: string, Icon: React.FC<any>, active: boolean, onClick: () => void }> = ({ label, Icon, active, onClick }) => (
+    <button onClick={onClick} className={`flex items-center w-full p-3 rounded-lg transition-colors text-sm font-semibold ${active ? 'bg-[#2B548F] text-white' : 'text-gray-600 hover:bg-gray-200/50'}`}>
+        <Icon className="w-5 h-5 mr-3" />
+        <span>{label}</span>
+    </button>
+);
+
 
 // --- Dashboard View ---
 const DashboardView: React.FC<ReturnType<typeof useStudentsWithAccounts>> = ({ students, transactions, loading }) => {

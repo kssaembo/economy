@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useContext } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
 import { User, Role, Account, Transaction } from '../types';
-import { LogoutIcon, StudentIcon, CheckIcon, ErrorIcon, BackIcon, TransferIcon } from '../components/icons';
+import { LogoutIcon, StudentIcon, CheckIcon, ErrorIcon, BackIcon, TransferIcon, MartIcon, DashboardIcon } from '../components/icons';
 
 type MartView = 'pos' | 'transfer' | 'history';
 
@@ -48,39 +48,53 @@ const MartPage: React.FC = () => {
     };
 
     return (
-        <div className="flex flex-col h-full bg-gray-100">
-            <header className="p-4 flex justify-between items-center bg-white border-b sticky top-0 z-10">
-                <div>
+        <div className="flex h-full bg-gray-100">
+            {/* Sidebar for Desktop */}
+            <aside className="hidden md:flex flex-col w-56 bg-white/80 backdrop-blur-sm border-r p-4">
+                <div className="px-2">
                     <h1 className="text-xl font-bold text-gray-800">마트 모드</h1>
                     <p className="text-sm text-gray-500">{currentUser?.name}</p>
                 </div>
-                <button onClick={logout} className="p-2 rounded-full hover:bg-gray-100">
-                    <LogoutIcon className="w-6 h-6 text-gray-600" />
-                </button>
-            </header>
+                <nav className="mt-8 flex flex-col space-y-2">
+                    <DesktopNavButton label="마트 계산대" Icon={MartIcon} active={view === 'pos'} onClick={() => setView('pos')} />
+                    <DesktopNavButton label="송금" Icon={TransferIcon} active={view === 'transfer'} onClick={() => setView('transfer')} />
+                    <DesktopNavButton label="세부내역" Icon={DashboardIcon} active={view === 'history'} onClick={() => setView('history')} />
+                </nav>
+                <div className="mt-auto">
+                    <button onClick={logout} className="w-full flex items-center p-3 text-sm text-gray-600 rounded-lg hover:bg-gray-200/50 transition-colors">
+                        <LogoutIcon className="w-5 h-5 mr-3" />
+                        로그아웃
+                    </button>
+                </div>
+            </aside>
             
-            <nav className="flex justify-around bg-white p-2 border-b">
-                <TabButton label="마트 계산대" active={view === 'pos'} onClick={() => setView('pos')} />
-                <TabButton label="송금" active={view === 'transfer'} onClick={() => setView('transfer')} />
-                <TabButton label="세부내역" active={view === 'history'} onClick={() => setView('history')} />
-            </nav>
+            {/* Main Content Area */}
+            <div className="flex-1 flex flex-col h-full">
+                {/* Header for Mobile */}
+                <header className="md:hidden p-4 flex justify-between items-center bg-white border-b sticky top-0 z-10">
+                    <div>
+                        <h1 className="text-xl font-bold text-gray-800">마트 모드</h1>
+                        <p className="text-sm text-gray-500">{currentUser?.name}</p>
+                    </div>
+                    <button onClick={logout} className="p-2 rounded-full hover:bg-gray-100">
+                        <LogoutIcon className="w-6 h-6 text-gray-600" />
+                    </button>
+                </header>
 
-            <main className="flex-grow overflow-y-auto bg-[#D1D3D8]">
-                {renderContent()}
-            </main>
+                <main className="flex-grow overflow-y-auto bg-[#D1D3D8]">
+                    {renderContent()}
+                </main>
+
+                {/* Bottom Nav for Mobile */}
+                <nav className="md:hidden grid grid-cols-3 bg-white p-1 border-t sticky bottom-0 z-10">
+                    <NavButton label="마트 계산대" Icon={MartIcon} active={view === 'pos'} onClick={() => setView('pos')} />
+                    <NavButton label="송금" Icon={TransferIcon} active={view === 'transfer'} onClick={() => setView('transfer')} />
+                    <NavButton label="세부내역" Icon={DashboardIcon} active={view === 'history'} onClick={() => setView('history')} />
+                </nav>
+            </div>
         </div>
     );
 };
-
-
-const TabButton: React.FC<{ label: string; active: boolean; onClick: () => void }> = ({ label, active, onClick }) => (
-    <button
-        onClick={onClick}
-        className={`px-4 py-2 font-semibold rounded-lg transition-colors text-sm ${active ? 'bg-[#2B548F] text-white' : 'bg-transparent text-gray-600 hover:bg-indigo-100'}`}
-    >
-        {label}
-    </button>
-);
 
 
 // --- POS View ---
@@ -169,7 +183,7 @@ const PosView: React.FC<{currentUser: User | null}> = ({currentUser}) => {
     return (
         <div className="p-4">
             <h2 className="text-2xl font-bold text-gray-800 mb-4">학생 선택</h2>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
                 {students.map(s => (
                     <button 
                         key={s.userId} 
@@ -206,13 +220,13 @@ const PaymentView: React.FC<{
     };
     
     const KeypadButton = ({ value }: { value: string }) => (
-        <button onClick={() => handleKeypadClick(value)} className="p-4 text-3xl font-bold bg-gray-200 rounded-lg hover:bg-gray-300 active:bg-gray-400">
+        <button onClick={() => handleKeypadClick(value)} className="p-4 text-2xl md:text-3xl font-bold bg-white rounded-xl shadow-sm hover:bg-gray-100 active:bg-gray-200 transition-colors">
             {value}
         </button>
     );
 
     return (
-        <div className="flex flex-col h-full p-4">
+        <div className="flex flex-col h-full p-2 sm:p-4">
             <div className="flex justify-between items-center mb-4">
                 <button onClick={onBack} className="flex items-center text-gray-600 hover:text-gray-900">
                     <BackIcon className="w-6 h-6 mr-1" />
@@ -224,36 +238,38 @@ const PaymentView: React.FC<{
                 </div>
             </div>
 
-            <div className="flex-grow flex flex-col justify-between">
-                <div className="text-center p-4">
-                     <p className="text-5xl font-mono font-bold tracking-tight text-gray-800 break-all">
+            <div className="flex-grow flex flex-col md:flex-row md:gap-8 justify-between">
+                <div className="flex-grow flex items-center justify-center text-center p-4">
+                     <p className="text-5xl font-mono font-bold tracking-tight text-gray-800 break-all sm:text-6xl">
                         {parseInt(amount || '0').toLocaleString()}
                         <span className="text-3xl ml-2 font-sans font-medium">권</span>
                      </p>
                 </div>
                 
-                <div className="grid grid-cols-3 gap-2">
-                    <KeypadButton value="1" />
-                    <KeypadButton value="2" />
-                    <KeypadButton value="3" />
-                    <KeypadButton value="4" />
-                    <KeypadButton value="5" />
-                    <KeypadButton value="6" />
-                    <KeypadButton value="7" />
-                    <KeypadButton value="8" />
-                    <KeypadButton value="9" />
-                    <button onClick={() => setAmount('')} className="p-4 text-xl font-bold bg-gray-200 rounded-lg">C</button>
-                    <KeypadButton value="0" />
-                    <button onClick={() => handleKeypadClick('del')} className="p-4 text-xl font-bold bg-gray-200 rounded-lg">⌫</button>
+                <div className="w-full md:w-72 flex flex-col">
+                    <div className="grid grid-cols-3 gap-2 mb-2">
+                        <KeypadButton value="1" />
+                        <KeypadButton value="2" />
+                        <KeypadButton value="3" />
+                        <KeypadButton value="4" />
+                        <KeypadButton value="5" />
+                        <KeypadButton value="6" />
+                        <KeypadButton value="7" />
+                        <KeypadButton value="8" />
+                        <KeypadButton value="9" />
+                        <button onClick={() => setAmount('')} className="p-4 text-xl font-bold bg-white rounded-xl shadow-sm hover:bg-gray-100">C</button>
+                        <KeypadButton value="0" />
+                        <button onClick={() => handleKeypadClick('del')} className="p-4 text-xl font-bold bg-white rounded-xl shadow-sm hover:bg-gray-100">⌫</button>
+                    </div>
+                    
+                     <button 
+                        onClick={onPay} 
+                        disabled={loading || !amount || parseInt(amount) <= 0}
+                        className="w-full mt-auto p-4 bg-green-500 text-white font-bold text-xl rounded-xl shadow-lg disabled:bg-gray-400"
+                    >
+                        {loading ? '결제 중...' : '결제하기'}
+                    </button>
                 </div>
-                
-                 <button 
-                    onClick={onPay} 
-                    disabled={loading || !amount || parseInt(amount) <= 0}
-                    className="w-full mt-4 p-4 bg-green-500 text-white font-bold text-xl rounded-xl shadow-lg disabled:bg-gray-400"
-                >
-                    {loading ? '결제 중...' : '결제하기'}
-                </button>
             </div>
         </div>
     );
@@ -371,5 +387,19 @@ const HistoryView: React.FC<{ martAccount: Account }> = ({ martAccount }) => {
         </div>
     );
 };
+
+const NavButton: React.FC<{ label: string, Icon: React.FC<any>, active: boolean, onClick: () => void }> = ({ label, Icon, active, onClick }) => (
+    <button onClick={onClick} className={`flex flex-col items-center justify-center w-full py-2 rounded-lg transition-colors ${active ? 'text-[#2B548F]' : 'text-gray-500 hover:bg-blue-50'}`}>
+        <Icon className="w-6 h-6 mb-1" />
+        <span className="text-xs font-medium">{label}</span>
+    </button>
+);
+
+const DesktopNavButton: React.FC<{ label: string, Icon: React.FC<any>, active: boolean, onClick: () => void }> = ({ label, Icon, active, onClick }) => (
+    <button onClick={onClick} className={`flex items-center w-full p-3 rounded-lg transition-colors text-sm font-semibold ${active ? 'bg-[#2B548F] text-white' : 'text-gray-600 hover:bg-gray-200/50'}`}>
+        <Icon className="w-5 h-5 mr-3" />
+        <span>{label}</span>
+    </button>
+);
 
 export default MartPage;
