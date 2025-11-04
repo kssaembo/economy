@@ -69,7 +69,7 @@ const App: React.FC = () => {
   return (
     <AuthContext.Provider value={authContextValue}>
       <div className="min-h-screen bg-gray-100 md:p-4 flex justify-center items-center">
-        <div className="w-full h-full md:max-w-5xl md:h-[calc(100vh-2rem)] md:max-h-[900px] bg-white md:rounded-2xl shadow-lg overflow-hidden flex flex-col">
+        <div className="w-full h-screen md:max-w-5xl md:h-[calc(100vh-2rem)] md:max-h-[900px] bg-white md:rounded-2xl shadow-lg overflow-hidden flex flex-col">
           <AppContent />
         </div>
       </div>

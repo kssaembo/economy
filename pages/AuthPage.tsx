@@ -83,21 +83,26 @@ const AuthPage: React.FC = () => {
     }
     
     if (mode === 'student-select') {
-         return (
-            <div className="flex flex-col h-full p-8 bg-[#D1D3D8]">
-                <button onClick={reset} className="self-start mb-4 text-gray-500 hover:text-gray-800">{'<'} 뒤로</button>
-                <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">학생을 선택하세요</h2>
-                <div className="space-y-3 overflow-y-auto">
-                    {students.map(student => (
-                        <button key={student.userId} onClick={() => handleLogin(student.userId)}
-                            className="w-full p-4 bg-white rounded-lg text-lg text-gray-800 text-left hover:bg-gray-100 transition shadow-sm">
-                            {student.grade}-{student.class} {student.number}번 {student.name}
-                        </button>
-                    ))}
-                </div>
-            </div>
-        );
-    }
+        return (
+           <div className="flex flex-col h-full p-4 bg-[#D1D3D8]">
+               <button onClick={reset} className="self-start mb-4 text-gray-500 hover:text-gray-800">{'<'} 뒤로</button>
+               <h2 className="text-2xl font-bold mb-4 text-center text-gray-800">학생을 선택하세요</h2>
+               <div className="flex-grow grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 overflow-y-auto pr-1 content-start">
+                   {students.map(student => (
+                       <button 
+                           key={student.userId} 
+                           onClick={() => handleLogin(student.userId)}
+                           className="p-2 bg-white rounded-xl text-gray-800 text-center hover:bg-indigo-50 transition-shadow shadow-md hover:shadow-lg flex flex-col items-center justify-center aspect-square"
+                       >
+                           <StudentIcon className="w-1/3 h-1/3 text-gray-400 mb-1"/>
+                           <span className="font-bold text-base leading-tight truncate w-full">{student.name}</span>
+                           <span className="text-xs text-gray-500">{`${student.grade}-${student.class} ${student.number}번`}</span>
+                       </button>
+                   ))}
+               </div>
+           </div>
+       );
+   }
 
     return (
         <div className="flex flex-col h-full p-6 bg-[#D1D3D8]">
