@@ -104,11 +104,12 @@ const getRecipientDetailsByAccountId = async (accountId: string): Promise<{ user
     return { user, account };
 };
 
-const transfer = async (senderUserId: string, recipientAccountId: string, amount: number): Promise<string> => {
+const transfer = async (senderUserId: string, recipientAccountId: string, amount: number, memo?: string): Promise<string> => {
     const { data, error } = await supabase.rpc('transfer_funds', {
         sender_user_id: senderUserId,
         receiver_account_id: recipientAccountId,
-        transfer_amount: amount
+        transfer_amount: amount,
+        p_memo: memo
     });
     if (error) throw new Error(error.message);
     return data;

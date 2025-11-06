@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
@@ -5,6 +7,7 @@ import { Account, Transaction, StockProduct, StudentStock, SavingsProduct, Stude
 import { HomeIcon, TransferIcon, NewStockIcon, NewPiggyBankIcon, BackIcon, XIcon, CheckIcon, ErrorIcon, PlusIcon, MinusIcon, NewJobIcon } from '../components/icons';
 
 type View = 'home' | 'transfer' | 'stocks' | 'savings';
+type NotificationType = { type: 'success' | 'error', text: string };
 
 // --- Main Student Page Component ---
 const StudentPage: React.FC = () => {
@@ -12,6 +15,14 @@ const StudentPage: React.FC = () => {
     const [view, setView] = useState<View>('home');
     const [account, setAccount] = useState<Account | null>(null);
     const [loading, setLoading] = useState(true);
+    const [notification, setNotification] = useState<NotificationType | null>(null);
+
+    const showNotification = useCallback((type: 'success' | 'error', text: string) => {
+        setNotification({ type, text });
+        setTimeout(() => {
+            setNotification(null);
+        }, 2000);
+    }, []);
 
     const fetchAccount = useCallback(async () => {
         if (currentUser) {
@@ -37,7 +48,7 @@ const StudentPage: React.FC = () => {
             case 'home':
                 return <HomeView account={account} currentUser={currentUser} />;
             case 'transfer':
-                return <TransferView currentUser={currentUser} refreshAccount={fetchAccount} />;
+                return <TransferView currentUser={currentUser} account={account} refreshAccount={fetchAccount} showNotification={showNotification} />;
             case 'stocks':
                 return <StocksView currentUser={currentUser} refreshAccount={fetchAccount} />;
             case 'savings':
@@ -83,6 +94,17 @@ const StudentPage: React.FC = () => {
                     <NavButton label="적금" Icon={NewPiggyBankIcon} active={view === 'savings'} onClick={() => setView('savings')} />
                 </nav>
             </div>
+
+            {/* Global Notification Modal */}
+            {notification && notification.type === 'success' && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-sm text-center">
+                        <CheckIcon className="w-16 h-16 text-green-500 mx-auto mb-4" />
+                        <h3 className="text-2xl font-bold mb-2">송금 완료</h3>
+                        <p className="text-gray-700">{notification.text}</p>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
@@ -189,75 +211,82 @@ const HomeView: React.FC<{ account: Account; currentUser: User }> = ({ account, 
 
 
 // --- Transfer View ---
-const TransferView: React.FC<{ currentUser: User; refreshAccount: () => void; }> = ({ currentUser, refreshAccount }) => {
+const TransferView: React.FC<{ 
+    currentUser: User; 
+    account: Account; 
+    refreshAccount: () => void;
+    showNotification: (type: 'success' | 'error', text: string) => void;
+}> = ({ currentUser, account, refreshAccount, showNotification }) => {
     const [accountId, setAccountId] = useState('');
     const [amount, setAmount] = useState('');
+    const [memo, setMemo] = useState('');
     const [recipient, setRecipient] = useState<{ user: User, account: Account } | null>(null);
-    const [step, setStep] = useState<'input' | 'confirm' | 'result'>('input');
-    const [result, setResult] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+    const [step, setStep] = useState<'input' | 'confirm'>('input');
+    const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
 
     const handleCheckRecipient = async () => {
         if (!accountId) {
-            setResult({ type: 'error', text: '계좌번호를 입력해주세요.' });
+            setError('계좌번호를 입력해주세요.');
             return;
         }
         setLoading(true);
-        setResult(null);
+        setError(null);
         try {
             const recipientDetails = await api.getRecipientDetailsByAccountId(`권쌤은행 ${accountId}`);
             if (recipientDetails) {
                 if (recipientDetails.account.userId === currentUser.userId) {
-                    setResult({ type: 'error', text: '자신에게는 송금할 수 없습니다.' });
+                    setError('자신에게는 송금할 수 없습니다.');
                 } else {
                     setRecipient(recipientDetails);
                     setStep('confirm');
                 }
             } else {
-                setResult({ type: 'error', text: '받는 분의 계좌를 찾을 수 없습니다.' });
+                setError('받는 분의 계좌를 찾을 수 없습니다.');
             }
         } catch (err) {
-            setResult({ type: 'error', text: '조회 중 오류가 발생했습니다.' });
+            setError('조회 중 오류가 발생했습니다.');
         } finally {
             setLoading(false);
         }
+    };
+
+    const reset = () => {
+        setAccountId('');
+        setAmount('');
+        setMemo('');
+        setRecipient(null);
+        setError(null);
+        setStep('input');
+        setLoading(false);
     };
 
     const handleTransfer = async () => {
         if (!recipient || !amount || parseInt(amount) <= 0) {
-            setResult({ type: 'error', text: '송금 정보가 올바르지 않습니다.' });
             return;
         }
         setLoading(true);
-        setResult(null);
+        setError(null);
         try {
-            const message = await api.transfer(currentUser.userId, recipient.account.accountId, parseInt(amount));
-            setResult({ type: 'success', text: message });
+            const message = await api.transfer(currentUser.userId, recipient.account.accountId, parseInt(amount), memo);
+            showNotification('success', message || "송금이 완료되었습니다.");
             refreshAccount();
+            reset();
         } catch (err: any) {
-            setResult({ type: 'error', text: err.message });
-        } finally {
             setLoading(false);
-            setStep('result');
+            setError(err.message);
         }
     };
     
-    const reset = () => {
-        setAccountId('');
-        setAmount('');
-        setRecipient(null);
-        setResult(null);
-        setStep('input');
-    };
-
     if (step === 'confirm' && recipient) {
         return (
             <div className="bg-white p-6 rounded-xl shadow-md">
-                <button onClick={() => setStep('input')} className="flex items-center text-sm text-gray-500 mb-4"><BackIcon className="w-4 h-4 mr-1" />뒤로</button>
+                <button onClick={() => { setStep('input'); setError(null); }} className="flex items-center text-sm text-gray-500 mb-4"><BackIcon className="w-4 h-4 mr-1" />뒤로</button>
                 <h2 className="text-2xl font-bold mb-4">송금 정보 확인</h2>
                 <p className="text-lg mb-2">받는 분: <span className="font-bold">{recipient.user.name}</span></p>
                 <p className="text-lg mb-4">보내는 금액: <span className="font-bold">{parseInt(amount).toLocaleString()}권</span></p>
-                {result && <p className={`text-sm mb-4 ${result.type === 'error' ? 'text-red-500' : 'text-green-500'}`}>{result.text}</p>}
+                {memo && <p className="text-lg mb-4">메모: <span className="font-bold">{memo}</span></p>}
+                {error && <p className="text-red-500 text-sm my-4 text-center">{error}</p>}
                 <button onClick={handleTransfer} disabled={loading} className="w-full p-3 bg-[#2B548F] text-white font-bold rounded-lg disabled:bg-gray-400">
                     {loading ? '송금 중...' : '송금 실행'}
                 </button>
@@ -265,17 +294,7 @@ const TransferView: React.FC<{ currentUser: User; refreshAccount: () => void; }>
         )
     }
 
-    if (step === 'result') {
-        return (
-            <div className="bg-white p-6 rounded-xl shadow-md text-center">
-                {result?.type === 'success' ? <CheckIcon className="w-16 h-16 text-green-500 mx-auto mb-4" /> : <ErrorIcon className="w-16 h-16 text-red-500 mx-auto mb-4" />}
-                <h2 className="text-2xl font-bold mb-2">{result?.type === 'success' ? '송금 완료' : '송금 실패'}</h2>
-                <p className="mb-6">{result?.text}</p>
-                <button onClick={reset} className="w-full p-3 bg-[#2B548F] text-white font-bold rounded-lg">확인</button>
-            </div>
-        )
-    }
-
+    // Input View
     return (
         <div className="bg-white p-6 rounded-xl shadow-md">
             <h2 className="text-2xl font-bold mb-4">송금하기</h2>
@@ -291,8 +310,12 @@ const TransferView: React.FC<{ currentUser: User; refreshAccount: () => void; }>
                     <label className="font-semibold text-gray-700">보낼 금액</label>
                     <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0" className="w-full p-3 border rounded-lg mt-1" />
                 </div>
+                <div>
+                    <label className="font-semibold text-gray-700">메모 (선택)</label>
+                    <input type="text" value={memo} onChange={e => setMemo(e.target.value)} placeholder="받는 분에게 표시할 내용" className="w-full p-3 border rounded-lg mt-1" />
+                </div>
             </div>
-            {result && <p className="text-red-500 text-sm mt-4">{result.text}</p>}
+            {error && <p className="text-red-500 text-sm mt-4">{error}</p>}
             <button onClick={handleCheckRecipient} disabled={loading || !amount || parseInt(amount) <= 0} className="mt-6 w-full p-3 bg-[#2B548F] text-white font-bold rounded-lg disabled:bg-gray-400">
                 {loading ? '조회 중...' : '다음'}
             </button>

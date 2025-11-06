@@ -1,7 +1,7 @@
 import React, { useState, useContext, useEffect, useCallback, useMemo } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
-import { User, Role, Account, Transaction, Job, AssignedStudent } from '../types';
+import { User, Role, Account, Transaction, Job, AssignedStudent, TransactionType } from '../types';
 import { LogoutIcon, QrCodeIcon, UserAddIcon, XIcon, CheckIcon, ErrorIcon, BackIcon, NewDashboardIcon, NewBriefcaseIcon, NewManageAccountsIcon } from '../components/icons';
 
 type View = 'dashboard' | 'students' | 'jobs' | 'accounts';
@@ -132,6 +132,117 @@ const DesktopNavButton: React.FC<{ label: string, Icon: React.FC<any>, active: b
     </button>
 );
 
+type NotificationItem = {
+    id: string;
+    date: string;
+    message: string;
+};
+
+const NotificationsView: React.FC<{ students: (User & { account: Account | null })[], transactions: Transaction[] }> = ({ students, transactions }) => {
+    const [limit, setLimit] = useState(5);
+
+    const timeAgo = (dateString: string) => {
+        const date = new Date(dateString);
+        const now = new Date();
+        const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+        let interval = seconds / 31536000;
+        if (interval > 1) return Math.floor(interval) + "년 전";
+        interval = seconds / 2592000;
+        if (interval > 1) return Math.floor(interval) + "달 전";
+        interval = seconds / 86400;
+        if (interval > 1) return Math.floor(interval) + "일 전";
+        interval = seconds / 3600;
+        if (interval > 1) return Math.floor(interval) + "시간 전";
+        interval = seconds / 60;
+        if (interval > 1) return Math.floor(interval) + "분 전";
+        return "방금 전";
+    };
+
+    const notifications = useMemo(() => {
+        const findStudentByAccountId = (accId: string) => students.find(s => s.account?.accountId === accId);
+        const findStudentByUserId = (userId: string) => students.find(s => s.userId === userId);
+
+        const generatedNotifications: NotificationItem[] = transactions
+            .map(tx => {
+                const student = findStudentByAccountId(tx.accountId);
+                if (!student) return null;
+
+                let message = '';
+                switch (tx.type) {
+                    case TransactionType.TRANSFER:
+                        if (tx.amount < 0) { // Outgoing transfer
+                            const receiver = tx.receiverId ? findStudentByUserId(tx.receiverId) : null;
+                            if (receiver) {
+                                message = `${student.name} 학생이 ${receiver.name} 학생에게 ${(-tx.amount).toLocaleString()}권을 송금했습니다.`;
+                            }
+                        }
+                        break;
+                    case TransactionType.STOCK_BUY:
+                        message = `${student.name} 학생이 ${tx.description.replace('주식 매수', '')} 주식을 ${(-tx.amount).toLocaleString()}권에 매수했습니다.`;
+                        break;
+                    case TransactionType.STOCK_SELL:
+                        message = `${student.name} 학생이 ${tx.description.replace('주식 매도', '')} 주식을 ${tx.amount.toLocaleString()}권에 매도했습니다.`;
+                        break;
+                    case TransactionType.SAVINGS_JOIN:
+                        message = `${student.name} 학생이 ${tx.description}에 ${(-tx.amount).toLocaleString()}권으로 가입했습니다.`;
+                        break;
+                    case TransactionType.SAVINGS_MATURITY:
+                        message = `${student.name} 학생의 ${tx.description}이(가) 만기되어 ${tx.amount.toLocaleString()}권을 받았습니다.`;
+                        break;
+                }
+
+                if (message) {
+                    return { id: tx.transactionId, date: tx.date, message };
+                }
+                return null;
+            })
+            .filter((item): item is NotificationItem => item !== null)
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+        // Add weekly salary notification on Fridays
+        if (new Date().getDay() === 5) {
+            generatedNotifications.unshift({
+                id: 'weekly-salary-day',
+                date: new Date().toISOString(),
+                message: '주급 지급일입니다.'
+            });
+        }
+
+        return generatedNotifications;
+    }, [students, transactions]);
+
+    return (
+        <div className="bg-white p-4 rounded-xl shadow-sm">
+            <h3 className="font-bold text-gray-800 mb-4 text-base">주요 활동 알림</h3>
+            {notifications.length > 0 ? (
+                <div>
+                    <ul className="space-y-3">
+                        {notifications.slice(0, limit).map(item => (
+                            <li key={item.id} className="text-sm flex items-start">
+                                <div className="flex-shrink-0 w-2 h-2 bg-blue-500 rounded-full mt-1.5 mr-3"></div>
+                                <div className="flex-grow">
+                                    <p className="text-gray-800">{item.message}</p>
+                                    <p className="text-xs text-gray-400 mt-0.5">{timeAgo(item.date)}</p>
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                    {notifications.length > limit && (
+                        <button
+                            onClick={() => setLimit(prev => prev + 5)}
+                            className="w-full mt-4 text-center text-sm font-semibold text-indigo-600 hover:text-indigo-800"
+                        >
+                            더보기
+                        </button>
+                    )}
+                </div>
+            ) : (
+                <p className="text-center text-gray-400 text-sm py-4">최근 활동이 없습니다.</p>
+            )}
+        </div>
+    );
+};
+
 
 // --- Dashboard View ---
 const DashboardView: React.FC<ReturnType<typeof useStudentsWithAccounts>> = ({ students, transactions, loading }) => {
@@ -180,6 +291,7 @@ const DashboardView: React.FC<ReturnType<typeof useStudentsWithAccounts>> = ({ s
 
     return (
         <div className="space-y-4">
+            <NotificationsView students={students} transactions={transactions} />
             <div className="grid grid-cols-3 gap-4">
                 <SystemStatusCard title="총 학급 자산" value={`${totalAssets.toLocaleString()}권`} />
                 <SystemStatusCard title="총 학생 수" value={`${students.length}명`} />
@@ -210,9 +322,10 @@ const SystemStatusCard: React.FC<{ title: string, value: string }> = ({ title, v
     </div>
 );
 
+// FIX: Changed RankingCard `items` prop to not require `id` and use `userId` for the key.
 const RankingCard: React.FC<{
     title: React.ReactNode;
-    items: (User & { id: string, account: Account | null, activityCount?: number })[];
+    items: (User & { account: Account | null, activityCount?: number })[];
     maxValue: number;
     onClick: (item: User & { account: Account | null }) => void
 }> = ({ title, items, onClick, maxValue }) => {
@@ -230,7 +343,7 @@ const RankingCard: React.FC<{
                         const percentage = maxValue > 0 ? Math.max(1, (value / maxValue) * 100) : 0;
 
                         return (
-                            <li key={item.id}>
+                            <li key={item.userId}>
                                 <div className="flex justify-between items-center mb-1">
                                     <button onClick={() => onClick(item)} className="font-semibold text-gray-700 hover:text-[#2B548F] transition-colors truncate text-sm">
                                         {index + 1}. {item.name}
