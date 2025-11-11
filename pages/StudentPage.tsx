@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
@@ -185,17 +183,18 @@ const HomeView: React.FC<{ account: Account; currentUser: User }> = ({ account, 
                 </div>
             )}
 
-            <h2 className="text-xl font-bold text-gray-800 mb-2">최근 거래 내역</h2>
+            <h2 className="text-xl font-bold text-gray-800 mb-4">최근 거래 내역</h2>
             {transactions.length > 0 ? (
                 <ul className="space-y-2">
                     {transactions.map(t => (
                         <li key={t.transactionId} className="bg-white p-3 rounded-lg shadow-sm flex justify-between items-center">
                             <div>
-                                <p className="font-semibold">{t.description}</p>
-                                <p className="text-sm text-gray-500">{new Date(t.date).toLocaleString()}</p>
+                                <p className="font-semibold text-gray-700">{t.description}</p>
+                                <p className="text-sm text-gray-500">{new Date(t.date).toLocaleString('ko-KR', { month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric' })}</p>
                             </div>
-                            <p className={`font-bold ${t.amount > 0 ? 'text-blue-600' : 'text-red-600'}`}>
-                                {t.amount > 0 ? '+' : ''}{t.amount.toLocaleString()}권
+                            <p className={`font-bold text-lg ${t.amount > 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                                {t.amount > 0 ? '+' : ''}{t.amount.toLocaleString()}
+                                <span className="font-medium text-base ml-1">권</span>
                             </p>
                         </li>
                     ))}
@@ -211,113 +210,193 @@ const HomeView: React.FC<{ account: Account; currentUser: User }> = ({ account, 
 
 
 // --- Transfer View ---
-const TransferView: React.FC<{ 
-    currentUser: User; 
-    account: Account; 
+const TransferView: React.FC<{
+    currentUser: User;
+    account: Account;
     refreshAccount: () => void;
     showNotification: (type: 'success' | 'error', text: string) => void;
 }> = ({ currentUser, account, refreshAccount, showNotification }) => {
-    const [accountId, setAccountId] = useState('');
-    const [amount, setAmount] = useState('');
-    const [memo, setMemo] = useState('');
-    const [recipient, setRecipient] = useState<{ user: User, account: Account } | null>(null);
-    const [step, setStep] = useState<'input' | 'confirm'>('input');
-    const [error, setError] = useState<string | null>(null);
-    const [loading, setLoading] = useState(false);
+    type TransferTarget = 'mart' | 'teacher' | 'friend';
+    type RecipientDetails = { user: User; account: Account };
 
-    const handleCheckRecipient = async () => {
-        if (!accountId) {
-            setError('계좌번호를 입력해주세요.');
+    const [selectedTab, setSelectedTab] = useState<TransferTarget>('mart');
+    const [amount, setAmount] = useState('');
+    const [recipientAccountIdInput, setRecipientAccountIdInput] = useState('');
+    const [memo, setMemo] = useState('');
+    
+    const [recipientDetails, setRecipientDetails] = useState<RecipientDetails | null>(null);
+    const [isCheckingAccount, setIsCheckingAccount] = useState(false);
+    
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+
+    const resetForm = useCallback(() => {
+        setAmount('');
+        setRecipientAccountIdInput('');
+        setMemo('');
+        setRecipientDetails(null);
+        setError('');
+    }, []);
+
+    useEffect(() => {
+        resetForm();
+    }, [selectedTab, resetForm]);
+
+    const handleAccountBlur = async () => {
+        if (!recipientAccountIdInput) {
+            setRecipientDetails(null);
+            setError('');
             return;
         }
-        setLoading(true);
-        setError(null);
+
+        setIsCheckingAccount(true);
+        setError('');
+        setRecipientDetails(null);
         try {
-            const recipientDetails = await api.getRecipientDetailsByAccountId(`권쌤은행 ${accountId}`);
-            if (recipientDetails) {
-                if (recipientDetails.account.userId === currentUser.userId) {
-                    setError('자신에게는 송금할 수 없습니다.');
+            const fullAccountId = `권쌤은행 ${recipientAccountIdInput}`;
+            const details = await api.getRecipientDetailsByAccountId(fullAccountId);
+            if (details) {
+                if (details.account.userId === currentUser.userId) {
+                    setError('자기 자신에게는 송금할 수 없습니다.');
                 } else {
-                    setRecipient(recipientDetails);
-                    setStep('confirm');
+                    setRecipientDetails(details);
                 }
             } else {
-                setError('받는 분의 계좌를 찾을 수 없습니다.');
+                setError('존재하지 않는 계좌번호입니다.');
             }
-        } catch (err) {
-            setError('조회 중 오류가 발생했습니다.');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const reset = () => {
-        setAccountId('');
-        setAmount('');
-        setMemo('');
-        setRecipient(null);
-        setError(null);
-        setStep('input');
-        setLoading(false);
-    };
-
-    const handleTransfer = async () => {
-        if (!recipient || !amount || parseInt(amount) <= 0) {
-            return;
-        }
-        setLoading(true);
-        setError(null);
-        try {
-            const message = await api.transfer(currentUser.userId, recipient.account.accountId, parseInt(amount), memo);
-            showNotification('success', message || "송금이 완료되었습니다.");
-            refreshAccount();
-            reset();
         } catch (err: any) {
-            setLoading(false);
             setError(err.message);
+        } finally {
+            setIsCheckingAccount(false);
         }
     };
     
-    if (step === 'confirm' && recipient) {
-        return (
-            <div className="bg-white p-6 rounded-xl shadow-md">
-                <button onClick={() => { setStep('input'); setError(null); }} className="flex items-center text-sm text-gray-500 mb-4"><BackIcon className="w-4 h-4 mr-1" />뒤로</button>
-                <h2 className="text-2xl font-bold mb-4">송금 정보 확인</h2>
-                <p className="text-lg mb-2">받는 분: <span className="font-bold">{recipient.user.name}</span></p>
-                <p className="text-lg mb-4">보내는 금액: <span className="font-bold">{parseInt(amount).toLocaleString()}권</span></p>
-                {memo && <p className="text-lg mb-4">메모: <span className="font-bold">{memo}</span></p>}
-                {error && <p className="text-red-500 text-sm my-4 text-center">{error}</p>}
-                <button onClick={handleTransfer} disabled={loading} className="w-full p-3 bg-[#2B548F] text-white font-bold rounded-lg disabled:bg-gray-400">
-                    {loading ? '송금 중...' : '송금 실행'}
-                </button>
-            </div>
-        )
-    }
+    const handleSubmit = async () => {
+        setLoading(true); // Disable button immediately
+        setError('');
 
-    // Input View
+        try {
+            const transferAmount = parseInt(amount);
+
+            if (isNaN(transferAmount) || transferAmount <= 0) {
+                throw new Error('송금할 금액을 올바르게 입력해주세요.');
+            }
+            if (transferAmount > account.balance) {
+                throw new Error('잔액이 부족합니다.');
+            }
+
+            let targetName = '';
+            let recipientId = '';
+
+            if (selectedTab === 'mart' || selectedTab === 'teacher') {
+                targetName = selectedTab === 'mart' ? '마트' : '권쌤';
+            } else if (selectedTab === 'friend') {
+                if (!recipientDetails) {
+                    throw new Error('받는 분 계좌를 먼저 확인해주세요.');
+                }
+                targetName = recipientDetails.user.name;
+                recipientId = recipientDetails.account.id; // Use the UUID PK
+            }
+
+            let responseMessage;
+            if (selectedTab === 'mart' || selectedTab === 'teacher') {
+                responseMessage = await api.studentWithdraw(currentUser.userId, transferAmount, selectedTab);
+            } else {
+                responseMessage = await api.transfer(currentUser.userId, recipientId, transferAmount, memo);
+            }
+            
+            const successMessage = responseMessage || `${transferAmount.toLocaleString()}권 송금이 완료되었습니다.`;
+            
+            resetForm();
+            await refreshAccount();
+            showNotification('success', successMessage);
+
+        } catch (err: any) {
+            const errorMessage = err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.';
+            setError(errorMessage);
+        } finally {
+            setLoading(false); // Always re-enable button
+        }
+    };
+
+
+    const targetDisplayName = useMemo(() => {
+        if (selectedTab === 'mart') return '마트';
+        if (selectedTab === 'teacher') return '권쌤';
+        return '친구';
+    }, [selectedTab]);
+
     return (
-        <div className="bg-white p-6 rounded-xl shadow-md">
-            <h2 className="text-2xl font-bold mb-4">송금하기</h2>
+        <div className="bg-white p-6 rounded-2xl shadow-md">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">송금하기</h2>
+            
+            <div className="grid grid-cols-3 gap-2 mb-6">
+                 {([['mart', '마트'], ['teacher', '권쌤'], ['friend', '친구']] as const).map(([key, name]) => (
+                    <button 
+                        key={key} 
+                        onClick={() => setSelectedTab(key)} 
+                        className={`p-3 rounded-lg font-semibold text-center transition-colors ${selectedTab === key ? 'bg-[#2B548F] text-white' : 'bg-gray-100 text-gray-700'}`}
+                    >
+                        {name}
+                    </button>
+                ))}
+            </div>
+
             <div className="space-y-4">
-                <div>
-                    <label className="font-semibold text-gray-700">받는 분 계좌번호</label>
-                    <div className="flex items-center mt-1">
-                        <span className="p-3 bg-gray-100 border border-r-0 rounded-l-lg text-gray-600">권쌤은행</span>
-                        <input type="text" value={accountId} onChange={e => setAccountId(e.target.value)} placeholder="000-000" className="flex-grow p-3 border rounded-r-lg" />
+                {selectedTab === 'friend' && (
+                    <div>
+                        <label className="font-semibold text-gray-700">받는 분 계좌번호</label>
+                        <div className="flex items-center mt-1">
+                            <span className="p-3 bg-gray-100 border border-r-0 rounded-l-lg text-gray-600 w-2/5 text-center">권쌤은행</span>
+                            <input 
+                                type="text" 
+                                value={recipientAccountIdInput} 
+                                onChange={(e) => {
+                                    setRecipientAccountIdInput(e.target.value);
+                                    setRecipientDetails(null);
+                                }}
+                                onBlur={handleAccountBlur}
+                                placeholder="계좌번호" 
+                                className="w-3/5 p-3 border rounded-r-lg" 
+                            />
+                        </div>
+                        {isCheckingAccount && <p className="text-sm text-gray-500 mt-1">계좌 확인 중...</p>}
+                        {recipientDetails && !isCheckingAccount && <p className="text-sm text-green-600 font-semibold mt-1">받는 분: {recipientDetails.user.name}</p>}
                     </div>
-                </div>
-                 <div>
-                    <label className="font-semibold text-gray-700">보낼 금액</label>
-                    <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0" className="w-full p-3 border rounded-lg mt-1" />
-                </div>
+                )}
+
                 <div>
-                    <label className="font-semibold text-gray-700">메모 (선택)</label>
-                    <input type="text" value={memo} onChange={e => setMemo(e.target.value)} placeholder="받는 분에게 표시할 내용" className="w-full p-3 border rounded-lg mt-1" />
+                    <label className="font-semibold text-gray-700">보낼 금액</label>
+                     <input 
+                        type="number" 
+                        value={amount}
+                        onChange={(e) => setAmount(e.target.value)}
+                        placeholder="0"
+                        className="w-full p-3 border rounded-lg mt-1"
+                    />
+                     <p className="text-sm text-gray-500 text-right mt-1">내 잔액: {account.balance.toLocaleString()}권</p>
+                </div>
+                
+                <div>
+                    <label className="font-semibold text-gray-700">메모</label>
+                    <input 
+                        type="text" 
+                        value={memo}
+                        onChange={(e) => setMemo(e.target.value)}
+                        placeholder="(선택) 메모를 남겨주세요."
+                        className="w-full p-3 border rounded-lg mt-1"
+                    />
                 </div>
             </div>
-            {error && <p className="text-red-500 text-sm mt-4">{error}</p>}
-            <button onClick={handleCheckRecipient} disabled={loading || !amount || parseInt(amount) <= 0} className="mt-6 w-full p-3 bg-[#2B548F] text-white font-bold rounded-lg disabled:bg-gray-400">
-                {loading ? '조회 중...' : '다음'}
+            
+            {error && <p className="text-red-500 text-sm mt-4 text-center">{error}</p>}
+
+            <button 
+                onClick={handleSubmit}
+                disabled={loading || isCheckingAccount}
+                className="mt-6 w-full p-4 bg-[#2B548F] text-white font-bold rounded-xl text-lg disabled:bg-gray-400"
+            >
+                {loading || isCheckingAccount ? '처리 중...' : `${targetDisplayName}에게 송금`}
             </button>
         </div>
     );
@@ -325,308 +404,283 @@ const TransferView: React.FC<{
 
 
 // --- Stocks View ---
-const StocksView: React.FC<{ currentUser: User; refreshAccount: () => void; }> = ({ currentUser, refreshAccount }) => {
-    const [allStocks, setAllStocks] = useState<StockProduct[]>([]);
+const StocksView: React.FC<{ currentUser: User, refreshAccount: () => void }> = ({ currentUser, refreshAccount }) => {
+    const [products, setProducts] = useState<StockProduct[]>([]);
     const [myStocks, setMyStocks] = useState<StudentStock[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedStock, setSelectedStock] = useState<StockProduct | null>(null);
-    const [mode, setMode] = useState<'buy' | 'sell' | null>(null);
-
+    const [showMyStocks, setShowMyStocks] = useState(false);
+    
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-            const [all, mine] = await Promise.all([
+            const [prods, my] = await Promise.all([
                 api.getStockProducts(),
                 api.getStudentStocks(currentUser.userId)
             ]);
-            setAllStocks(all as StockProduct[]);
-            setMyStocks(mine);
+            setProducts(prods);
+            setMyStocks(my);
         } catch (error) {
             console.error("Failed to fetch stock data", error);
         } finally {
             setLoading(false);
         }
     }, [currentUser.userId]);
-
+    
     useEffect(() => {
         fetchData();
     }, [fetchData]);
-    
-    const handleTxnComplete = () => {
-        setSelectedStock(null);
-        setMode(null);
-        fetchData();
-        refreshAccount();
-    };
-    
-    const valuation = useMemo(() => myStocks.reduce((sum, s) => sum + (s.quantity * (s.stock?.currentPrice ?? 0)), 0), [myStocks]);
-    const totalPurchase = useMemo(() => myStocks.reduce((sum, s) => sum + (s.quantity * s.purchasePrice), 0), [myStocks]);
-    const profit = valuation - totalPurchase;
 
+    const handleTransactionComplete = () => {
+        setSelectedStock(null);
+        refreshAccount();
+        fetchData();
+    };
+
+    const myTotalValue = useMemo(() => myStocks.reduce((sum, s) => sum + (s.stock?.currentPrice ?? 0) * s.quantity, 0), [myStocks]);
+    const myTotalPurchase = useMemo(() => myStocks.reduce((sum, s) => sum + s.purchasePrice * s.quantity, 0), [myStocks]);
+    const profit = myTotalValue - myTotalPurchase;
+    const profitRate = myTotalPurchase > 0 ? (profit / myTotalPurchase) * 100 : 0;
+    
     if (loading) return <div className="text-center p-8">주식 정보를 불러오는 중...</div>;
 
     return (
-        <div className="space-y-4">
-            <div className="bg-white p-4 rounded-xl shadow-md">
-                <h3 className="text-lg font-bold mb-2">내 주식 현황</h3>
-                <div className="grid grid-cols-2 gap-4 text-center">
-                    <div>
-                        <p className="text-sm text-gray-500">총 평가액</p>
-                        <p className="font-bold text-lg">{valuation.toLocaleString()}권</p>
-                    </div>
-                     <div>
-                        <p className="text-sm text-gray-500">수익</p>
-                        <p className={`font-bold text-lg ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {profit >= 0 ? '+' : ''}{profit.toLocaleString()}권
-                        </p>
-                    </div>
+        <div>
+            <div className="bg-white p-4 rounded-xl shadow-md mb-4 flex justify-between items-center">
+                <h2 className="text-xl font-bold">내 주식</h2>
+                <div className="text-right">
+                    <p className={`font-bold text-lg ${profit >= 0 ? 'text-red-600' : 'text-blue-600'}`}>
+                        {profit.toLocaleString()}권 ({profitRate.toFixed(2)}%)
+                    </p>
+                    <p className="text-sm text-gray-500">{myTotalValue.toLocaleString()}권</p>
                 </div>
             </div>
 
-            <div>
-                <h3 className="text-lg font-bold mb-2">보유 주식</h3>
-                {myStocks.length > 0 ? (
-                     <div className="space-y-2">
-                        {myStocks.map(s => (
-                            <div key={s.stockId} className="bg-white p-3 rounded-lg shadow-sm flex items-center">
-                                <div className="flex-grow">
-                                    <p className="font-bold">{s.stock?.name}</p>
-                                    <p className="text-sm text-gray-600">
-                                        {s.quantity}주 • 평단 {s.purchasePrice.toLocaleString()}권
-                                    </p>
-                                </div>
-                                <button onClick={() => { setSelectedStock(s.stock!); setMode('sell'); }} className="px-4 py-2 bg-red-500 text-white text-sm font-semibold rounded-lg">매도</button>
-                            </div>
-                        ))}
-                    </div>
-                ) : <p className="text-center text-gray-500 py-4 bg-white rounded-lg">보유 주식이 없습니다.</p>}
+            <div className="flex justify-center mb-4">
+                <div className="flex rounded-lg bg-gray-200 p-1">
+                    <button onClick={() => setShowMyStocks(false)} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition ${!showMyStocks ? 'bg-white shadow' : ''}`}>전체 종목</button>
+                    <button onClick={() => setShowMyStocks(true)} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition ${showMyStocks ? 'bg-white shadow' : ''}`}>보유 종목</button>
+                </div>
             </div>
-
-            <div>
-                <h3 className="text-lg font-bold mb-2">전체 주식 목록</h3>
-                <div className="space-y-2">
-                    {allStocks.map(s => (
-                         <div key={s.id} className="bg-white p-3 rounded-lg shadow-sm flex items-center">
-                            <div className="flex-grow">
-                                <p className="font-bold">{s.name}</p>
-                                <p className="text-sm text-gray-600">
-                                    현재가: {s.currentPrice.toLocaleString()}권
-                                </p>
-                            </div>
-                            <button onClick={() => { setSelectedStock(s); setMode('buy'); }} className="px-4 py-2 bg-blue-500 text-white text-sm font-semibold rounded-lg">매수</button>
+            
+            <div className="space-y-2">
+                {(showMyStocks ? myStocks.map(ms => ({ ...ms.stock, myQuantity: ms.quantity })) : products).map(s => s && (
+                    <button key={s.id} onClick={() => setSelectedStock(s)} className="w-full flex justify-between items-center p-3 bg-white rounded-lg shadow-sm hover:bg-gray-50">
+                        <div>
+                            <p className="font-bold text-left">{s.name}</p>
+                            {(s as any).myQuantity && <p className="text-xs text-gray-500 text-left">{(s as any).myQuantity}주 보유</p>}
                         </div>
-                    ))}
-                </div>
+                        <p className="font-mono font-semibold text-right">{s.currentPrice.toLocaleString()}권</p>
+                    </button>
+                ))}
             </div>
-
-            {selectedStock && mode && (
-                <StockTxnModal 
-                    stock={selectedStock} 
-                    mode={mode} 
-                    myStock={myStocks.find(s => s.stockId === selectedStock.id)}
-                    onClose={() => { setSelectedStock(null); setMode(null); }} 
-                    onComplete={handleTxnComplete} 
-                    currentUser={currentUser}
-                />
-            )}
+            
+            {selectedStock && <StockTransactionModal stock={selectedStock} myStock={myStocks.find(s => s.stockId === selectedStock.id)} onClose={() => setSelectedStock(null)} onComplete={handleTransactionComplete} userId={currentUser.userId} />}
         </div>
     );
 };
 
-const StockTxnModal: React.FC<{ 
-    stock: StockProduct; 
-    mode: 'buy' | 'sell';
+const StockTransactionModal: React.FC<{
+    stock: StockProduct;
     myStock?: StudentStock;
-    onClose: () => void; 
+    onClose: () => void;
     onComplete: () => void;
-    currentUser: User;
-}> = ({ stock, mode, myStock, onClose, onComplete, currentUser }) => {
+    userId: string;
+}> = ({ stock, myStock, onClose, onComplete, userId }) => {
+    const [mode, setMode] = useState<'buy' | 'sell'>('buy');
     const [quantity, setQuantity] = useState(1);
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<{ type: 'success' | 'error', text: string } | null>(null);
-    const maxQuantity = mode === 'sell' ? (myStock?.quantity ?? 0) : 100;
-    const totalPrice = quantity * stock.currentPrice;
 
-    const handleSubmit = async () => {
+    const handleTransaction = async () => {
         if (quantity <= 0) {
-            setResult({ type: 'error', text: '수량을 입력해주세요.' });
+            setResult({ type: 'error', text: '수량은 1 이상이어야 합니다.'});
             return;
         }
         setLoading(true);
         setResult(null);
         try {
-            if (mode === 'buy') {
-                await api.buyStock(currentUser.userId, stock.id, quantity);
-            } else {
-                await api.sellStock(currentUser.userId, stock.id, quantity);
-            }
-            setResult({ type: 'success', text: `${mode === 'buy' ? '매수' : '매도'}가 완료되었습니다.` });
-            setTimeout(onComplete, 1500);
-        } catch (err: any) {
+            const apiCall = mode === 'buy' ? api.buyStock : api.sellStock;
+            const message = await apiCall(userId, stock.id, quantity);
+            setResult({ type: 'success', text: message });
+            setTimeout(() => onComplete(), 1500);
+        } catch(err: any) {
             setResult({ type: 'error', text: err.message });
         } finally {
             setLoading(false);
         }
     };
 
+    const totalPrice = stock.currentPrice * quantity;
+    const maxSell = myStock?.quantity || 0;
+
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
-                 <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-xl font-bold">{stock.name} {mode === 'buy' ? '매수' : '매도'}</h3>
-                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200"><XIcon className="w-6 h-6 text-gray-600" /></button>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={onClose}>
+            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
+                <h3 className="text-xl font-bold mb-2">{stock.name}</h3>
+                <p className="font-mono mb-4">현재가: {stock.currentPrice.toLocaleString()}권</p>
+
+                <div className="flex rounded-lg bg-gray-200 p-1 mb-4">
+                    <button onClick={() => setMode('buy')} className={`w-1/2 py-2 text-sm font-semibold rounded-md transition ${mode === 'buy' ? 'bg-white shadow' : ''}`}>매수</button>
+                    <button onClick={() => setMode('sell')} className={`w-1/2 py-2 text-sm font-semibold rounded-md transition ${mode === 'sell' ? 'bg-white shadow' : ''}`} disabled={!myStock}>매도</button>
                 </div>
-                <div className="text-center mb-4">
-                    <p className="text-gray-600">현재가</p>
-                    <p className="text-3xl font-bold">{stock.currentPrice.toLocaleString()}권</p>
+                
+                <div className="flex items-center justify-between my-4">
+                    <p>수량:</p>
+                    <div className="flex items-center gap-2">
+                        <button onClick={() => setQuantity(q => Math.max(1, q - 1))} className="p-1 border rounded-full"><MinusIcon className="w-5 h-5"/></button>
+                        <input type="number" value={quantity} onChange={e => setQuantity(parseInt(e.target.value))} className="w-16 text-center font-bold text-lg border-b-2"/>
+                        <button onClick={() => setQuantity(q => q + 1)} className="p-1 border rounded-full"><PlusIcon className="w-5 h-5"/></button>
+                    </div>
                 </div>
-                <div className="flex items-center justify-center gap-4 mb-4">
-                    <button onClick={() => setQuantity(q => Math.max(1, q - 1))} className="p-2 rounded-full bg-gray-200"><MinusIcon className="w-6 h-6"/></button>
-                    <input type="number" value={quantity} onChange={e => setQuantity(Math.max(1, Math.min(maxQuantity, parseInt(e.target.value) || 1)))} className="w-24 text-center text-2xl font-bold border-b-2"/>
-                    <button onClick={() => setQuantity(q => Math.min(maxQuantity, q + 1))} className="p-2 rounded-full bg-gray-200"><PlusIcon className="w-6 h-6"/></button>
-                </div>
-                {mode === 'sell' && <p className="text-center text-sm text-gray-500 mb-4">보유 수량: {myStock?.quantity ?? 0}주</p>}
-                <div className="bg-gray-100 p-3 rounded-lg text-center mb-6">
-                    <p className="text-gray-600">총 예상 금액</p>
-                    <p className="font-bold text-xl">{totalPrice.toLocaleString()}권</p>
+                 {mode === 'sell' && <p className="text-right text-sm text-gray-500 mb-2">최대 {maxSell}주 매도 가능</p>}
+
+                <div className="flex justify-between items-center font-bold text-lg my-4">
+                    <p>총 {mode === 'buy' ? '금액' : '예상 정산액'}:</p>
+                    <p>{totalPrice.toLocaleString()}권</p>
                 </div>
 
-                <button onClick={handleSubmit} disabled={loading} className={`w-full p-3 font-bold text-white rounded-lg disabled:bg-gray-400 ${mode === 'buy' ? 'bg-blue-500' : 'bg-red-500'}`}>
-                    {loading ? '처리 중...' : `${quantity}주 ${mode === 'buy' ? '매수' : '매도'}하기`}
-                </button>
                 {result && (
                     <div className={`mt-4 p-3 rounded-lg flex items-center ${result.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                         {result.type === 'success' ? <CheckIcon className="w-5 h-5 mr-2" /> : <ErrorIcon className="w-5 h-5 mr-2" />}
                         <p className="text-sm">{result.text}</p>
                     </div>
                 )}
+                
+                <button onClick={handleTransaction} disabled={loading} className={`w-full p-3 font-bold rounded-lg text-white mt-4 ${mode === 'buy' ? 'bg-red-500' : 'bg-blue-500'}`}>
+                    {mode === 'buy' ? '매수하기' : '매도하기'}
+                </button>
             </div>
         </div>
     );
 };
 
+
 // --- Savings View ---
-const SavingsView: React.FC<{ currentUser: User; refreshAccount: () => void; }> = ({ currentUser, refreshAccount }) => {
+const SavingsView: React.FC<{ currentUser: User, refreshAccount: () => void }> = ({ currentUser, refreshAccount }) => {
     const [products, setProducts] = useState<SavingsProduct[]>([]);
     const [mySavings, setMySavings] = useState<StudentSaving[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedProduct, setSelectedProduct] = useState<SavingsProduct | null>(null);
-    const [selectedSaving, setSelectedSaving] = useState<StudentSaving | null>(null);
-    const [mode, setMode] = useState<'join' | 'cancel' | null>(null);
-    
+    const [savingToCancel, setSavingToCancel] = useState<StudentSaving | null>(null);
+
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-            const [all, mine] = await Promise.all([
+            const [prods, my] = await Promise.all([
                 api.getSavingsProducts(),
                 api.getStudentSavings(currentUser.userId)
             ]);
-            setProducts(all);
-            setMySavings(mine);
-        } catch(error) {
+            setProducts(prods);
+            setMySavings(my);
+        } catch (error) {
             console.error("Failed to fetch savings data", error);
         } finally {
             setLoading(false);
         }
     }, [currentUser.userId]);
-
+    
     useEffect(() => {
         fetchData();
     }, [fetchData]);
-    
-    const handleTxnComplete = () => {
+
+    const handleTransactionComplete = () => {
         setSelectedProduct(null);
-        setSelectedSaving(null);
-        setMode(null);
-        fetchData();
+        setSavingToCancel(null);
         refreshAccount();
+        fetchData();
     };
 
-    const isJoined = (productId: string) => mySavings.some(s => s.productId === productId);
-
     if (loading) return <div className="text-center p-8">적금 정보를 불러오는 중...</div>;
-    
+
     return (
-        <div className="space-y-4">
-             <div>
-                <h3 className="text-lg font-bold mb-2">내 적금</h3>
-                {mySavings.length > 0 ? (
-                     <div className="space-y-2">
-                        {mySavings.map(s => (
-                            <div key={s.savingId} className="bg-white p-3 rounded-lg shadow-sm">
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <p className="font-bold">{s.product?.name}</p>
-                                        <p className="text-sm text-gray-600">가입 금액: {s.amount.toLocaleString()}권</p>
-                                        <p className="text-sm text-gray-500">만기일: {new Date(s.maturityDate).toLocaleDateString()}</p>
-                                    </div>
-                                    <button onClick={() => { setSelectedSaving(s); setMode('cancel'); }} className="px-3 py-1 bg-red-500 text-white text-xs font-semibold rounded-lg">해지</button>
-                                </div>
-                            </div>
-                        ))}
+        <div>
+            {mySavings.length > 0 && (
+                <div className="mb-6">
+                    <h2 className="text-xl font-bold mb-2">내 적금</h2>
+                    <div className="space-y-2">
+                        {mySavings.map(s => <MySavingCard key={s.savingId} saving={s} onCancel={() => setSavingToCancel(s)} />)}
                     </div>
-                ) : <p className="text-center text-gray-500 py-4 bg-white rounded-lg">가입한 적금이 없습니다.</p>}
-            </div>
-
-            <div>
-                <h3 className="text-lg font-bold mb-2">적금 상품</h3>
-                <div className="space-y-2">
-                    {products.map(p => (
-                         <div key={p.id} className="bg-white p-3 rounded-lg shadow-sm">
-                            <div className="flex justify-between items-start">
-                                <div>
-                                    <p className="font-bold">{p.name}</p>
-                                    <p className="text-sm text-blue-600 font-semibold">이자율: {(p.rate * 100).toFixed(1)}% (만기 {p.maturityDays}일)</p>
-                                    <p className="text-xs text-gray-500">최대 {p.maxAmount.toLocaleString()}권 가입 가능</p>
-                                </div>
-                                <button 
-                                    onClick={() => { setSelectedProduct(p); setMode('join'); }} 
-                                    className="px-4 py-2 bg-green-500 text-white text-sm font-semibold rounded-lg disabled:bg-gray-400"
-                                    disabled={isJoined(p.id)}
-                                >
-                                    {isJoined(p.id) ? '가입완료' : '가입'}
-                                </button>
-                            </div>
-                        </div>
-                    ))}
                 </div>
+            )}
+            
+            <h2 className="text-xl font-bold mb-2">적금 상품</h2>
+            <div className="space-y-2">
+                {products.map(p => <SavingProductCard key={p.id} product={p} onJoin={() => setSelectedProduct(p)} />)}
             </div>
 
-            {mode === 'join' && selectedProduct && (
-                <JoinSavingModal product={selectedProduct} onClose={() => setMode(null)} onComplete={handleTxnComplete} currentUser={currentUser} />
-            )}
-            {mode === 'cancel' && selectedSaving && (
-                <CancelSavingModal saving={selectedSaving} onClose={() => setMode(null)} onComplete={handleTxnComplete} currentUser={currentUser} />
-            )}
+            {selectedProduct && <JoinSavingModal product={selectedProduct} onClose={() => setSelectedProduct(null)} onComplete={handleTransactionComplete} userId={currentUser.userId}/>}
+            {savingToCancel && <CancelSavingModal saving={savingToCancel} onClose={() => setSavingToCancel(null)} onComplete={handleTransactionComplete} userId={currentUser.userId}/>}
         </div>
     );
 };
+
+const MySavingCard: React.FC<{saving: StudentSaving, onCancel: () => void}> = ({ saving, onCancel }) => {
+    if (!saving.product) return null;
+    const maturityDate = new Date(saving.maturityDate);
+    const today = new Date();
+    const daysLeft = Math.ceil((maturityDate.getTime() - today.getTime()) / (1000 * 3600 * 24));
+    
+    return (
+        <div className="bg-white p-4 rounded-lg shadow-sm">
+            <div className="flex justify-between items-start">
+                <div>
+                    <p className="font-bold">{saving.product.name}</p>
+                    <p className="text-sm text-gray-500">{saving.amount.toLocaleString()}권 · 이자율 {(saving.product.rate * 100).toFixed(1)}%</p>
+                </div>
+                <button onClick={onCancel} className="text-xs text-red-500 font-semibold border border-red-200 px-2 py-1 rounded-md hover:bg-red-50">해지</button>
+            </div>
+            <div className="mt-2 text-right">
+                <p className="text-sm font-semibold">{daysLeft > 0 ? `만기까지 D-${daysLeft}` : '만기 완료'}</p>
+                <p className="text-xs text-gray-500">{maturityDate.toLocaleDateString()} 만기</p>
+            </div>
+        </div>
+    );
+}
+
+const SavingProductCard: React.FC<{product: SavingsProduct, onJoin: () => void}> = ({ product, onJoin }) => (
+     <div className="bg-white p-4 rounded-lg shadow-sm">
+        <div className="flex justify-between items-start">
+            <div>
+                <p className="font-bold">{product.name}</p>
+                <p className="text-sm text-gray-500">
+                    만기 {product.maturityDays}일 · 최대 {product.maxAmount.toLocaleString()}권
+                </p>
+            </div>
+            <p className="text-lg font-bold text-indigo-600">{(product.rate * 100).toFixed(1)}%</p>
+        </div>
+        <button onClick={onJoin} className="mt-2 w-full text-center text-sm font-bold text-indigo-600 bg-indigo-50 py-2 rounded-lg hover:bg-indigo-100">
+            가입하기
+        </button>
+    </div>
+);
 
 const JoinSavingModal: React.FC<{
     product: SavingsProduct;
     onClose: () => void;
     onComplete: () => void;
-    currentUser: User;
-}> = ({ product, onClose, onComplete, currentUser }) => {
+    userId: string;
+}> = ({ product, onClose, onComplete, userId }) => {
     const [amount, setAmount] = useState('');
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
-    const handleSubmit = async () => {
-        const joinAmount = parseInt(amount);
-        if (!joinAmount || joinAmount <= 0) {
-            setResult({ type: 'error', text: '가입 금액을 입력해주세요.' }); return;
+    const handleJoin = async () => {
+        if (!amount || parseInt(amount) <= 0) {
+            setResult({ type: 'error', text: '금액을 입력해주세요.' });
+            return;
         }
-        if (joinAmount > product.maxAmount) {
-            setResult({ type: 'error', text: `최대 ${product.maxAmount.toLocaleString()}권까지 가입 가능합니다.` }); return;
+        if (parseInt(amount) > product.maxAmount) {
+            setResult({ type: 'error', text: `최대 가입 금액(${product.maxAmount.toLocaleString()}권)을 초과했습니다.`});
+            return;
         }
 
         setLoading(true);
         setResult(null);
         try {
-            await api.joinSavings(currentUser.userId, product.id, joinAmount);
-            setResult({ type: 'success', text: '적금에 가입했습니다.' });
-            setTimeout(onComplete, 1500);
+            const message = await api.joinSavings(userId, product.id, parseInt(amount));
+            setResult({ type: 'success', text: message });
+            setTimeout(() => onComplete(), 1500);
         } catch (err: any) {
             setResult({ type: 'error', text: err.message });
         } finally {
@@ -635,22 +689,29 @@ const JoinSavingModal: React.FC<{
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
-                 <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-xl font-bold">{product.name} 가입</h3>
-                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200"><XIcon className="w-6 h-6 text-gray-600" /></button>
-                </div>
-                <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="가입 금액" className="w-full p-3 border rounded-lg mb-4"/>
-                <button onClick={handleSubmit} disabled={loading} className="w-full p-3 bg-green-500 text-white font-bold rounded-lg disabled:bg-gray-400">
-                    {loading ? '가입 중...' : '가입하기'}
-                </button>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={onClose}>
+            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
+                <h3 className="text-xl font-bold mb-2">{product.name}</h3>
+                <p className="text-sm text-gray-600 mb-4">최대 {product.maxAmount.toLocaleString()}권까지 가입할 수 있습니다.</p>
+
+                <input 
+                    type="number" 
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    placeholder="가입할 금액" 
+                    className="w-full p-3 border rounded-lg text-lg"
+                />
+
                 {result && (
-                     <div className={`mt-4 p-3 rounded-lg flex items-center ${result.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                    <div className={`mt-4 p-3 rounded-lg flex items-center ${result.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                         {result.type === 'success' ? <CheckIcon className="w-5 h-5 mr-2" /> : <ErrorIcon className="w-5 h-5 mr-2" />}
                         <p className="text-sm">{result.text}</p>
                     </div>
                 )}
+                
+                <button onClick={handleJoin} disabled={loading} className="w-full p-3 font-bold rounded-lg text-white mt-4 bg-indigo-600">
+                    가입하기
+                </button>
             </div>
         </div>
     );
@@ -660,43 +721,51 @@ const CancelSavingModal: React.FC<{
     saving: StudentSaving;
     onClose: () => void;
     onComplete: () => void;
-    currentUser: User;
-}> = ({ saving, onClose, onComplete, currentUser }) => {
+    userId: string;
+}> = ({ saving, onClose, onComplete, userId }) => {
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
-    const handleSubmit = async () => {
+    const handleCancel = async () => {
         setLoading(true);
         setResult(null);
         try {
-            await api.cancelSavings(currentUser.userId, saving.savingId);
-            setResult({ type: 'success', text: '적금을 해지했습니다.' });
-            setTimeout(onComplete, 1500);
-        } catch (err: any) {
+            const message = await api.cancelSavings(userId, saving.savingId);
+            setResult({ type: 'success', text: message });
+            setTimeout(() => onComplete(), 1500);
+        } catch(err: any) {
             setResult({ type: 'error', text: err.message });
         } finally {
             setLoading(false);
         }
     };
     
+    if(!saving.product) return null;
+    const expectedReturn = Math.round(saving.amount * (1 + saving.product.cancellationRate));
+
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
-                 <h3 className="text-xl font-bold mb-2">적금 해지 확인</h3>
-                 <p className="mb-4 text-gray-600">정말로 '{saving.product?.name}' 적금을 해지하시겠습니까? 중도 해지 이율이 적용됩니다.</p>
-                <div className="flex gap-4">
-                    <button onClick={onClose} disabled={loading} className="flex-1 p-3 bg-gray-200 font-bold rounded-lg">취소</button>
-                    <button onClick={handleSubmit} disabled={loading} className="flex-1 p-3 text-white bg-red-600 font-bold rounded-lg">해지하기</button>
-                </div>
-                 {result && (
-                     <div className={`mt-4 p-3 rounded-lg flex items-center ${result.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={onClose}>
+            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center" onClick={e => e.stopPropagation()}>
+                <h3 className="text-xl font-bold mb-2">적금을 해지하시겠습니까?</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                    지금 해지하면 해지 이율({(saving.product.cancellationRate * 100).toFixed(1)}%)이 적용되어 약 {expectedReturn.toLocaleString()}권을 돌려받게 됩니다.
+                </p>
+
+                {result && (
+                    <div className={`my-4 p-3 rounded-lg flex items-center ${result.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                         {result.type === 'success' ? <CheckIcon className="w-5 h-5 mr-2" /> : <ErrorIcon className="w-5 h-5 mr-2" />}
                         <p className="text-sm">{result.text}</p>
                     </div>
                 )}
+                
+                 <div className="flex gap-4 mt-4">
+                    <button onClick={onClose} disabled={loading} className="flex-1 p-3 bg-gray-200 font-bold rounded-lg">취소</button>
+                    <button onClick={handleCancel} disabled={loading} className="flex-1 p-3 text-white bg-red-600 font-bold rounded-lg">해지하기</button>
+                </div>
             </div>
         </div>
     );
 };
+
 
 export default StudentPage;

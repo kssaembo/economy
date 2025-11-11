@@ -159,3 +159,15 @@ export const NewStockIcon: React.FC<ImgIconProps> = (props) => (
 export const NewPiggyBankIcon: React.FC<ImgIconProps> = (props) => (
     <img src="https://cdn-icons-png.flaticon.com/512/2447/2447436.png" alt="Savings" {...props} />
 );
+
+export const NewMartIcon: React.FC<ImgIconProps> = (props) => (
+    <img src="https://cdn-icons-png.flaticon.com/512/3081/3081986.png" alt="Mart" {...props} />
+);
+
+export const NewHistoryIcon: React.FC<ImgIconProps> = (props) => (
+    <img src="https://cdn-icons-png.flaticon.com/512/6433/6433807.png" alt="History" {...props} />
+);
+
+export const NewBankerIcon: React.FC<ImgIconProps> = (props) => (
+    <img src="https://cdn-icons-png.flaticon.com/512/831/831466.png" alt="Banker" {...props} />
+);

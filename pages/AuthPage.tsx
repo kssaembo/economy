@@ -2,7 +2,7 @@ import React, { useState, useContext, useEffect } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
 import { Role, User } from '../types';
-import { BankIcon, MartIcon, StudentIcon, ManageIcon } from '../components/icons';
+import { StudentIcon, ManageIcon, NewMartIcon, NewBankerIcon } from '../components/icons';
 
 type AuthMode = 'main' | 'login' | 'student-select';
 
@@ -137,7 +137,7 @@ const AuthPage: React.FC = () => {
                         <div className="absolute inset-0 bg-black/30"></div>
                         <div className="shimmer absolute top-0 -left-full w-3/4 h-full bg-gradient-to-r from-transparent via-white/50 to-transparent transform -skew-x-12" />
                         <div className="relative z-10 flex flex-col items-center justify-center">
-                            <BankIcon className="w-10 h-10 text-white mb-2" style={{ filter: 'drop-shadow(1px 1px 2px rgba(0,0,0,0.5))' }}/>
+                            <NewBankerIcon className="w-10 h-10 mb-2" style={{ filter: 'invert(1) drop-shadow(1px 1px 2px rgba(0,0,0,0.5))' }}/>
                             <span className="font-bold text-white text-xl" style={{ textShadow: '1px 1px 3px rgba(0,0,0,0.5)' }}>은행원</span>
                         </div>
                     </button>
@@ -151,7 +151,7 @@ const AuthPage: React.FC = () => {
                         <div className="absolute inset-0 bg-black/30"></div>
                         <div className="shimmer absolute top-0 -left-full w-3/4 h-full bg-gradient-to-r from-transparent via-white/50 to-transparent transform -skew-x-12" />
                         <div className="relative z-10 flex flex-col items-center justify-center">
-                            <MartIcon className="w-10 h-10 text-white mb-2" style={{ filter: 'drop-shadow(1px 1px 2px rgba(0,0,0,0.5))' }}/>
+                            <NewMartIcon className="w-10 h-10 mb-2" style={{ filter: 'invert(1) drop-shadow(1px 1px 2px rgba(0,0,0,0.5))' }}/>
                             <span className="font-bold text-white text-xl" style={{ textShadow: '1px 1px 3px rgba(0,0,0,0.5)' }}>마트</span>
                         </div>
                     </button>

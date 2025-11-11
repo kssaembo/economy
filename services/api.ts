@@ -57,7 +57,7 @@ const addStudent = async (name: string, grade: number, classNum: number, number:
         p_number: number
     });
     
-    if(error) handleSupabaseError(error, 'addStudent');
+    handleSupabaseError(error, 'addStudent');
     if (data && !data.success) throw new Error(data.message);
 };
 
@@ -86,33 +86,40 @@ const getTransactionsByAccountId = async (accountId: string): Promise<any[]> => 
 };
 
 const getRecipientDetailsByAccountId = async (accountId: string): Promise<{ user: User, account: Account } | null> => {
-     const { data: account, error } = await supabase
+    const { data: accountData, error: accountError } = await supabase
         .from('accounts')
-        .select('*, users(*)')
+        .select('*')
         .eq('accountId', accountId)
         .single();
     
-    if (error && error.code !== 'PGRST116') {
-        handleSupabaseError(error, 'getRecipientDetailsByAccountId');
+    if (accountError && accountError.code !== 'PGRST116') {
+        handleSupabaseError(accountError, 'getRecipientDetailsByAccountId (account)');
     }
+    if (!accountData) return null;
 
-    if (!account || !account.users) return null;
+    const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('userId', accountData.userId)
+        .single();
+    
+    handleSupabaseError(userError, 'getRecipientDetailsByAccountId (user)');
+    if (!userData) return null;
 
-    const user = account.users as User;
-    delete (account as any).users;
-
-    return { user, account };
+    return { user: userData, account: accountData };
 };
 
-const transfer = async (senderUserId: string, recipientAccountId: string, amount: number, memo?: string): Promise<string> => {
+const transfer = async (senderUserId: string, recipientAccountPkId: string, amount: number, memo?: string): Promise<string> => {
     const { data, error } = await supabase.rpc('transfer_funds', {
-        sender_user_id: senderUserId,
-        receiver_account_id: recipientAccountId,
-        transfer_amount: amount,
+        p_sender_user_id: senderUserId,
+        p_receiver_account_pk_id: recipientAccountPkId, // Use the primary key
+        p_transfer_amount: amount,
         p_memo: memo
     });
-    if (error) throw new Error(error.message);
-    return data;
+    handleSupabaseError(error, 'transfer');
+    // Ensure the return value is a string to prevent UI rendering errors.
+    const message = data?.message || data;
+    return typeof message === 'string' ? message : '';
 };
 
 const studentWithdraw = async (userId: string, amount: number, target: 'mart' | 'teacher'): Promise<string> => {
@@ -121,8 +128,10 @@ const studentWithdraw = async (userId: string, amount: number, target: 'mart' | 
         p_amount: amount,
         p_target_role: target,
     });
-    if (error) throw new Error(error.message);
-    return data;
+    handleSupabaseError(error, 'studentWithdraw');
+    // Ensure the return value is a string to prevent UI rendering errors.
+    const message = data?.message || data;
+    return typeof message === 'string' ? message : '';
 };
 
 
@@ -132,7 +141,7 @@ const bankerDeposit = async (userId: string, amount: number): Promise<string> =>
         p_amount: amount,
         p_type: 'Deposit'
     });
-    if (error) throw new Error(error.message);
+    handleSupabaseError(error, 'bankerDeposit');
     return data.message;
 };
 
@@ -142,7 +151,7 @@ const bankerWithdraw = async (userId: string, amount: number): Promise<string> =
         p_amount: amount,
         p_type: 'Withdrawal'
     });
-    if (error) throw new Error(error.message);
+    handleSupabaseError(error, 'bankerWithdraw');
     return data.message;
 };
 
@@ -152,7 +161,7 @@ const martTransfer = async (studentAccountId: string, amount: number, direction:
         p_amount: amount,
         p_direction: direction
     });
-    if (error) throw new Error(error.message);
+    handleSupabaseError(error, 'martTransfer');
     return data;
 };
 
@@ -187,7 +196,7 @@ const buyStock = async (userId: string, stockId: string, quantity: number): Prom
         p_stock_id: stockId,
         p_quantity: quantity
     });
-    if (error) throw new Error(error.message);
+    handleSupabaseError(error, 'buyStock');
     return '주식을 성공적으로 구매했습니다.';
 };
 
@@ -197,25 +206,25 @@ const sellStock = async (userId: string, stockId: string, quantity: number): Pro
         p_stock_id: stockId,
         p_quantity: quantity
     });
-    if (error) throw new Error(error.message);
+    handleSupabaseError(error, 'sellStock');
     return '주식을 성공적으로 판매했습니다.';
 };
 
 const addStockProduct = async (name: string, price: number): Promise<string> => {
     const { data, error } = await supabase.rpc('add_stock_product', { p_name: name, p_initial_price: price });
-    if (error) throw new Error(error.message);
+    handleSupabaseError(error, 'addStockProduct');
     return data.message;
 };
 
 const updateStockPrice = async (stockId: string, newPrice: number): Promise<string> => {
     const { data, error } = await supabase.rpc('update_stock_price', { p_stock_id: stockId, p_new_price: newPrice });
-    if (error) throw new Error(error.message);
+    handleSupabaseError(error, 'updateStockPrice');
     return data.message;
 };
 
 const deleteStockProducts = async (stockIds: string[]): Promise<string> => {
     const { data, error } = await supabase.rpc('delete_stock_products', { p_stock_ids: stockIds });
-    if (error) throw new Error(error.message);
+    handleSupabaseError(error, 'deleteStockProducts');
     return data.message;
 };
 
@@ -257,7 +266,7 @@ const joinSavings = async (userId: string, productId: string, amount: number): P
         p_product_id: productId,
         p_amount: amount
     });
-    if (error) throw new Error(error.message);
+    handleSupabaseError(error, 'joinSavings');
     return '적금에 성공적으로 가입했습니다.';
 };
 
@@ -266,7 +275,7 @@ const cancelSavings = async (userId: string, savingId: string): Promise<string> 
         p_user_id: userId,
         p_saving_id: savingId
     });
-    if (error) throw new Error(error.message);
+    handleSupabaseError(error, 'cancelSavings');
     return '적금을 성공적으로 해지했습니다.';
 };
 
@@ -278,13 +287,13 @@ const addSavingsProduct = async (product: Omit<SavingsProduct, 'id'>): Promise<s
         p_cancellation_rate: product.cancellationRate,
         p_max_amount: product.maxAmount
     });
-    if (error) throw new Error(error.message);
+    handleSupabaseError(error, 'addSavingsProduct');
     return data.message;
 };
 
 const deleteSavingsProducts = async (productIds: string[]): Promise<string> => {
     const { data, error } = await supabase.rpc('delete_savings_products', { p_product_ids: productIds });
-    if (error) throw new Error(error.message);
+    handleSupabaseError(error, 'deleteSavingsProducts');
     return data.message;
 };
 

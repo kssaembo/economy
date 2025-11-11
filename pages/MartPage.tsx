@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useContext } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
 import { User, Role, Account, Transaction } from '../types';
-import { LogoutIcon, StudentIcon, CheckIcon, ErrorIcon, BackIcon, TransferIcon, MartIcon, DashboardIcon } from '../components/icons';
+import { LogoutIcon, StudentIcon, CheckIcon, ErrorIcon, BackIcon, TransferIcon, NewMartIcon, NewHistoryIcon } from '../components/icons';
 
 type MartView = 'pos' | 'transfer' | 'history';
 
@@ -56,9 +56,9 @@ const MartPage: React.FC = () => {
                     <p className="text-sm text-gray-500">{currentUser?.name}</p>
                 </div>
                 <nav className="mt-8 flex flex-col space-y-2">
-                    <DesktopNavButton label="마트 계산대" Icon={MartIcon} active={view === 'pos'} onClick={() => setView('pos')} />
+                    <DesktopNavButton label="마트 계산대" Icon={NewMartIcon} active={view === 'pos'} onClick={() => setView('pos')} />
                     <DesktopNavButton label="송금" Icon={TransferIcon} active={view === 'transfer'} onClick={() => setView('transfer')} />
-                    <DesktopNavButton label="세부내역" Icon={DashboardIcon} active={view === 'history'} onClick={() => setView('history')} />
+                    <DesktopNavButton label="세부내역" Icon={NewHistoryIcon} active={view === 'history'} onClick={() => setView('history')} />
                 </nav>
                 <div className="mt-auto">
                     <button onClick={logout} className="w-full flex items-center p-3 text-sm text-gray-600 rounded-lg hover:bg-gray-200/50 transition-colors">
@@ -87,9 +87,9 @@ const MartPage: React.FC = () => {
 
                 {/* Bottom Nav for Mobile */}
                 <nav className="md:hidden grid grid-cols-3 bg-white p-1 border-t sticky bottom-0 z-10">
-                    <NavButton label="마트 계산대" Icon={MartIcon} active={view === 'pos'} onClick={() => setView('pos')} />
+                    <NavButton label="마트 계산대" Icon={NewMartIcon} active={view === 'pos'} onClick={() => setView('pos')} />
                     <NavButton label="송금" Icon={TransferIcon} active={view === 'transfer'} onClick={() => setView('transfer')} />
-                    <NavButton label="세부내역" Icon={DashboardIcon} active={view === 'history'} onClick={() => setView('history')} />
+                    <NavButton label="세부내역" Icon={NewHistoryIcon} active={view === 'history'} onClick={() => setView('history')} />
                 </nav>
             </div>
         </div>
