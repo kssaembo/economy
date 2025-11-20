@@ -1,10 +1,62 @@
+
 import React, { useState, useContext, useEffect, useCallback, useMemo } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
 import { User, Role, Account, Transaction, Job, AssignedStudent, TransactionType } from '../types';
-import { LogoutIcon, QrCodeIcon, UserAddIcon, XIcon, CheckIcon, ErrorIcon, BackIcon, NewDashboardIcon, NewBriefcaseIcon, NewManageAccountsIcon } from '../components/icons';
+import { LogoutIcon, QrCodeIcon, UserAddIcon, XIcon, CheckIcon, ErrorIcon, BackIcon, NewDashboardIcon, NewBriefcaseIcon, NewManageAccountsIcon, ManageIcon } from '../components/icons';
 
 type View = 'dashboard' | 'students' | 'jobs' | 'accounts';
+
+// --- Custom Modals for Sandbox Environment ---
+const ConfirmModal: React.FC<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    onCancel: () => void;
+    confirmText?: string;
+    isDangerous?: boolean;
+}> = ({ isOpen, title, message, onConfirm, onCancel, confirmText = "확인", isDangerous = false }) => {
+    if (!isOpen) return null;
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
+                <h3 className="text-xl font-bold mb-2 text-gray-900">{title}</h3>
+                <p className="text-gray-600 mb-6 whitespace-pre-wrap">{message}</p>
+                <div className="flex gap-3">
+                    <button onClick={onCancel} className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg font-medium hover:bg-gray-300">취소</button>
+                    <button onClick={onConfirm} className={`flex-1 px-4 py-2 text-white rounded-lg font-medium ${isDangerous ? 'bg-red-600 hover:bg-red-700' : 'bg-[#2B548F] hover:bg-[#234576]'}`}>
+                        {confirmText}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const MessageModal: React.FC<{
+    isOpen: boolean;
+    type: 'success' | 'error';
+    message: string;
+    onClose: () => void;
+}> = ({ isOpen, type, message, onClose }) => {
+    if (!isOpen) return null;
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm flex flex-col items-center text-center">
+                {type === 'success' ? <CheckIcon className="w-12 h-12 text-green-500 mb-4" /> : <ErrorIcon className="w-12 h-12 text-red-500 mb-4" />}
+                <h3 className={`text-xl font-bold mb-2 ${type === 'success' ? 'text-gray-900' : 'text-red-600'}`}>
+                    {type === 'success' ? '성공' : '오류'}
+                </h3>
+                <p className="text-gray-600 mb-6 whitespace-pre-wrap">{message}</p>
+                <button onClick={onClose} className="w-full px-4 py-2 bg-gray-200 text-gray-800 rounded-lg font-medium hover:bg-gray-300">
+                    확인
+                </button>
+            </div>
+        </div>
+    );
+};
+
 
 const useStudentsWithAccounts = () => {
     const [students, setStudents] = useState<(User & { account: Account | null })[]>([]);
@@ -50,6 +102,16 @@ const useStudentsWithAccounts = () => {
     return { students, transactions, loading, refresh: fetchAllData };
 };
 
+// Helper to generate full QR URL from base and token
+const generateQrUrl = (baseUrl: string, token: string) => {
+    try {
+        // Ensure baseUrl doesn't end with slash
+        const cleanBase = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+        return `${cleanBase}?token=${token}`;
+    } catch (e) {
+        return `${baseUrl}?token=${token}`;
+    }
+};
 
 const TeacherDashboard: React.FC = () => {
     const { currentUser, logout } = useContext(AuthContext);
@@ -184,7 +246,7 @@ const NotificationsView: React.FC<{ students: (User & { account: Account | null 
                         message = `${student.name} 학생이 ${tx.description.replace('주식 매도', '')} 주식을 ${tx.amount.toLocaleString()}권에 매도했습니다.`;
                         break;
                     case TransactionType.SAVINGS_JOIN:
-                        message = `${student.name} 학생이 ${tx.description}에 ${(-tx.amount).toLocaleString()}권으로 가입했습니다.`;
+                        message = `${student.name} 학생이 ${tx.description}에 ${(-tx.amount).toLocaleString()}권을 가입했습니다.`;
                         break;
                     case TransactionType.SAVINGS_MATURITY:
                         message = `${student.name} 학생의 ${tx.description}이(가) 만기되어 ${tx.amount.toLocaleString()}권을 받았습니다.`;
@@ -322,7 +384,6 @@ const SystemStatusCard: React.FC<{ title: string, value: string }> = ({ title, v
     </div>
 );
 
-// FIX: Changed RankingCard `items` prop to not require `id` and use `userId` for the key.
 const RankingCard: React.FC<{
     title: React.ReactNode;
     items: (User & { account: Account | null, activityCount?: number })[];
@@ -414,6 +475,45 @@ const StudentManageView: React.FC<{ students: (User & { account: Account | null 
     const [showAddModal, setShowAddModal] = useState(false);
     const [showQrModal, setShowQrModal] = useState<(User & { account: Account | null }) | null>(null);
     const [showPrintModal, setShowPrintModal] = useState(false);
+    
+    // Delete Functionality States
+    const [deleteMode, setDeleteMode] = useState(false);
+    const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+    const [messageModal, setMessageModal] = useState<{isOpen: boolean, type: 'success'|'error', message: string}>({isOpen: false, type: 'success', message: ''});
+
+    // Fixed Base URL
+    const baseUrl = "https://economy-rho.vercel.app";
+
+    const toggleStudentSelection = (studentId: string) => {
+        setSelectedStudentIds(prev => 
+            prev.includes(studentId) 
+            ? prev.filter(id => id !== studentId) 
+            : [...prev, studentId]
+        );
+    };
+
+    const handleDeleteClick = () => {
+        if (selectedStudentIds.length === 0) return;
+        setShowConfirmDelete(true);
+    };
+
+    const executeDeleteStudents = async () => {
+        setShowConfirmDelete(false);
+        setIsDeleting(true);
+        try {
+            const resultMessage = await api.deleteStudents(selectedStudentIds);
+            refresh();
+            setDeleteMode(false);
+            setSelectedStudentIds([]);
+            setMessageModal({isOpen: true, type: 'success', message: resultMessage});
+        } catch (error: any) {
+            setMessageModal({isOpen: true, type: 'error', message: `삭제 중 오류가 발생했습니다: ${error.message}`});
+        } finally {
+            setIsDeleting(false);
+        }
+    };
 
     if (loading) return <div className="text-center p-8 text-gray-500">학생 정보를 불러오는 중...</div>;
     
@@ -422,21 +522,38 @@ const StudentManageView: React.FC<{ students: (User & { account: Account | null 
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-2xl font-bold text-gray-800">학생 목록</h2>
                 <div className="flex gap-2">
-                    <button onClick={() => setShowPrintModal(true)} className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 text-gray-700 text-xs font-semibold rounded-lg shadow-sm hover:bg-gray-50">
-                        <QrCodeIcon className="w-4 h-4" />
-                        일괄 출력
-                    </button>
-                    <button onClick={() => setShowAddModal(true)} className="flex items-center gap-2 px-3 py-2 bg-[#2B548F] text-white text-xs font-semibold rounded-lg shadow-sm hover:bg-opacity-90">
-                        <UserAddIcon className="w-4 h-4" />
-                        학생 추가
-                    </button>
+                    {deleteMode ? (
+                        <>
+                             <button onClick={() => { setDeleteMode(false); setSelectedStudentIds([]); }} disabled={isDeleting} className="px-3 py-2 bg-gray-200 text-gray-700 text-xs font-semibold rounded-lg shadow-sm hover:bg-gray-300 disabled:opacity-50">
+                                취소
+                            </button>
+                            <button onClick={handleDeleteClick} disabled={selectedStudentIds.length === 0 || isDeleting} className="px-3 py-2 bg-red-600 text-white text-xs font-semibold rounded-lg shadow-sm hover:bg-red-700 disabled:bg-gray-400">
+                                {isDeleting ? '삭제 중...' : `삭제 (${selectedStudentIds.length})`}
+                            </button>
+                        </>
+                    ) : (
+                        <>
+                            <button onClick={() => setShowPrintModal(true)} className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 text-gray-700 text-xs font-semibold rounded-lg shadow-sm hover:bg-gray-50">
+                                <QrCodeIcon className="w-4 h-4" />
+                                일괄 출력
+                            </button>
+                            <button onClick={() => setShowAddModal(true)} className="flex items-center gap-2 px-3 py-2 bg-[#2B548F] text-white text-xs font-semibold rounded-lg shadow-sm hover:bg-opacity-90">
+                                <UserAddIcon className="w-4 h-4" />
+                                학생 추가
+                            </button>
+                            <button onClick={() => setDeleteMode(true)} className="flex items-center gap-2 px-3 py-2 bg-red-500 text-white text-xs font-semibold rounded-lg shadow-sm hover:bg-red-600">
+                                학생 삭제
+                            </button>
+                        </>
+                    )}
                 </div>
             </div>
             <div className="bg-white rounded-xl shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm">
-                        <thead className="bg-gray-50">
+                        <thead className="bg-gray-5">
                             <tr>
+                                {deleteMode && <th className="p-3 w-10"></th>}
                                 <th className="p-3 text-left w-1/6">학년</th>
                                 <th className="p-3 text-left w-1/6">번호</th>
                                 <th className="p-3 text-left w-2/6">이름</th>
@@ -447,6 +564,17 @@ const StudentManageView: React.FC<{ students: (User & { account: Account | null 
                         <tbody>
                             {students.map(s => (
                                 <tr key={s.userId} className="border-t">
+                                    {deleteMode && (
+                                        <td className="p-3 text-center">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={selectedStudentIds.includes(s.userId)} 
+                                                onChange={() => toggleStudentSelection(s.userId)}
+                                                disabled={isDeleting}
+                                                className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500 disabled:opacity-50"
+                                            />
+                                        </td>
+                                    )}
                                     <td className="p-3">{s.grade}-{s.class}</td>
                                     <td className="p-3">{s.number}</td>
                                     <td className="p-3 font-medium">{s.name}</td>
@@ -462,9 +590,28 @@ const StudentManageView: React.FC<{ students: (User & { account: Account | null 
                     </table>
                 </div>
             </div>
+            
+            {/* Modals */}
             {showAddModal && <AddStudentModal onClose={() => setShowAddModal(false)} onComplete={refresh} />}
-            {showQrModal && <QrCodeModal student={showQrModal} onClose={() => setShowQrModal(null)} />}
-            {showPrintModal && <PrintQrModal students={students} onClose={() => setShowPrintModal(false)} />}
+            {showQrModal && <QrCodeModal student={showQrModal} baseUrl={baseUrl} onClose={() => setShowQrModal(null)} />}
+            {showPrintModal && <PrintQrModal students={students} baseUrl={baseUrl} onClose={() => setShowPrintModal(false)} />}
+            
+            <ConfirmModal 
+                isOpen={showConfirmDelete}
+                title="학생 삭제"
+                message={`선택한 ${selectedStudentIds.length}명의 학생을 정말 삭제하시겠습니까?\n\n계좌, 거래내역, 주식 등 관련된 모든 정보가 함께 영구적으로 삭제됩니다.`}
+                onConfirm={executeDeleteStudents}
+                onCancel={() => setShowConfirmDelete(false)}
+                confirmText="삭제"
+                isDangerous={true}
+            />
+            
+            <MessageModal 
+                isOpen={messageModal.isOpen}
+                type={messageModal.type}
+                message={messageModal.message}
+                onClose={() => setMessageModal({ ...messageModal, isOpen: false })}
+            />
         </div>
     );
 };
@@ -527,39 +674,54 @@ const AddStudentModal: React.FC<{ onClose: () => void; onComplete: () => void; }
     );
 };
 
-const QrCodeModal: React.FC<{ student: User & { account: Account | null }; onClose: () => void; }> = ({ student, onClose }) => {
-    const loginUrl = student.account?.qrToken ? `${window.location.origin}/?token=${student.account.qrToken}` : '';
+const QrCodeModal: React.FC<{ student: User & { account: Account | null }; baseUrl: string; onClose: () => void; }> = ({ student, baseUrl, onClose }) => {
+    const qrToken = student.account?.qrToken;
+    const loginUrl = qrToken ? generateQrUrl(baseUrl, qrToken) : '';
     
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={onClose}>
-            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-xs text-center" onClick={e => e.stopPropagation()}>
-                <h3 className="text-xl font-bold mb-4">{student.name}</h3>
+            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center" onClick={e => e.stopPropagation()}>
+                <h3 className="text-xl font-bold mb-2">{student.name}</h3>
+                
                 {loginUrl ? (
-                     <img 
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${encodeURIComponent(loginUrl)}`} 
-                        alt={`${student.name} QR Code`} 
-                        className="mx-auto" 
-                    />
+                    <>
+                     <div className="mb-4 p-2 bg-white rounded-lg border border-gray-100 shadow-inner flex justify-center items-center min-h-[250px]">
+                        <img 
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(loginUrl)}`} 
+                            alt={`${student.name} QR Code`} 
+                            className="max-w-full" 
+                        />
+                     </div>
+                     
+                     <div className="text-left text-xs text-gray-500 mb-4">
+                         <p className="font-bold text-gray-700 mb-1">QR 연결 주소</p>
+                         <p className="break-all border p-2 rounded bg-gray-50 select-all">
+                             {loginUrl}
+                         </p>
+                     </div>
+                    </>
                 ) : (
                     <p className="text-gray-500">QR 코드를 생성할 수 없습니다.</p>
                 )}
-                 <button onClick={onClose} className="mt-6 w-full p-3 bg-gray-200 font-bold rounded-lg">닫기</button>
+                 <button onClick={onClose} className="mt-2 w-full p-3 bg-gray-200 font-bold rounded-lg">닫기</button>
             </div>
         </div>
     );
 };
 
-const PrintQrModal: React.FC<{ students: (User & { account: Account | null })[]; onClose: () => void }> = ({ students, onClose }) => {
-    
+const PrintQrModal: React.FC<{ students: (User & { account: Account | null })[]; baseUrl: string; onClose: () => void }> = ({ students, baseUrl, onClose }) => {
     const handlePrint = () => {
         window.print();
     }
-    
+
     return (
         <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl h-full max-h-[95vh] flex flex-col">
                  <header className="p-4 flex justify-between items-center border-b">
-                    <h3 className="text-xl font-bold">QR 코드 일괄 출력</h3>
+                    <div>
+                        <h3 className="text-xl font-bold">QR 코드 일괄 출력</h3>
+                        <p className="text-xs text-gray-500 mt-1">연결 주소: {baseUrl}</p>
+                    </div>
                     <div>
                         <button onClick={handlePrint} className="mr-4 px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg">인쇄하기</button>
                         <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200"><XIcon className="w-6 h-6 text-gray-600" /></button>
@@ -567,9 +729,9 @@ const PrintQrModal: React.FC<{ students: (User & { account: Account | null })[];
                 </header>
                 <div id="print-section" className="p-6 grid grid-cols-4 gap-6 overflow-y-auto">
                     {students.map(s => {
-                        const loginUrl = s.account?.qrToken ? `${window.location.origin}/?token=${s.account.qrToken}` : '';
+                        const loginUrl = s.account?.qrToken ? generateQrUrl(baseUrl, s.account.qrToken) : '';
                         return (
-                             <div key={s.userId} className="text-center p-2 border rounded-lg">
+                             <div key={s.userId} className="text-center p-2 border rounded-lg break-inside-avoid">
                                  {loginUrl && <img 
                                     src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(loginUrl)}`} 
                                     alt={`${s.name} QR Code`} 
@@ -762,6 +924,14 @@ const JobManagementView: React.FC<{ allStudents: (User & { account: Account | nu
     const [showAddJobModal, setShowAddJobModal] = useState(false);
     const [showAssignStudentModal, setShowAssignStudentModal] = useState<Job | null>(null);
 
+    // Delete Functionality States
+    const [deleteMode, setDeleteMode] = useState(false);
+    const [selectedJobIds, setSelectedJobIds] = useState<string[]>([]);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+    const [messageModal, setMessageModal] = useState<{isOpen: boolean, type: 'success'|'error', message: string}>({isOpen: false, type: 'success', message: ''});
+
+
     const fetchJobs = useCallback(async () => {
         setLoading(true);
         try {
@@ -786,10 +956,10 @@ const JobManagementView: React.FC<{ allStudents: (User & { account: Account | nu
     const handlePaySingle = async (jobId: string) => {
          try {
             const message = await api.payJobSalary(jobId);
-            alert(message);
+            setMessageModal({isOpen: true, type: 'success', message: message});
             fetchJobs();
         } catch(err: any) {
-            alert(`오류: ${err.message}`);
+            setMessageModal({isOpen: true, type: 'error', message: `오류: ${err.message}`});
         }
     };
 
@@ -800,9 +970,36 @@ const JobManagementView: React.FC<{ allStudents: (User & { account: Account | nu
             await api.updateJobIncentive(jobId, value);
             fetchJobs(); // Refresh data to confirm change
         } catch(err: any) {
-            alert(`보너스 업데이트 실패: ${err.message}`);
+            setMessageModal({isOpen: true, type: 'error', message: `보너스 업데이트 실패: ${err.message}`});
             // Revert local state on failure
             setBonuses(prev => ({...prev, [jobId]: originalBonus}));
+        }
+    };
+
+    const toggleJobSelection = (jobId: string) => {
+        setSelectedJobIds(prev => 
+            prev.includes(jobId) ? prev.filter(id => id !== jobId) : [...prev, jobId]
+        );
+    };
+
+    const handleDeleteClick = () => {
+        if (selectedJobIds.length === 0) return;
+        setShowConfirmDelete(true);
+    }
+
+    const executeDeleteJobs = async () => {
+        setShowConfirmDelete(false);
+        setIsDeleting(true);
+        try {
+            const resultMessage = await api.deleteJobs(selectedJobIds);
+            fetchJobs();
+            setDeleteMode(false);
+            setSelectedJobIds([]);
+            setMessageModal({isOpen: true, type: 'success', message: resultMessage});
+        } catch (error: any) {
+            setMessageModal({isOpen: true, type: 'error', message: `삭제 중 오류가 발생했습니다: ${error.message}`});
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -812,15 +1009,32 @@ const JobManagementView: React.FC<{ allStudents: (User & { account: Account | nu
         <div>
              <div className="flex justify-between items-center mb-4">
                 <h2 className="text-2xl font-bold text-gray-800">1인 1역 관리</h2>
-                <div>
-                     <button onClick={() => setShowAddJobModal(true)} className="px-3 py-2 bg-[#3F649A] text-white text-xs font-semibold rounded-lg shadow hover:bg-[#32507b]">직업 추가</button>
+                <div className="flex gap-2">
+                    {deleteMode ? (
+                        <>
+                            <button onClick={() => { setDeleteMode(false); setSelectedJobIds([]); }} disabled={isDeleting} className="px-3 py-2 bg-gray-200 text-gray-700 text-xs font-semibold rounded-lg shadow-sm hover:bg-gray-300 disabled:opacity-50">
+                                취소
+                            </button>
+                            <button onClick={handleDeleteClick} disabled={selectedJobIds.length === 0 || isDeleting} className="px-3 py-2 bg-red-600 text-white text-xs font-semibold rounded-lg shadow-sm hover:bg-red-700 disabled:bg-gray-400">
+                                {isDeleting ? '삭제 중...' : `삭제 (${selectedJobIds.length})`}
+                            </button>
+                        </>
+                    ) : (
+                        <>
+                            <button onClick={() => setShowAddJobModal(true)} className="px-3 py-2 bg-[#3F649A] text-white text-xs font-semibold rounded-lg shadow hover:bg-[#32507b]">직업 추가</button>
+                            <button onClick={() => setDeleteMode(true)} className="px-3 py-2 bg-red-500 text-white text-xs font-semibold rounded-lg shadow hover:bg-red-600">
+                                직업 삭제
+                            </button>
+                        </>
+                    )}
                 </div>
             </div>
             
             <div className="bg-white rounded-xl shadow-sm overflow-x-auto">
                 <table className="w-full text-sm text-left">
-                    <thead className="bg-gray-50 text-gray-600">
+                    <thead className="bg-gray-5 text-gray-600">
                         <tr>
+                            {deleteMode && <th className="p-3 w-10"></th>}
                             <th className="p-3 whitespace-nowrap w-[35%]">직업명</th>
                             <th className="p-3 whitespace-nowrap w-[15%]">주급</th>
                             <th className="p-3 whitespace-nowrap w-[20%]">학생명</th>
@@ -831,6 +1045,17 @@ const JobManagementView: React.FC<{ allStudents: (User & { account: Account | nu
                     <tbody className="divide-y divide-gray-200">
                         {jobs.map(job => (
                             <tr key={job.id}>
+                                {deleteMode && (
+                                    <td className="p-3 text-center">
+                                        <input 
+                                            type="checkbox" 
+                                            checked={selectedJobIds.includes(job.id)} 
+                                            onChange={() => toggleJobSelection(job.id)}
+                                            disabled={isDeleting}
+                                            className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500 disabled:opacity-50"
+                                        />
+                                    </td>
+                                )}
                                 <td className="p-3 font-medium">{job.jobName}</td>
                                 <td className="p-3">{job.salary.toLocaleString()}</td>
                                 <td className="p-3">
@@ -863,6 +1088,23 @@ const JobManagementView: React.FC<{ allStudents: (User & { account: Account | nu
 
             {showAddJobModal && <AddJobModal onClose={() => setShowAddJobModal(false)} onComplete={fetchJobs} />}
             {showAssignStudentModal && <AssignStudentModal job={showAssignStudentModal} allStudents={allStudents} onClose={() => setShowAssignStudentModal(null)} onComplete={fetchJobs} />}
+            
+            <ConfirmModal 
+                isOpen={showConfirmDelete}
+                title="직업 삭제"
+                message={`선택한 ${selectedJobIds.length}개의 직업을 정말 삭제하시겠습니까?`}
+                onConfirm={executeDeleteJobs}
+                onCancel={() => setShowConfirmDelete(false)}
+                confirmText="삭제"
+                isDangerous={true}
+            />
+
+             <MessageModal 
+                isOpen={messageModal.isOpen}
+                type={messageModal.type}
+                message={messageModal.message}
+                onClose={() => setMessageModal({ ...messageModal, isOpen: false })}
+            />
         </div>
     );
 };

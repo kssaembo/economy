@@ -12,6 +12,14 @@ const handleSupabaseError = (error: any, context: string) => {
                 throw new Error(match[1]);
             }
         }
+        // 권한 에러나 함수 없음 에러에 대한 친절한 메시지
+        if (error.code === '42883') {
+             throw new Error('삭제 기능(RPC)을 찾을 수 없습니다. Supabase SQL Editor에서 삭제 함수를 생성해주세요.');
+        }
+        if (error.code === '42501' || error.message.includes('permission denied')) {
+             throw new Error('삭제 권한이 없습니다. Supabase에서 "GRANT EXECUTE" 권한 설정을 확인해주세요.');
+        }
+        
         throw new Error(error.message || `An error occurred during ${context}.`);
     }
 };
@@ -59,6 +67,49 @@ const addStudent = async (name: string, grade: number, classNum: number, number:
     
     handleSupabaseError(error, 'addStudent');
     if (data && !data.success) throw new Error(data.message);
+};
+
+const deleteStudents = async (userIds: string[]): Promise<string> => {
+    let successCount = 0;
+    const errors: string[] = [];
+    let lastErrorMsg = "";
+
+    console.log("Deleting students:", userIds); // 디버깅용 로그
+
+    for (const userId of userIds) {
+        try {
+            // Call the backend RPC function which has SECURITY DEFINER to bypass RLS
+            const { error } = await supabase.rpc('delete_student', { p_user_id: userId });
+            
+            if (error) {
+                console.error(`Supabase RPC Error for ${userId}:`, error);
+                throw error;
+            }
+            successCount++;
+        } catch (error: any) {
+            console.error(`Failed to delete student ${userId}:`, error);
+            lastErrorMsg = error.message || JSON.stringify(error);
+            // 특정 에러 코드 처리 (42883: 함수 없음, 42501: 권한 없음)
+            if (error.code === '42883') {
+                lastErrorMsg = "백엔드에 'delete_student' 함수가 없습니다. SQL을 실행해주세요.";
+            } else if (error.code === '42501') {
+                lastErrorMsg = "삭제 권한이 없습니다. SQL에서 GRANT EXECUTE 명령어를 실행해주세요.";
+            }
+            errors.push(userId);
+        }
+    }
+
+    if (successCount === 0 && errors.length > 0) {
+        // Throw the specific error from the DB to help debugging
+        throw new Error(`삭제 실패: ${lastErrorMsg}`);
+    }
+
+    let message = `${successCount}명의 학생을 삭제했습니다.`;
+    if (errors.length > 0) {
+        message += `\n삭제 실패 (ID): ${errors.join(', ')}`;
+    }
+
+    return message;
 };
 
 // --- Account & Transactions ---
@@ -317,9 +368,49 @@ const addJob = async (name: string, description: string, salary: number): Promis
 };
 
 const deleteJob = async (jobId: string): Promise<string> => {
-    const { error } = await supabase.rpc('delete_job', { p_job_id: jobId });
-    handleSupabaseError(error, 'deleteJob');
-    return '직업이 삭제되었습니다.';
+    // Reuse plural function for consistency
+    return deleteJobs([jobId]);
+};
+
+const deleteJobs = async (jobIds: string[]): Promise<string> => {
+    let successCount = 0;
+    const errors: string[] = [];
+    let lastErrorMsg = "";
+
+    console.log("Deleting jobs:", jobIds);
+
+    for (const jobId of jobIds) {
+        try {
+            // Call the backend RPC function which has SECURITY DEFINER
+            const { error } = await supabase.rpc('delete_job', { p_job_id: jobId });
+            
+            if (error) {
+                 console.error(`Supabase RPC Error for job ${jobId}:`, error);
+                 throw error;
+            }
+            successCount++;
+        } catch (error: any) {
+            console.error(`Failed to delete job ${jobId}:`, error);
+            lastErrorMsg = error.message || JSON.stringify(error);
+             if (error.code === '42883') {
+                lastErrorMsg = "백엔드에 'delete_job' 함수가 없습니다. SQL을 실행해주세요.";
+            } else if (error.code === '42501') {
+                lastErrorMsg = "삭제 권한이 없습니다. SQL에서 GRANT EXECUTE 명령어를 실행해주세요.";
+            }
+            errors.push(jobId);
+        }
+    }
+    
+    if (successCount === 0 && errors.length > 0) {
+         throw new Error(`삭제 실패: ${lastErrorMsg}`);
+    }
+    
+    let message = `${successCount}개의 직업을 삭제했습니다.`;
+    if (errors.length > 0) {
+        message += `\n삭제 실패 (ID): ${errors.join(', ')}`;
+    }
+    
+    return message;
 };
 
 const manageJobAssignment = async (jobId: string, studentUserIds: string[]): Promise<void> => {
@@ -349,6 +440,7 @@ export const api = {
     loginWithQrToken,
     getUsersByRole,
     addStudent,
+    deleteStudents,
     getStudentAccountByUserId,
     getTransactionsByAccountId,
     getRecipientDetailsByAccountId,
@@ -375,6 +467,7 @@ export const api = {
     getJobs,
     addJob,
     deleteJob,
+    deleteJobs,
     manageJobAssignment,
     updateJobIncentive,
     payJobSalary,
