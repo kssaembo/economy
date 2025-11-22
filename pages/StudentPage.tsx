@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
@@ -7,13 +8,32 @@ import { HomeIcon, TransferIcon, NewStockIcon, NewPiggyBankIcon, BackIcon, XIcon
 type View = 'home' | 'transfer' | 'stocks' | 'savings';
 type NotificationType = { type: 'success' | 'error', text: string };
 
+interface StudentPageProps {
+    initialView?: string;
+}
+
 // --- Main Student Page Component ---
-const StudentPage: React.FC = () => {
+const StudentPage: React.FC<StudentPageProps> = ({ initialView }) => {
     const { currentUser } = useContext(AuthContext);
-    const [view, setView] = useState<View>('home');
+    
+    // initialView가 유효한 View 타입이면 그것을 사용하고, 아니면 'transfer'(송금)를 기본값으로 사용
+    // (이전 로직 유지: 탭 순서만 시각적으로 변경하고 기본 진입 화면 로직은 유지합니다)
+    const validViews: View[] = ['home', 'transfer', 'stocks', 'savings'];
+    const startView: View = (initialView && validViews.includes(initialView as View)) 
+        ? (initialView as View) 
+        : 'transfer'; 
+
+    const [view, setView] = useState<View>(startView);
     const [account, setAccount] = useState<Account | null>(null);
     const [loading, setLoading] = useState(true);
     const [notification, setNotification] = useState<NotificationType | null>(null);
+
+    // initialView prop이 변경되면 view 상태도 업데이트 (QR 로그인 시 화면 전환 보장)
+    useEffect(() => {
+        if (initialView && validViews.includes(initialView as View)) {
+            setView(initialView as View);
+        }
+    }, [initialView]);
 
     const showNotification = useCallback((type: 'success' | 'error', text: string) => {
         setNotification({ type, text });
@@ -52,7 +72,7 @@ const StudentPage: React.FC = () => {
             case 'savings':
                 return <SavingsView currentUser={currentUser} refreshAccount={fetchAccount} />;
             default:
-                return <HomeView account={account} currentUser={currentUser} />;
+                return <TransferView currentUser={currentUser} account={account} refreshAccount={fetchAccount} showNotification={showNotification} />;
         }
     };
     
@@ -64,6 +84,7 @@ const StudentPage: React.FC = () => {
                     <h1 className="text-2xl font-bold text-gray-800">{currentUser?.name}님</h1>
                 </div>
                 <nav className="mt-8 flex flex-col space-y-2">
+                    {/* 탭 순서 복구: 홈 -> 송금 -> 주식 -> 적금 */}
                     <DesktopNavButton label="홈" Icon={HomeIcon} active={view === 'home'} onClick={() => setView('home')} />
                     <DesktopNavButton label="송금" Icon={TransferIcon} active={view === 'transfer'} onClick={() => setView('transfer')} />
                     <DesktopNavButton label="주식" Icon={NewStockIcon} active={view === 'stocks'} onClick={() => setView('stocks')} />
@@ -86,6 +107,7 @@ const StudentPage: React.FC = () => {
     
                 {/* Bottom Nav for Mobile */}
                 <nav className="md:hidden grid grid-cols-4 bg-white p-1 border-t sticky bottom-0 z-10">
+                    {/* 탭 순서 복구: 홈 -> 송금 -> 주식 -> 적금 */}
                     <NavButton label="홈" Icon={HomeIcon} active={view === 'home'} onClick={() => setView('home')} />
                     <NavButton label="송금" Icon={TransferIcon} active={view === 'transfer'} onClick={() => setView('transfer')} />
                     <NavButton label="주식" Icon={NewStockIcon} active={view === 'stocks'} onClick={() => setView('stocks')} />

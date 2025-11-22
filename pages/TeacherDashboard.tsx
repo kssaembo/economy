@@ -107,9 +107,10 @@ const generateQrUrl = (baseUrl: string, token: string) => {
     try {
         // Ensure baseUrl doesn't end with slash
         const cleanBase = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
-        return `${cleanBase}?token=${token}`;
+        // Add token AND view=transfer to force the transfer screen
+        return `${cleanBase}?token=${token}&view=transfer`;
     } catch (e) {
-        return `${baseUrl}?token=${token}`;
+        return `${baseUrl}?token=${token}&view=transfer`;
     }
 };
 
@@ -752,7 +753,7 @@ const PrintQrModal: React.FC<{ students: (User & { account: Account | null })[];
 const AccountManageView: React.FC<{ students: (User & { account: Account | null })[]; loading: boolean; }> = ({ students, loading }) => {
     const [selectedStudent, setSelectedStudent] = useState<(User & { account: Account | null }) | null>(null);
 
-    if (loading) return <div className="text-center p-8 text-gray-500">학생 정보를 불러오는 중...</div>;
+    if (loading) return <div className="text-center p-8">학생 정보를 불러오는 중...</div>;
 
     if (selectedStudent) {
         return <AccountDetailView student={selectedStudent} onBack={() => setSelectedStudent(null)} />
