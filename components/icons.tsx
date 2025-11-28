@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 type IconProps = React.SVGProps<SVGSVGElement>;
@@ -170,4 +171,8 @@ export const NewHistoryIcon: React.FC<ImgIconProps> = (props) => (
 
 export const NewBankerIcon: React.FC<ImgIconProps> = (props) => (
     <img src="https://cdn-icons-png.flaticon.com/512/831/831466.png" alt="Banker" {...props} />
+);
+
+export const NewTaxIcon: React.FC<ImgIconProps> = (props) => (
+    <img src="https://cdn-icons-png.flaticon.com/512/2921/2921222.png" alt="Tax" {...props} />
 );

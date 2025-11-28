@@ -1,5 +1,6 @@
+
 import { supabase } from './supabaseClient';
-import { Role, User, Account, StockProduct, StudentStock, SavingsProduct, StudentSaving, Job } from '../types';
+import { Role, User, Account, StockProduct, StudentStock, SavingsProduct, StudentSaving, Job, TaxItemWithRecipients } from '../types';
 
 // Helper function to handle Supabase errors
 const handleSupabaseError = (error: any, context: string) => {
@@ -124,6 +125,27 @@ const getStudentAccountByUserId = async (userId: string): Promise<Account | null
         handleSupabaseError(error, 'getStudentAccountByUserId');
     }
     return data;
+};
+
+const getTeacherAccount = async (): Promise<Account | null> => {
+    // 1. Find the first user with 'teacher' role
+    const { data: users, error: userError } = await supabase
+        .from('users')
+        .select('userId')
+        .eq('role', 'teacher')
+        .limit(1);
+    
+    if (userError || !users || users.length === 0) return null;
+    
+    // 2. Get the account for that user
+    const { data: account, error: accountError } = await supabase
+        .from('accounts')
+        .select('*')
+        .eq('userId', users[0].userId)
+        .single();
+        
+    if (accountError) return null;
+    return account;
 };
 
 const getTransactionsByAccountId = async (accountId: string): Promise<any[]> => {
@@ -435,6 +457,83 @@ const payAllSalaries = async (): Promise<string> => {
     return data;
 };
 
+// --- Tax ---
+const getTaxes = async (): Promise<TaxItemWithRecipients[]> => {
+    const { data: taxes, error: taxError } = await supabase
+        .from('tax_items')
+        .select('*')
+        .order('created_at', { ascending: false });
+    
+    if (taxError) throw new Error(taxError.message);
+
+    const { data: recipients, error: rcptError } = await supabase
+        .from('tax_recipients')
+        .select('*');
+
+    if (rcptError) throw new Error(rcptError.message);
+
+    return taxes.map((tax: any) => ({
+        id: tax.id,
+        name: tax.name,
+        amount: tax.amount,
+        dueDate: tax.due_date,
+        createdAt: tax.created_at,
+        recipients: recipients
+            .filter((r: any) => r.tax_id === tax.id)
+            .map((r: any) => ({
+                id: r.id,
+                taxId: r.tax_id,
+                studentUserId: r.student_user_id,
+                isPaid: r.is_paid,
+                paidAt: r.paid_at
+            }))
+    }));
+};
+
+const createTax = async (name: string, amount: number, dueDate: string, studentIds: string[]): Promise<string> => {
+    const { data, error } = await supabase.rpc('create_tax', {
+        p_name: name,
+        p_amount: amount,
+        p_due_date: dueDate,
+        p_student_ids: studentIds
+    });
+    handleSupabaseError(error, 'createTax');
+    return data;
+};
+
+const deleteTax = async (taxId: string): Promise<string> => {
+    const { error } = await supabase.rpc('delete_tax', { p_tax_id: taxId });
+    handleSupabaseError(error, 'deleteTax');
+    return '세금 항목이 삭제되었습니다.';
+};
+
+const getMyUnpaidTaxes = async (userId: string): Promise<{ recipientId: string, taxId: string, name: string, amount: number, dueDate: string }[]> => {
+    const { data, error } = await supabase
+        .from('tax_recipients')
+        .select('*, tax_items(*)')
+        .eq('student_user_id', userId)
+        .eq('is_paid', false);
+    
+    handleSupabaseError(error, 'getMyUnpaidTaxes');
+    
+    return data.map((r: any) => ({
+        recipientId: r.id,
+        taxId: r.tax_id,
+        name: r.tax_items.name,
+        amount: r.tax_items.amount,
+        dueDate: r.tax_items.due_date
+    }));
+};
+
+const payTax = async (userId: string, taxId: string): Promise<string> => {
+     const { data, error } = await supabase.rpc('pay_tax', {
+        p_user_id: userId,
+        p_tax_id: taxId
+    });
+    handleSupabaseError(error, 'payTax');
+    return data;
+};
+
 export const api = {
     login,
     loginWithQrToken,
@@ -442,6 +541,7 @@ export const api = {
     addStudent,
     deleteStudents,
     getStudentAccountByUserId,
+    getTeacherAccount,
     getTransactionsByAccountId,
     getRecipientDetailsByAccountId,
     transfer,
@@ -472,4 +572,9 @@ export const api = {
     updateJobIncentive,
     payJobSalary,
     payAllSalaries,
+    getTaxes,
+    createTax,
+    deleteTax,
+    getMyUnpaidTaxes,
+    payTax,
 };

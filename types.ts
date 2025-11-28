@@ -1,3 +1,4 @@
+
 export enum Role {
   TEACHER = 'teacher',
   STUDENT = 'student',
@@ -34,6 +35,7 @@ export enum TransactionType {
   SAVINGS_JOIN = 'SavingsJoin',
   SAVINGS_CANCEL = 'SavingsCancel',
   SAVINGS_MATURITY = 'SavingsMaturity',
+  TAX = 'Tax',
 }
 
 export interface Transaction {
@@ -94,4 +96,24 @@ export interface Job {
   lastPaidDate?: string;
   incentive: number;
   assigned_students: AssignedStudent[];
+}
+
+export interface TaxItem {
+    id: string;
+    name: string;
+    amount: number;
+    dueDate: string;
+    createdAt: string;
+}
+
+export interface TaxRecipient {
+    id: string;
+    taxId: string;
+    studentUserId: string;
+    isPaid: boolean;
+    paidAt?: string;
+}
+
+export interface TaxItemWithRecipients extends TaxItem {
+    recipients: TaxRecipient[];
 }

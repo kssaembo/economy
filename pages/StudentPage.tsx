@@ -3,7 +3,7 @@ import React, { useState, useEffect, useContext, useCallback, useMemo } from 're
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
 import { Account, Transaction, StockProduct, StudentStock, SavingsProduct, StudentSaving, User, Job } from '../types';
-import { HomeIcon, TransferIcon, NewStockIcon, NewPiggyBankIcon, BackIcon, XIcon, CheckIcon, ErrorIcon, PlusIcon, MinusIcon, NewJobIcon } from '../components/icons';
+import { HomeIcon, TransferIcon, NewStockIcon, NewPiggyBankIcon, BackIcon, XIcon, CheckIcon, ErrorIcon, PlusIcon, MinusIcon, NewJobIcon, NewTaxIcon } from '../components/icons';
 
 type View = 'home' | 'transfer' | 'stocks' | 'savings';
 type NotificationType = { type: 'success' | 'error', text: string };
@@ -11,6 +11,55 @@ type NotificationType = { type: 'success' | 'error', text: string };
 interface StudentPageProps {
     initialView?: string;
 }
+
+// --- Custom Modals for Student Page ---
+const ConfirmModal: React.FC<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    onCancel: () => void;
+    confirmText?: string;
+}> = ({ isOpen, title, message, onConfirm, onCancel, confirmText = "확인" }) => {
+    if (!isOpen) return null;
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
+                <h3 className="text-xl font-bold mb-2 text-gray-900">{title}</h3>
+                <p className="text-gray-600 mb-6 whitespace-pre-wrap">{message}</p>
+                <div className="flex gap-3">
+                    <button onClick={onCancel} className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg font-medium hover:bg-gray-300">취소</button>
+                    <button onClick={onConfirm} className="flex-1 px-4 py-2 bg-[#2B548F] text-white rounded-lg font-medium hover:bg-[#234576]">
+                        {confirmText}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const MessageModal: React.FC<{
+    isOpen: boolean;
+    type: 'success' | 'error';
+    message: string;
+    onClose: () => void;
+}> = ({ isOpen, type, message, onClose }) => {
+    if (!isOpen) return null;
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm flex flex-col items-center text-center">
+                {type === 'success' ? <CheckIcon className="w-12 h-12 text-green-500 mb-4" /> : <ErrorIcon className="w-12 h-12 text-red-500 mb-4" />}
+                <h3 className={`text-xl font-bold mb-2 ${type === 'success' ? 'text-gray-900' : 'text-red-600'}`}>
+                    {type === 'success' ? '성공' : '오류'}
+                </h3>
+                <p className="text-gray-600 mb-6 whitespace-pre-wrap">{message}</p>
+                <button onClick={onClose} className="w-full px-4 py-2 bg-gray-200 text-gray-800 rounded-lg font-medium hover:bg-gray-300">
+                    확인
+                </button>
+            </div>
+        </div>
+    );
+};
 
 // --- Main Student Page Component ---
 const StudentPage: React.FC<StudentPageProps> = ({ initialView }) => {
@@ -64,7 +113,7 @@ const StudentPage: React.FC<StudentPageProps> = ({ initialView }) => {
         if (loading || !currentUser || !account) return <div className="text-center p-8">로딩 중...</div>;
         switch (view) {
             case 'home':
-                return <HomeView account={account} currentUser={currentUser} />;
+                return <HomeView account={account} currentUser={currentUser} refreshAccount={fetchAccount} />;
             case 'transfer':
                 return <TransferView currentUser={currentUser} account={account} refreshAccount={fetchAccount} showNotification={showNotification} />;
             case 'stocks':
@@ -146,35 +195,62 @@ const DesktopNavButton: React.FC<{ label: string, Icon: React.FC<any>, active: b
 
 
 // --- Home View ---
-const HomeView: React.FC<{ account: Account; currentUser: User }> = ({ account, currentUser }) => {
+const HomeView: React.FC<{ account: Account; currentUser: User; refreshAccount: () => void }> = ({ account, currentUser, refreshAccount }) => {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [myJobs, setMyJobs] = useState<Job[]>([]);
+    const [unpaidTaxes, setUnpaidTaxes] = useState<{ recipientId: string, taxId: string, name: string, amount: number, dueDate: string }[]>([]);
     const [loading, setLoading] = useState(true);
+    
+    // Tax Payment Modal States
+    const [taxToPay, setTaxToPay] = useState<{id: string, name: string} | null>(null);
+    const [messageModal, setMessageModal] = useState<{isOpen: boolean, type: 'success'|'error', message: string}>({isOpen: false, type: 'success', message: ''});
+
+    const fetchData = useCallback(async () => {
+        setLoading(true);
+        try {
+            // Fetch transactions
+            const trans = await api.getTransactionsByAccountId(account.accountId);
+            setTransactions(trans.slice(0, 10));
+
+            // Fetch jobs
+            if (currentUser) {
+                const allJobs = await api.getJobs();
+                const assignedJobs = allJobs.filter(job =>
+                    job.assigned_students.some(student => student.userId === currentUser.userId)
+                );
+                setMyJobs(assignedJobs);
+                
+                // Fetch unpaid taxes
+                const taxes = await api.getMyUnpaidTaxes(currentUser.userId);
+                setUnpaidTaxes(taxes);
+            }
+        } catch (error) {
+            console.error("Failed to fetch home view data", error);
+        } finally {
+            setLoading(false);
+        }
+    }, [account.accountId, currentUser]);
 
     useEffect(() => {
-        const fetchData = async () => {
-            setLoading(true);
-            try {
-                // Fetch transactions
-                const trans = await api.getTransactionsByAccountId(account.accountId);
-                setTransactions(trans.slice(0, 10));
-
-                // Fetch jobs
-                if (currentUser) {
-                    const allJobs = await api.getJobs();
-                    const assignedJobs = allJobs.filter(job =>
-                        job.assigned_students.some(student => student.userId === currentUser.userId)
-                    );
-                    setMyJobs(assignedJobs);
-                }
-            } catch (error) {
-                console.error("Failed to fetch home view data", error);
-            } finally {
-                setLoading(false);
-            }
-        };
         fetchData();
-    }, [account.accountId, currentUser]);
+    }, [fetchData]);
+
+    const handlePayClick = (taxId: string, taxName: string) => {
+        setTaxToPay({ id: taxId, name: taxName });
+    };
+
+    const executePayTax = async () => {
+        if (!taxToPay) return;
+        setTaxToPay(null);
+        try {
+            await api.payTax(currentUser.userId, taxToPay.id);
+            setMessageModal({isOpen: true, type: 'success', message: "세금을 납부했습니다."});
+            fetchData();
+            refreshAccount();
+        } catch (err: any) {
+            setMessageModal({isOpen: true, type: 'error', message: `오류: ${err.message}`});
+        }
+    };
 
     if (loading) return <div className="text-center p-8">데이터를 불러오는 중...</div>;
 
@@ -204,6 +280,35 @@ const HomeView: React.FC<{ account: Account; currentUser: User }> = ({ account, 
                     </div>
                 </div>
             )}
+            
+            {/* Unpaid Tax Alerts */}
+            {unpaidTaxes.length > 0 && (
+                <div className="bg-red-50 p-4 rounded-2xl shadow-md mb-6 border border-red-100">
+                    <div className="flex items-center mb-3">
+                        <NewTaxIcon className="w-6 h-6 mr-2"/>
+                        <h2 className="text-lg font-bold text-red-800">미납 세금 고지서 ({unpaidTaxes.length}건)</h2>
+                    </div>
+                    <div className="space-y-3">
+                        {unpaidTaxes.map(tax => (
+                            <div key={tax.recipientId} className="p-3 bg-white rounded-lg border border-red-200 flex justify-between items-center shadow-sm">
+                                <div>
+                                    <p className="font-bold text-gray-800">{tax.name}</p>
+                                    <p className="text-xs text-red-500 font-semibold">{new Date(tax.dueDate).toLocaleDateString()} 마감</p>
+                                </div>
+                                <div className="text-right">
+                                     <p className="font-bold mb-1">{tax.amount.toLocaleString()}권</p>
+                                     <button 
+                                        onClick={() => handlePayClick(tax.taxId, tax.name)}
+                                        className="bg-red-600 text-white text-xs px-3 py-1.5 rounded-md font-bold hover:bg-red-700 shadow-sm"
+                                     >
+                                         납부하기
+                                     </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             <h2 className="text-xl font-bold text-gray-800 mb-4">최근 거래 내역</h2>
             {transactions.length > 0 ? (
@@ -226,6 +331,22 @@ const HomeView: React.FC<{ account: Account; currentUser: User }> = ({ account, 
                     <p>거래 내역이 없습니다.</p>
                 </div>
             )}
+            
+            <ConfirmModal 
+                isOpen={!!taxToPay}
+                title="세금 납부"
+                message={`'${taxToPay?.name}' 세금을 납부하시겠습니까?`}
+                onConfirm={executePayTax}
+                onCancel={() => setTaxToPay(null)}
+                confirmText="납부"
+            />
+            
+            <MessageModal 
+                isOpen={messageModal.isOpen}
+                type={messageModal.type}
+                message={messageModal.message}
+                onClose={() => setMessageModal({ ...messageModal, isOpen: false })}
+            />
         </div>
     );
 };
