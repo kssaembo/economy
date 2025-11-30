@@ -199,373 +199,83 @@ const DesktopNavButton: React.FC<{ label: string, Icon: React.FC<any>, active: b
     </button>
 );
 
-type NotificationItem = {
-    id: string;
-    date: string;
-    message: string;
-};
-
-const NotificationsView: React.FC<{ students: (User & { account: Account | null })[], transactions: Transaction[] }> = ({ students, transactions }) => {
-    const [limit, setLimit] = useState(5);
-
-    const timeAgo = (dateString: string) => {
-        const date = new Date(dateString);
-        const now = new Date();
-        const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-        let interval = seconds / 31536000;
-        if (interval > 1) return Math.floor(interval) + "년 전";
-        interval = seconds / 2592000;
-        if (interval > 1) return Math.floor(interval) + "달 전";
-        interval = seconds / 86400;
-        if (interval > 1) return Math.floor(interval) + "일 전";
-        interval = seconds / 3600;
-        if (interval > 1) return Math.floor(interval) + "시간 전";
-        interval = seconds / 60;
-        if (interval > 1) return Math.floor(interval) + "분 전";
-        return "방금 전";
-    };
-
-    const notifications = useMemo(() => {
-        const findStudentByAccountId = (accId: string) => students.find(s => s.account?.accountId === accId);
-        const findStudentByUserId = (userId: string) => students.find(s => s.userId === userId);
-
-        const generatedNotifications: NotificationItem[] = transactions
-            .map(tx => {
-                const student = findStudentByAccountId(tx.accountId);
-                if (!student) return null;
-
-                let message = '';
-                switch (tx.type) {
-                    case TransactionType.TRANSFER:
-                        if (tx.amount < 0) { // Outgoing transfer
-                            const receiver = tx.receiverId ? findStudentByUserId(tx.receiverId) : null;
-                            if (receiver) {
-                                message = `${student.name} 학생이 ${receiver.name} 학생에게 ${(-tx.amount).toLocaleString()}권을 송금했습니다.`;
-                            }
-                        }
-                        break;
-                    case TransactionType.STOCK_BUY:
-                        message = `${student.name} 학생이 ${tx.description.replace('주식 매수', '')} 주식을 ${(-tx.amount).toLocaleString()}권에 매수했습니다.`;
-                        break;
-                    case TransactionType.STOCK_SELL:
-                        message = `${student.name} 학생이 ${tx.description.replace('주식 매도', '')} 주식을 ${tx.amount.toLocaleString()}권에 매도했습니다.`;
-                        break;
-                    case TransactionType.SAVINGS_JOIN:
-                        message = `${student.name} 학생이 ${tx.description}에 ${(-tx.amount).toLocaleString()}권을 가입했습니다.`;
-                        break;
-                    case TransactionType.SAVINGS_MATURITY:
-                        message = `${student.name} 학생의 ${tx.description}이(가) 만기되어 ${tx.amount.toLocaleString()}권을 받았습니다.`;
-                        break;
-                    case TransactionType.TAX:
-                         if (tx.amount < 0) {
-                             message = `${student.name} 학생이 ${tx.description.replace(' 납부', '')}을(를) 납부했습니다.`;
-                         } else {
-                             // This handles incoming tax to teacher account if we were tracking teacher transactions here directly,
-                             // but currently we track student transactions.
-                             // We could add logic if the teacher's account view is used.
-                         }
-                        break;
-                }
-
-                if (message) {
-                    return { id: tx.transactionId, date: tx.date, message };
-                }
-                return null;
-            })
-            .filter((item): item is NotificationItem => item !== null)
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-        // Add weekly salary notification on Fridays
-        if (new Date().getDay() === 5) {
-            generatedNotifications.unshift({
-                id: 'weekly-salary-day',
-                date: new Date().toISOString(),
-                message: '주급 지급일입니다.'
-            });
-        }
-
-        return generatedNotifications;
-    }, [students, transactions]);
+const DashboardView: React.FC<{ students: (User & { account: Account | null })[], transactions: Transaction[], loading: boolean }> = ({ students, transactions, loading }) => {
+    if (loading) return <div className="p-8 text-center text-gray-500">로딩 중...</div>;
+    
+    const totalAssets = students.reduce((acc, s) => acc + (s.account?.balance || 0), 0);
+    const avgAssets = students.length > 0 ? Math.round(totalAssets / students.length) : 0;
+    
+    // Sort students by balance for "Rich List"
+    const richList = [...students].sort((a, b) => (b.account?.balance || 0) - (a.account?.balance || 0)).slice(0, 3);
+    
+    // Recent transactions
+    const recentTransactions = transactions.slice(0, 5);
 
     return (
-        <div className="bg-white p-4 rounded-xl shadow-sm">
-            <h3 className="font-bold text-gray-800 mb-4 text-base">주요 활동 알림</h3>
-            {notifications.length > 0 ? (
-                <div>
-                    <ul className="space-y-3">
-                        {notifications.slice(0, limit).map(item => (
-                            <li key={item.id} className="text-sm flex items-start">
-                                <div className="flex-shrink-0 w-2 h-2 bg-blue-500 rounded-full mt-1.5 mr-3"></div>
-                                <div className="flex-grow">
-                                    <p className="text-gray-800">{item.message}</p>
-                                    <p className="text-xs text-gray-400 mt-0.5">{timeAgo(item.date)}</p>
-                                </div>
-                            </li>
-                        ))}
-                    </ul>
-                    {notifications.length > limit && (
-                        <button
-                            onClick={() => setLimit(prev => prev + 5)}
-                            className="w-full mt-4 text-center text-sm font-semibold text-indigo-600 hover:text-indigo-800"
-                        >
-                            더보기
-                        </button>
-                    )}
+        <div className="space-y-6">
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-white p-6 rounded-xl shadow-sm">
+                    <h3 className="text-gray-500 font-medium text-sm">총 통화량</h3>
+                    <p className="text-3xl font-bold text-indigo-600 mt-2">{totalAssets.toLocaleString()}권</p>
                 </div>
-            ) : (
-                <p className="text-center text-gray-400 text-sm py-4">최근 활동이 없습니다.</p>
-            )}
-        </div>
-    );
-};
-
-
-// --- Dashboard View ---
-const DashboardView: React.FC<ReturnType<typeof useStudentsWithAccounts>> = ({ students, transactions, loading }) => {
-    const [selectedStudent, setSelectedStudent] = useState<(User & { account: Account | null }) | null>(null);
-    const [modalContent, setModalContent] = useState<'balance' | 'transactions' | null>(null);
-    const [teacherAccount, setTeacherAccount] = useState<Account | null>(null);
-    const [showTeacherWallet, setShowTeacherWallet] = useState(false);
-
-    useEffect(() => {
-        api.getTeacherAccount().then(setTeacherAccount);
-    }, []);
-
-    const closeModal = () => {
-        setSelectedStudent(null);
-        setModalContent(null);
-    };
-
-    const handleRankingClick = (student: User & { account: Account | null }, type: 'balance' | 'transactions') => {
-        setSelectedStudent(student);
-        setModalContent(type);
-    }
-    
-    const { totalAssets, avgBalance } = useMemo(() => {
-        if (!students || students.length === 0) return { totalAssets: 0, avgBalance: 0 };
-        const total = students.reduce((sum, s) => sum + (s.account?.balance || 0), 0);
-        return { totalAssets: total, avgBalance: total / students.length };
-    }, [students]);
-    
-    const rankings = useMemo(() => {
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-        const recentTransactions = transactions.filter(t => new Date(t.date) > sevenDaysAgo);
-        
-        const activity = students.map(s => {
-            const count = s.account ? recentTransactions.filter(t => t.accountId === s.account!.accountId).length : 0;
-            return { ...s, activityCount: count };
-        });
-
-        const rich = [...students].sort((a, b) => (b.account?.balance || 0) - (a.account?.balance || 0)).slice(0, 5);
-        const maxBalance = rich[0]?.account?.balance || 1;
-
-        const active = [...activity].sort((a, b) => b.activityCount - a.activityCount).slice(0, 5);
-        const maxActivity = active[0]?.activityCount || 1;
-        
-        const inactive = [...activity].sort((a, b) => a.activityCount - b.activityCount).slice(0, 5);
-
-        return { rich, active, inactive, maxBalance, maxActivity };
-    }, [students, transactions]);
-
-    if (loading) return <div className="text-center p-8 text-gray-500">대시보드 데이터를 불러오는 중...</div>;
-
-    return (
-        <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                 {/* Teacher Wallet Card */}
-                <div 
-                    onClick={() => setShowTeacherWallet(true)}
-                    className="bg-gradient-to-r from-blue-600 to-indigo-700 p-6 rounded-xl shadow-lg text-white cursor-pointer hover:scale-[1.02] transition-transform"
-                >
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <p className="text-blue-100 font-medium mb-1">권쌤 지갑 (국고)</p>
-                            <h3 className="text-3xl font-bold">{teacherAccount?.balance.toLocaleString() ?? 0}권</h3>
-                        </div>
-                         <ManageIcon className="w-8 h-8 text-blue-200 opacity-80" />
-                    </div>
-                    <p className="text-xs text-blue-200 mt-4 text-right">클릭하여 내역 확인 &rarr;</p>
+                 <div className="bg-white p-6 rounded-xl shadow-sm">
+                    <h3 className="text-gray-500 font-medium text-sm">평균 자산</h3>
+                    <p className="text-3xl font-bold text-green-600 mt-2">{avgAssets.toLocaleString()}권</p>
                 </div>
+                 <div className="bg-white p-6 rounded-xl shadow-sm">
+                    <h3 className="text-gray-500 font-medium text-sm">등록 학생</h3>
+                    <p className="text-3xl font-bold text-blue-600 mt-2">{students.length}명</p>
+                </div>
+             </div>
+             
+             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                 {/* Rich List */}
+                 <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+                     <div className="p-4 border-b">
+                         <h3 className="font-bold text-gray-800">자산 순위 TOP 3</h3>
+                     </div>
+                     <ul>
+                         {richList.map((s, index) => (
+                             <li key={s.userId} className="p-4 border-b last:border-b-0 flex items-center justify-between">
+                                 <div className="flex items-center">
+                                     <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold mr-3 ${index === 0 ? 'bg-yellow-100 text-yellow-700' : index === 1 ? 'bg-gray-100 text-gray-700' : 'bg-orange-100 text-orange-800'}`}>
+                                         {index + 1}
+                                     </span>
+                                     <span className="font-medium">{s.name}</span>
+                                 </div>
+                                 <span className="font-mono text-gray-600">{(s.account?.balance || 0).toLocaleString()}권</span>
+                             </li>
+                         ))}
+                         {richList.length === 0 && <li className="p-4 text-center text-gray-400">데이터 없음</li>}
+                     </ul>
+                 </div>
                  
-                 <NotificationsView students={students} transactions={transactions} />
-            </div>
-
-            <div className="grid grid-cols-3 gap-4">
-                <SystemStatusCard title="총 학급 자산" value={`${totalAssets.toLocaleString()}권`} />
-                <SystemStatusCard title="총 학생 수" value={`${students.length}명`} />
-                <SystemStatusCard title="평균 잔액" value={`${Math.round(avgBalance).toLocaleString()}권`} />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <RankingCard title="부자 랭킹" items={rankings.rich} maxValue={rankings.maxBalance} onClick={(item) => handleRankingClick(item, 'balance')} />
-                <RankingCard title={<>활동성<br/>랭킹</>} items={rankings.active} maxValue={rankings.maxActivity} onClick={(item) => handleRankingClick(item, 'transactions')} />
-                <RankingCard title="비활동성 랭킹" items={rankings.inactive} maxValue={rankings.maxActivity} onClick={(item) => handleRankingClick(item, 'transactions')} />
-            </div>
-
-            {selectedStudent && modalContent && (
-                <RankingDetailModal 
-                    student={selectedStudent} 
-                    type={modalContent}
-                    onClose={closeModal}
-                />
-            )}
-            
-            {showTeacherWallet && teacherAccount && (
-                <TeacherWalletModal account={teacherAccount} onClose={() => setShowTeacherWallet(false)} />
-            )}
+                 {/* Recent Transactions */}
+                 <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+                     <div className="p-4 border-b">
+                         <h3 className="font-bold text-gray-800">최근 거래 내역</h3>
+                     </div>
+                     <ul>
+                         {recentTransactions.map(t => (
+                             <li key={t.transactionId} className="p-4 border-b last:border-b-0">
+                                 <div className="flex justify-between items-start mb-1">
+                                     <span className="font-medium text-sm">{t.description}</span>
+                                     <span className={`font-bold text-sm ${t.amount > 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                                         {t.amount > 0 ? '+' : ''}{t.amount.toLocaleString()}
+                                     </span>
+                                 </div>
+                                 <div className="text-xs text-gray-400 text-right">
+                                     {new Date(t.date).toLocaleString()}
+                                 </div>
+                             </li>
+                         ))}
+                         {recentTransactions.length === 0 && <li className="p-4 text-center text-gray-400">거래 내역 없음</li>}
+                     </ul>
+                 </div>
+             </div>
         </div>
     );
 };
-
-const TeacherWalletModal: React.FC<{ account: Account; onClose: () => void }> = ({ account, onClose }) => {
-    const [transactions, setTransactions] = useState<Transaction[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        setLoading(true);
-        api.getTransactionsByAccountId(account.accountId)
-            .then(setTransactions)
-            .finally(() => setLoading(false));
-    }, [account.accountId]);
-
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={onClose}>
-            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
-                <div className="flex justify-between items-center mb-6">
-                    <div>
-                        <h3 className="text-xl font-bold text-gray-900">권쌤 지갑 내역</h3>
-                        <p className="text-sm text-gray-500 font-mono">{account.accountId}</p>
-                    </div>
-                    <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100">
-                        <XIcon className="w-6 h-6 text-gray-500" />
-                    </button>
-                </div>
-                
-                <div className="bg-gray-50 p-4 rounded-lg mb-4 text-center">
-                    <p className="text-gray-500 text-sm mb-1">현재 잔액</p>
-                    <p className="text-2xl font-bold text-blue-600">{account.balance.toLocaleString()}권</p>
-                </div>
-
-                <div className="flex-1 overflow-y-auto">
-                    {loading ? (
-                        <p className="text-center py-4 text-gray-500">내역을 불러오는 중...</p>
-                    ) : transactions.length > 0 ? (
-                        <ul className="space-y-3">
-                            {transactions.map(t => (
-                                <li key={t.transactionId} className="bg-white border p-3 rounded-lg flex justify-between items-center">
-                                    <div>
-                                        <p className="font-semibold text-gray-800">{t.description}</p>
-                                        <p className="text-xs text-gray-500">{new Date(t.date).toLocaleString()}</p>
-                                    </div>
-                                    <span className={`font-bold ${t.amount > 0 ? 'text-blue-600' : 'text-red-600'}`}>
-                                        {t.amount > 0 ? '+' : ''}{t.amount.toLocaleString()}
-                                    </span>
-                                </li>
-                            ))}
-                        </ul>
-                    ) : (
-                        <p className="text-center py-10 text-gray-400">거래 내역이 없습니다.</p>
-                    )}
-                </div>
-            </div>
-        </div>
-    );
-};
-
-const SystemStatusCard: React.FC<{ title: string, value: string }> = ({ title, value }) => (
-    <div className="bg-white p-4 rounded-xl shadow-sm text-center flex flex-col justify-center">
-        <h3 className="text-sm font-semibold text-gray-500 whitespace-nowrap">{title}</h3>
-        <p className="text-lg font-extrabold text-[#2B548F] mt-2 whitespace-nowrap">{value}</p>
-    </div>
-);
-
-const RankingCard: React.FC<{
-    title: React.ReactNode;
-    items: (User & { account: Account | null, activityCount?: number })[];
-    maxValue: number;
-    onClick: (item: User & { account: Account | null }) => void
-}> = ({ title, items, onClick, maxValue }) => {
-    const isInactive = typeof title === 'string' && title.includes('비활동성');
-    const barColor = isInactive ? 'bg-amber-400' : 'bg-[#2B548F]';
-
-    return (
-        <div className="bg-white p-4 rounded-xl shadow-sm h-full">
-            <h3 className="font-bold text-gray-800 text-center mb-4 text-base leading-tight">{title}</h3>
-            {items.length > 0 ? (
-                <ul className="space-y-4 text-sm">
-                    {items.map((item, index) => {
-                        const isRichList = typeof title === 'string' && title.includes('부자');
-                        const value = isRichList ? (item.account?.balance || 0) : (item.activityCount ?? 0);
-                        const percentage = maxValue > 0 ? Math.max(1, (value / maxValue) * 100) : 0;
-
-                        return (
-                            <li key={item.userId}>
-                                <div className="flex justify-between items-center mb-1">
-                                    <button onClick={() => onClick(item)} className="font-semibold text-gray-700 hover:text-[#2B548F] transition-colors truncate text-sm">
-                                        {index + 1}. {item.name}
-                                    </button>
-                                </div>
-                                <div className="w-full bg-gray-100 rounded-full h-1.5">
-                                    <div className={`${barColor} h-1.5 rounded-full`} style={{ width: `${percentage}%` }}></div>
-                                </div>
-                            </li>
-                        )
-                    })}
-                </ul>
-            ) : <p className="text-center text-gray-400 text-sm pt-4">데이터 없음</p>}
-        </div>
-    );
-};
-
-const RankingDetailModal: React.FC<{student: User & { account: Account | null }, type: 'balance' | 'transactions', onClose: () => void}> = ({ student, type, onClose }) => {
-    const [transactions, setTransactions] = useState<Transaction[]>([]);
-
-    useEffect(() => {
-        if (type === 'transactions' && student.account) {
-            const sevenDaysAgo = new Date();
-            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-            
-            api.getTransactionsByAccountId(student.account.accountId)
-                .then(allTrans => {
-                    const recent = allTrans.filter(t => new Date(t.date) >= sevenDaysAgo);
-                    setTransactions(recent);
-                });
-        }
-    }, [student, type]);
-
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={onClose}>
-            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
-                <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-xl font-bold">{student.name} 상세 정보</h3>
-                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200"><XIcon className="w-6 h-6 text-gray-600" /></button>
-                </div>
-                {type === 'balance' ? (
-                    <div>
-                        <p className="text-lg">현재 잔액: <span className="font-bold text-indigo-600">{student.account?.balance.toLocaleString() ?? 0}권</span></p>
-                    </div>
-                ) : (
-                    <div>
-                        <h4 className="font-bold mb-2">최근 7일 거래 내역</h4>
-                        {transactions.length > 0 ? (
-                             <ul className="space-y-2 max-h-60 overflow-y-auto">
-                                {transactions.map(t => (
-                                    <li key={t.transactionId} className="text-sm p-2 bg-gray-50 rounded-md flex justify-between">
-                                        <span>{t.description}</span>
-                                        <span className={`font-semibold ${t.amount > 0 ? 'text-blue-600' : 'text-red-600'}`}>{t.amount.toLocaleString()}권</span>
-                                    </li>
-                                ))}
-                            </ul>
-                        ) : <p className="text-sm text-gray-500">최근 거래 내역이 없습니다.</p>}
-                    </div>
-                )}
-            </div>
-        </div>
-    );
-};
-
 
 // --- Student Management View ---
 const StudentManageView: React.FC<{ students: (User & { account: Account | null })[]; loading: boolean; refresh: () => void; }> = ({ students, loading, refresh }) => {
@@ -578,6 +288,10 @@ const StudentManageView: React.FC<{ students: (User & { account: Account | null 
     const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
     const [isDeleting, setIsDeleting] = useState(false);
     const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+    
+    // Password Reset
+    const [resetPwStudent, setResetPwStudent] = useState<User | null>(null);
+
     const [messageModal, setMessageModal] = useState<{isOpen: boolean, type: 'success'|'error', message: string}>({isOpen: false, type: 'success', message: ''});
 
     // Fixed Base URL
@@ -609,6 +323,17 @@ const StudentManageView: React.FC<{ students: (User & { account: Account | null 
             setMessageModal({isOpen: true, type: 'error', message: `삭제 중 오류가 발생했습니다: ${error.message}`});
         } finally {
             setIsDeleting(false);
+        }
+    };
+    
+    const executeResetPassword = async () => {
+        if (!resetPwStudent) return;
+        try {
+            await api.resetPassword(resetPwStudent.userId);
+            setResetPwStudent(null);
+            setMessageModal({isOpen: true, type: 'success', message: `${resetPwStudent.name} 학생의 비밀번호를 '1234'로 초기화했습니다.`});
+        } catch (error: any) {
+             setMessageModal({isOpen: true, type: 'error', message: `초기화 실패: ${error.message}`});
         }
     };
 
@@ -654,8 +379,8 @@ const StudentManageView: React.FC<{ students: (User & { account: Account | null 
                                 <th className="p-3 text-left w-1/6">학년</th>
                                 <th className="p-3 text-left w-1/6">번호</th>
                                 <th className="p-3 text-left w-2/6">이름</th>
-                                <th className="p-3 text-left w-3/6">계좌번호</th>
-                                <th className="p-3 text-center w-1/6">QR</th>
+                                <th className="p-3 text-left w-2/6">계좌번호</th>
+                                <th className="p-3 text-center w-1/6">관리</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -676,9 +401,15 @@ const StudentManageView: React.FC<{ students: (User & { account: Account | null 
                                     <td className="p-3">{s.number}</td>
                                     <td className="p-3 font-medium">{s.name}</td>
                                     <td className="p-3 font-mono text-xs">{(s.account?.accountId || '').replace('권쌤은행 ', '')}</td>
-                                    <td className="p-3 text-center">
-                                        <button onClick={() => setShowQrModal(s)} className="p-1 rounded-md hover:bg-gray-200">
+                                    <td className="p-3 text-center flex justify-center gap-1">
+                                        <button onClick={() => setShowQrModal(s)} className="p-1 rounded-md hover:bg-gray-200" title="QR 코드">
                                             <QrCodeIcon className="w-5 h-5 text-gray-600"/>
+                                        </button>
+                                        <button onClick={() => setResetPwStudent(s)} className="p-1 rounded-md hover:bg-gray-200" title="비밀번호 초기화">
+                                            {/* Simple Lock Icon */}
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-gray-600">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                                            </svg>
                                         </button>
                                     </td>
                                 </tr>
@@ -701,6 +432,15 @@ const StudentManageView: React.FC<{ students: (User & { account: Account | null 
                 onCancel={() => setShowConfirmDelete(false)}
                 confirmText="삭제"
                 isDangerous={true}
+            />
+            
+            <ConfirmModal 
+                isOpen={!!resetPwStudent}
+                title="비밀번호 초기화"
+                message={`${resetPwStudent?.name} 학생의 비밀번호를 '1234'로 초기화하시겠습니까?`}
+                onConfirm={executeResetPassword}
+                onCancel={() => setResetPwStudent(null)}
+                confirmText="초기화"
             />
             
             <MessageModal 
@@ -844,8 +584,6 @@ const PrintQrModal: React.FC<{ students: (User & { account: Account | null })[];
     );
 };
 
-
-// --- Account Management View ---
 const AccountManageView: React.FC<{ students: (User & { account: Account | null })[]; loading: boolean; }> = ({ students, loading }) => {
     const [selectedStudent, setSelectedStudent] = useState<(User & { account: Account | null }) | null>(null);
 
@@ -906,7 +644,6 @@ const AccountDetailView: React.FC<{ student: User & { account: Account | null },
     );
 };
 
-// --- Job Management View ---
 const AddJobModal: React.FC<{ onClose: () => void; onComplete: () => void; }> = ({ onClose, onComplete }) => {
     const [jobName, setJobName] = useState('');
     const [description, setDescription] = useState('');
@@ -1021,13 +758,11 @@ const JobManagementView: React.FC<{ allStudents: (User & { account: Account | nu
     const [showAddJobModal, setShowAddJobModal] = useState(false);
     const [showAssignStudentModal, setShowAssignStudentModal] = useState<Job | null>(null);
 
-    // Delete Functionality States
     const [deleteMode, setDeleteMode] = useState(false);
     const [selectedJobIds, setSelectedJobIds] = useState<string[]>([]);
     const [isDeleting, setIsDeleting] = useState(false);
     const [showConfirmDelete, setShowConfirmDelete] = useState(false);
     const [messageModal, setMessageModal] = useState<{isOpen: boolean, type: 'success'|'error', message: string}>({isOpen: false, type: 'success', message: ''});
-
 
     const fetchJobs = useCallback(async () => {
         setLoading(true);
@@ -1065,10 +800,9 @@ const JobManagementView: React.FC<{ allStudents: (User & { account: Account | nu
         if (value === originalBonus) return;
         try {
             await api.updateJobIncentive(jobId, value);
-            fetchJobs(); // Refresh data to confirm change
+            fetchJobs(); 
         } catch(err: any) {
             setMessageModal({isOpen: true, type: 'error', message: `보너스 업데이트 실패: ${err.message}`});
-            // Revert local state on failure
             setBonuses(prev => ({...prev, [jobId]: originalBonus}));
         }
     };
@@ -1206,7 +940,6 @@ const JobManagementView: React.FC<{ allStudents: (User & { account: Account | nu
     );
 };
 
-// --- Tax Management View ---
 const TaxView: React.FC<{ students: (User & { account: Account | null })[] }> = ({ students }) => {
     const [taxes, setTaxes] = useState<TaxItemWithRecipients[]>([]);
     const [loading, setLoading] = useState(true);
@@ -1345,7 +1078,6 @@ const AddTaxModal: React.FC<{ students: (User & { account: Account | null })[], 
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
     
-    // Select all by default or none? Let's select none.
     const toggleSelection = (id: string) => {
         setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
     }
@@ -1365,7 +1097,6 @@ const AddTaxModal: React.FC<{ students: (User & { account: Account | null })[], 
         }
         setLoading(true);
         try {
-            // ISO string for date
             const dateObj = new Date(dueDate);
             await api.createTax(name, parseInt(amount), dateObj.toISOString(), selectedIds);
             onComplete();

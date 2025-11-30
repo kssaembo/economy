@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect, useContext } from 'react';
 import AuthPage from './pages/AuthPage';
 import TeacherDashboard from './pages/TeacherDashboard';
@@ -107,10 +108,31 @@ const AppContent: React.FC = () => {
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 
+  // Auto-login on mount
+  useEffect(() => {
+    const storedUserId = localStorage.getItem('class_bank_user_id');
+    if (storedUserId) {
+        api.login(storedUserId).then(user => {
+            if(user) setCurrentUser(user);
+        }).catch(err => {
+            console.error("Auto login failed", err);
+            localStorage.removeItem('class_bank_user_id');
+        });
+    }
+  }, []);
+
   const authContextValue = useMemo(() => ({
     currentUser,
-    login: (user: User) => setCurrentUser(user),
-    logout: () => setCurrentUser(null),
+    login: (user: User) => {
+        // Save to local storage for persistence
+        localStorage.setItem('class_bank_user_id', user.userId);
+        setCurrentUser(user);
+    },
+    logout: () => {
+        // Clear local storage
+        localStorage.removeItem('class_bank_user_id');
+        setCurrentUser(null);
+    },
   }), [currentUser]);
 
   return (

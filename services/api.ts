@@ -37,6 +37,35 @@ const login = async (userId: string): Promise<User | null> => {
     return data;
 };
 
+const loginWithPassword = async (grade: number, classNum: number, number: number, password: string): Promise<User | null> => {
+    const { data, error } = await supabase.rpc('login_with_password', {
+        p_grade: grade,
+        p_class: classNum,
+        p_number: number,
+        p_password: password
+    });
+    
+    if (error) throw new Error(error.message);
+    if (!data.success) throw new Error(data.message);
+    
+    return data.user as User;
+};
+
+const changePassword = async (userId: string, current: string, newPw: string): Promise<string> => {
+    const { data, error } = await supabase.rpc('change_password', {
+        p_user_id: userId,
+        p_current_password: current,
+        p_new_password: newPw
+    });
+    if (error) throw new Error(error.message);
+    return data;
+};
+
+const resetPassword = async (userId: string): Promise<void> => {
+    const { error } = await supabase.rpc('reset_password', { p_user_id: userId });
+    if (error) throw new Error(error.message);
+};
+
 const loginWithQrToken = async (token: string): Promise<User | null> => {
     const { data: accountData, error: accountError } = await supabase
         .from('accounts')
@@ -536,6 +565,9 @@ const payTax = async (userId: string, taxId: string): Promise<string> => {
 
 export const api = {
     login,
+    loginWithPassword,
+    changePassword,
+    resetPassword,
     loginWithQrToken,
     getUsersByRole,
     addStudent,

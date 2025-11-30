@@ -3,21 +3,32 @@ import React, { useState, useContext, useEffect } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
 import { Role, User } from '../types';
-import { StudentIcon, ManageIcon, NewMartIcon, NewBankerIcon } from '../components/icons';
+import { StudentIcon, ManageIcon, NewMartIcon, NewBankerIcon, CheckIcon, ErrorIcon } from '../components/icons';
 
-type AuthMode = 'main' | 'login' | 'student-select';
+type AuthMode = 'main' | 'login' | 'student-select' | 'app-login';
 
 const AuthPage: React.FC = () => {
     const { login } = useContext(AuthContext);
     const [mode, setMode] = useState<AuthMode>('main');
     const [loginTarget, setLoginTarget] = useState<{ role: Role, title: string, userId: string } | null>(null);
     const [password, setPassword] = useState('');
+    
+    // App Login State
+    const [grade, setGrade] = useState('');
+    const [cls, setCls] = useState('');
+    const [num, setNum] = useState('');
+    const [appPassword, setAppPassword] = useState('');
+    
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [students, setStudents] = useState<User[]>([]);
 
     useEffect(() => {
-        if (mode === 'student-select') {
+        // Check URL for app mode
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('mode') === 'app') {
+            setMode('app-login');
+        } else if (mode === 'student-select') {
             api.getUsersByRole(Role.STUDENT).then(setStudents);
         }
     }, [mode]);
@@ -48,7 +59,33 @@ const AuthPage: React.FC = () => {
         }
     };
     
+    const handleAppLogin = async () => {
+        if (!grade || !cls || !num || !appPassword) {
+            setError('모든 정보를 입력해주세요.');
+            return;
+        }
+        setLoading(true);
+        setError('');
+        try {
+            const user = await api.loginWithPassword(parseInt(grade), parseInt(cls), parseInt(num), appPassword);
+            if (user) {
+                login(user);
+            }
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    }
+    
     const reset = () => {
+        // If in app mode, stay in app mode but clear errors
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('mode') === 'app') {
+             setGrade(''); setCls(''); setNum(''); setAppPassword(''); setError('');
+             return;
+        }
+        
         setMode('main');
         setLoginTarget(null);
         setPassword('');
@@ -57,6 +94,43 @@ const AuthPage: React.FC = () => {
 
     if (loading && mode !== 'main') {
         return <div className="flex items-center justify-center h-full text-white bg-gray-800">로딩 중...</div>;
+    }
+    
+    // Student App Login View
+    if (mode === 'app-login') {
+        return (
+            <div className="flex flex-col h-full p-8 bg-gray-50">
+                 <div className="flex-grow flex flex-col items-center justify-center max-w-sm mx-auto w-full">
+                    <div className="bg-white p-8 rounded-2xl shadow-xl w-full">
+                        <h2 className="text-2xl font-bold text-center mb-2 text-gray-800">학생 로그인</h2>
+                        <p className="text-center text-gray-500 mb-6">학번과 비밀번호를 입력하세요.</p>
+                        
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-3 gap-2">
+                                <input type="number" value={grade} onChange={e => setGrade(e.target.value)} placeholder="학년" className="p-3 border rounded-lg text-center" />
+                                <input type="number" value={cls} onChange={e => setCls(e.target.value)} placeholder="반" className="p-3 border rounded-lg text-center" />
+                                <input type="number" value={num} onChange={e => setNum(e.target.value)} placeholder="번호" className="p-3 border rounded-lg text-center" />
+                            </div>
+                            <input 
+                                type="password" 
+                                value={appPassword} 
+                                onChange={e => setAppPassword(e.target.value)} 
+                                placeholder="비밀번호" 
+                                className="w-full p-3 border rounded-lg"
+                                onKeyDown={e => e.key === 'Enter' && handleAppLogin()}
+                            />
+                            
+                            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+                            
+                            <button onClick={handleAppLogin} disabled={loading} className="w-full p-4 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg transition-transform active:scale-95 disabled:bg-gray-400">
+                                {loading ? '로그인 중...' : '로그인'}
+                            </button>
+                        </div>
+                    </div>
+                    <p className="mt-8 text-xs text-gray-400">Class Bank Student App</p>
+                 </div>
+            </div>
+        );
     }
     
     if (mode === 'login' && loginTarget) {

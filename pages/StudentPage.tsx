@@ -3,7 +3,7 @@ import React, { useState, useEffect, useContext, useCallback, useMemo } from 're
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
 import { Account, Transaction, StockProduct, StudentStock, SavingsProduct, StudentSaving, User, Job } from '../types';
-import { HomeIcon, TransferIcon, NewStockIcon, NewPiggyBankIcon, BackIcon, XIcon, CheckIcon, ErrorIcon, PlusIcon, MinusIcon, NewJobIcon, NewTaxIcon } from '../components/icons';
+import { HomeIcon, TransferIcon, NewStockIcon, NewPiggyBankIcon, BackIcon, XIcon, CheckIcon, ErrorIcon, PlusIcon, MinusIcon, NewJobIcon, NewTaxIcon, LogoutIcon } from '../components/icons';
 
 type View = 'home' | 'transfer' | 'stocks' | 'savings';
 type NotificationType = { type: 'success' | 'error', text: string };
@@ -61,9 +61,67 @@ const MessageModal: React.FC<{
     );
 };
 
+const ChangePasswordModal: React.FC<{ isOpen: boolean, onClose: () => void }> = ({ isOpen, onClose }) => {
+    const { currentUser } = useContext(AuthContext);
+    const [currentPw, setCurrentPw] = useState('');
+    const [newPw, setNewPw] = useState('');
+    const [confirmPw, setConfirmPw] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [message, setMessage] = useState<{ type: 'success'|'error', text: string } | null>(null);
+
+    const handleSubmit = async () => {
+        if (!currentPw || !newPw || !confirmPw) {
+            setMessage({ type: 'error', text: '모든 항목을 입력해주세요.' });
+            return;
+        }
+        if (newPw !== confirmPw) {
+            setMessage({ type: 'error', text: '새 비밀번호가 일치하지 않습니다.' });
+            return;
+        }
+        setLoading(true);
+        setMessage(null);
+        try {
+            if (currentUser) {
+                await api.changePassword(currentUser.userId, currentPw, newPw);
+                setMessage({ type: 'success', text: '비밀번호가 변경되었습니다.' });
+                setTimeout(() => onClose(), 1500);
+            }
+        } catch (error: any) {
+            setMessage({ type: 'error', text: error.message });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
+                <h3 className="text-xl font-bold mb-4 text-center">비밀번호 변경</h3>
+                <div className="space-y-3">
+                    <input type="password" value={currentPw} onChange={e => setCurrentPw(e.target.value)} placeholder="현재 비밀번호" className="w-full p-3 border rounded-lg" />
+                    <input type="password" value={newPw} onChange={e => setNewPw(e.target.value)} placeholder="새 비밀번호" className="w-full p-3 border rounded-lg" />
+                    <input type="password" value={confirmPw} onChange={e => setConfirmPw(e.target.value)} placeholder="새 비밀번호 확인" className="w-full p-3 border rounded-lg" />
+                </div>
+                {message && (
+                    <p className={`mt-3 text-sm text-center ${message.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+                        {message.text}
+                    </p>
+                )}
+                <div className="flex gap-3 mt-6">
+                    <button onClick={onClose} className="flex-1 p-3 bg-gray-200 font-bold rounded-lg text-gray-700">취소</button>
+                    <button onClick={handleSubmit} disabled={loading} className="flex-1 p-3 bg-indigo-600 text-white font-bold rounded-lg disabled:bg-gray-400">변경</button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
 // --- Main Student Page Component ---
 const StudentPage: React.FC<StudentPageProps> = ({ initialView }) => {
-    const { currentUser } = useContext(AuthContext);
+    const { currentUser, logout } = useContext(AuthContext);
     
     // initialView가 유효한 View 타입이면 그것을 사용하고, 아니면 'transfer'(송금)를 기본값으로 사용
     // (이전 로직 유지: 탭 순서만 시각적으로 변경하고 기본 진입 화면 로직은 유지합니다)
@@ -139,6 +197,12 @@ const StudentPage: React.FC<StudentPageProps> = ({ initialView }) => {
                     <DesktopNavButton label="주식" Icon={NewStockIcon} active={view === 'stocks'} onClick={() => setView('stocks')} />
                     <DesktopNavButton label="적금" Icon={NewPiggyBankIcon} active={view === 'savings'} onClick={() => setView('savings')} />
                 </nav>
+                 <div className="mt-auto">
+                    <button onClick={logout} className="w-full flex items-center p-3 text-sm text-gray-600 rounded-lg hover:bg-gray-200/50 transition-colors">
+                        <LogoutIcon className="w-5 h-5 mr-3" />
+                        로그아웃
+                    </button>
+                </div>
             </aside>
     
             {/* Main Content Area */}
@@ -148,6 +212,9 @@ const StudentPage: React.FC<StudentPageProps> = ({ initialView }) => {
                     <div>
                         <h1 className="text-2xl font-bold text-gray-800">{currentUser?.name}님</h1>
                     </div>
+                     <button onClick={logout} className="p-2 rounded-full hover:bg-gray-100">
+                        <LogoutIcon className="w-6 h-6 text-gray-600" />
+                    </button>
                 </header>
     
                 <main className="flex-grow overflow-y-auto p-4 bg-[#D1D3D8]">
@@ -200,6 +267,7 @@ const HomeView: React.FC<{ account: Account; currentUser: User; refreshAccount: 
     const [myJobs, setMyJobs] = useState<Job[]>([]);
     const [unpaidTaxes, setUnpaidTaxes] = useState<{ recipientId: string, taxId: string, name: string, amount: number, dueDate: string }[]>([]);
     const [loading, setLoading] = useState(true);
+    const [showPwModal, setShowPwModal] = useState(false);
     
     // Tax Payment Modal States
     const [taxToPay, setTaxToPay] = useState<{id: string, name: string} | null>(null);
@@ -256,12 +324,26 @@ const HomeView: React.FC<{ account: Account; currentUser: User; refreshAccount: 
 
     return (
         <div>
-            <div className="bg-[#2B548F] text-white p-6 rounded-2xl shadow-lg mb-6">
-                <p className="text-sm font-mono text-blue-200 opacity-80">{account.accountId}</p>
-                <p className="text-4xl font-bold mt-2 tracking-tight">
-                    {account.balance.toLocaleString()}
-                    <span className="text-2xl font-medium ml-1">권</span>
-                </p>
+            <div className="bg-[#2B548F] text-white p-6 rounded-2xl shadow-lg mb-6 relative overflow-hidden">
+                <div className="relative z-10">
+                    <p className="text-sm font-mono text-blue-200 opacity-80">{account.accountId}</p>
+                    <p className="text-4xl font-bold mt-2 tracking-tight">
+                        {account.balance.toLocaleString()}
+                        <span className="text-2xl font-medium ml-1">권</span>
+                    </p>
+                    
+                    <button 
+                        onClick={() => setShowPwModal(true)}
+                        className="mt-4 text-xs bg-black/20 hover:bg-black/30 text-white px-3 py-1.5 rounded-full transition-colors flex items-center"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3 h-3 mr-1">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                        </svg>
+                        비밀번호 변경
+                    </button>
+                </div>
+                {/* Background Decoration */}
+                <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
             </div>
 
             {myJobs.length > 0 && (
@@ -347,6 +429,8 @@ const HomeView: React.FC<{ account: Account; currentUser: User; refreshAccount: 
                 message={messageModal.message}
                 onClose={() => setMessageModal({ ...messageModal, isOpen: false })}
             />
+            
+            <ChangePasswordModal isOpen={showPwModal} onClose={() => setShowPwModal(false)} />
         </div>
     );
 };
@@ -359,6 +443,9 @@ const TransferView: React.FC<{
     refreshAccount: () => void;
     showNotification: (type: 'success' | 'error', text: string) => void;
 }> = ({ currentUser, account, refreshAccount, showNotification }) => {
+    // ... (TransferView logic identical to user's provided file)
+    // Assuming identical to previous turn or user's code. 
+    // I will include the full code for completeness as requested.
     type TransferTarget = 'mart' | 'teacher' | 'friend';
     type RecipientDetails = { user: User; account: Account };
 
@@ -548,6 +635,7 @@ const TransferView: React.FC<{
 
 // --- Stocks View ---
 const StocksView: React.FC<{ currentUser: User, refreshAccount: () => void }> = ({ currentUser, refreshAccount }) => {
+    // ... (Identical to previous)
     const [products, setProducts] = useState<StockProduct[]>([]);
     const [myStocks, setMyStocks] = useState<StudentStock[]>([]);
     const [loading, setLoading] = useState(true);
@@ -701,6 +789,7 @@ const StockTransactionModal: React.FC<{
 
 // --- Savings View ---
 const SavingsView: React.FC<{ currentUser: User, refreshAccount: () => void }> = ({ currentUser, refreshAccount }) => {
+    // ... (Identical to previous)
     const [products, setProducts] = useState<SavingsProduct[]>([]);
     const [mySavings, setMySavings] = useState<StudentSaving[]>([]);
     const [loading, setLoading] = useState(true);
