@@ -200,6 +200,26 @@ const DesktopNavButton: React.FC<{ label: string, Icon: React.FC<any>, active: b
 );
 
 const DashboardView: React.FC<{ students: (User & { account: Account | null })[], transactions: Transaction[], loading: boolean }> = ({ students, transactions, loading }) => {
+    const [teacherAccount, setTeacherAccount] = useState<Account | null>(null);
+    const [showHistoryModal, setShowHistoryModal] = useState(false);
+    const [teacherTransactions, setTeacherTransactions] = useState<Transaction[]>([]);
+
+    useEffect(() => {
+        const fetchTeacherData = async () => {
+            try {
+                const acc = await api.getTeacherAccount();
+                setTeacherAccount(acc);
+                if (acc) {
+                    const trans = await api.getTransactionsByAccountId(acc.accountId);
+                    setTeacherTransactions(trans);
+                }
+            } catch (err) {
+                console.error("Failed to fetch teacher account", err);
+            }
+        };
+        fetchTeacherData();
+    }, []);
+
     if (loading) return <div className="p-8 text-center text-gray-500">로딩 중...</div>;
     
     const totalAssets = students.reduce((acc, s) => acc + (s.account?.balance || 0), 0);
@@ -213,7 +233,19 @@ const DashboardView: React.FC<{ students: (User & { account: Account | null })[]
 
     return (
         <div className="space-y-6">
-             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {/* Teacher Wallet Card */}
+                <div onClick={() => setShowHistoryModal(true)} className="bg-[#2B548F] text-white p-6 rounded-xl shadow-lg cursor-pointer hover:bg-[#234576] transition-colors relative overflow-hidden group">
+                    <div className="relative z-10">
+                        <h3 className="font-medium text-blue-200 text-sm mb-1">권쌤 지갑 (국고)</h3>
+                        <p className="text-3xl font-bold">{teacherAccount?.balance.toLocaleString() ?? 0}권</p>
+                        <p className="text-xs text-blue-200 mt-2 flex items-center">
+                            내역 보기 <span className="ml-1">→</span>
+                        </p>
+                    </div>
+                    <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white/10 rounded-full blur-xl group-hover:scale-110 transition-transform"></div>
+                </div>
+
                 <div className="bg-white p-6 rounded-xl shadow-sm">
                     <h3 className="text-gray-500 font-medium text-sm">총 통화량</h3>
                     <p className="text-3xl font-bold text-indigo-600 mt-2">{totalAssets.toLocaleString()}권</p>
@@ -273,6 +305,39 @@ const DashboardView: React.FC<{ students: (User & { account: Account | null })[]
                      </ul>
                  </div>
              </div>
+
+             {/* Teacher Wallet History Modal */}
+             {showHistoryModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowHistoryModal(false)}>
+                    <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-xl font-bold">권쌤 지갑 내역 (국고)</h3>
+                            <button onClick={() => setShowHistoryModal(false)} className="p-1 rounded-full hover:bg-gray-200">
+                                <XIcon className="w-6 h-6 text-gray-600" />
+                            </button>
+                        </div>
+                        <div className="flex-grow overflow-y-auto">
+                            {teacherTransactions.length > 0 ? (
+                                <ul className="space-y-2">
+                                    {teacherTransactions.map(t => (
+                                        <li key={t.transactionId} className="bg-gray-50 p-3 rounded-lg flex justify-between items-center">
+                                            <div>
+                                                <p className="font-semibold text-sm">{t.description}</p>
+                                                <p className="text-xs text-gray-500">{new Date(t.date).toLocaleString()}</p>
+                                            </div>
+                                            <p className={`font-bold ${t.amount > 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                                                {t.amount > 0 ? '+' : ''}{t.amount.toLocaleString()}
+                                            </p>
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <p className="text-center text-gray-500 py-8">거래 내역이 없습니다.</p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+             )}
         </div>
     );
 };
@@ -343,27 +408,27 @@ const StudentManageView: React.FC<{ students: (User & { account: Account | null 
         <div>
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-2xl font-bold text-gray-800">학생 목록</h2>
-                <div className="flex gap-2">
+                <div className="flex gap-2 landscape:gap-1">
                     {deleteMode ? (
                         <>
-                             <button onClick={() => { setDeleteMode(false); setSelectedStudentIds([]); }} disabled={isDeleting} className="px-3 py-2 bg-gray-200 text-gray-700 text-xs font-semibold rounded-lg shadow-sm hover:bg-gray-300 disabled:opacity-50">
+                             <button onClick={() => { setDeleteMode(false); setSelectedStudentIds([]); }} disabled={isDeleting} className="px-3 py-2 landscape:px-2 landscape:py-1 bg-gray-200 text-gray-700 text-xs landscape:text-[10px] whitespace-nowrap font-semibold rounded-lg shadow-sm hover:bg-gray-300 disabled:opacity-50">
                                 취소
                             </button>
-                            <button onClick={handleDeleteClick} disabled={selectedStudentIds.length === 0 || isDeleting} className="px-3 py-2 bg-red-600 text-white text-xs font-semibold rounded-lg shadow-sm hover:bg-red-700 disabled:bg-gray-400">
+                            <button onClick={handleDeleteClick} disabled={selectedStudentIds.length === 0 || isDeleting} className="px-3 py-2 landscape:px-2 landscape:py-1 bg-red-600 text-white text-xs landscape:text-[10px] whitespace-nowrap font-semibold rounded-lg shadow-sm hover:bg-red-700 disabled:bg-gray-400">
                                 {isDeleting ? '삭제 중...' : `삭제 (${selectedStudentIds.length})`}
                             </button>
                         </>
                     ) : (
                         <>
-                            <button onClick={() => setShowPrintModal(true)} className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 text-gray-700 text-xs font-semibold rounded-lg shadow-sm hover:bg-gray-50">
-                                <QrCodeIcon className="w-4 h-4" />
+                            <button onClick={() => setShowPrintModal(true)} className="flex items-center gap-2 landscape:gap-1 px-3 py-2 landscape:px-2 landscape:py-1 bg-white border border-gray-300 text-gray-700 text-xs landscape:text-[10px] whitespace-nowrap font-semibold rounded-lg shadow-sm hover:bg-gray-50">
+                                <QrCodeIcon className="w-4 h-4 landscape:w-3 landscape:h-3" />
                                 일괄 출력
                             </button>
-                            <button onClick={() => setShowAddModal(true)} className="flex items-center gap-2 px-3 py-2 bg-[#2B548F] text-white text-xs font-semibold rounded-lg shadow-sm hover:bg-opacity-90">
-                                <UserAddIcon className="w-4 h-4" />
+                            <button onClick={() => setShowAddModal(true)} className="flex items-center gap-2 landscape:gap-1 px-3 py-2 landscape:px-2 landscape:py-1 bg-[#2B548F] text-white text-xs landscape:text-[10px] whitespace-nowrap font-semibold rounded-lg shadow-sm hover:bg-opacity-90">
+                                <UserAddIcon className="w-4 h-4 landscape:w-3 landscape:h-3" />
                                 학생 추가
                             </button>
-                            <button onClick={() => setDeleteMode(true)} className="flex items-center gap-2 px-3 py-2 bg-red-500 text-white text-xs font-semibold rounded-lg shadow-sm hover:bg-red-600">
+                            <button onClick={() => setDeleteMode(true)} className="flex items-center gap-2 landscape:gap-1 px-3 py-2 landscape:px-2 landscape:py-1 bg-red-500 text-white text-xs landscape:text-[10px] whitespace-nowrap font-semibold rounded-lg shadow-sm hover:bg-red-600">
                                 학생 삭제
                             </button>
                         </>
