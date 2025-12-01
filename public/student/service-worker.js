@@ -1,6 +1,6 @@
 
 const CACHE_NAME = 'class-bank-s-student-v1';
-const OFFLINE_URL = './index.html'; // Relative path
+const OFFLINE_URL = './index.html';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -18,9 +18,6 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('fetch', (event) => {
   // Network First Strategy
-  // 1. 네트워크 요청 시도
-  // 2. 실패 시 캐시된 index.html (오프라인 페이지 역할) 반환
-  
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request)
@@ -42,7 +39,6 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Activate event to clean up old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keyList) => {

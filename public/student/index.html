@@ -1,6 +1,16 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+    <script>
+        // [중요] 하위 폴더 배포 시 경로 문제 해결을 위한 스크립트
+        // 주소 끝에 슬래시(/)가 없으면 자동으로 붙여줍니다. 
+        // 예: site.com/student -> site.com/student/
+        // 이렇게 해야 ./manifest.json이 site.com/manifest.json이 아닌 site.com/student/manifest.json을 가리키게 됩니다.
+        if (!window.location.pathname.endsWith('/') && !window.location.pathname.endsWith('.html')) {
+            var newUrl = window.location.href + '/';
+            window.location.replace(newUrl);
+        }
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Class Bank(학생)</title>
@@ -19,7 +29,6 @@
         body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; background-color: #ffffff; }
         #app-frame { width: 100%; height: calc(100% - 50px); border: none; display: block; background: #fff; }
         
-        /* 하단 툴바 스타일 */
         #toolbar {
             height: 50px;
             background: #ffffff;
@@ -48,7 +57,6 @@
         .tool-btn:active { opacity: 0.6; }
         .tool-btn svg { width: 24px; height: 24px; }
         
-        /* 로딩 바 */
         #loading-bar {
             position: fixed;
             top: 0;
@@ -60,7 +68,6 @@
             z-index: 101;
         }
 
-        /* 오프라인 메시지 */
         #offline-msg {
             display: none;
             position: fixed;
@@ -89,10 +96,8 @@
         <button onclick="window.location.reload()" style="background:#3b82f6; color:white; border:none; padding:8px 20px; border-radius:20px; font-weight:bold; cursor:pointer;">재시도</button>
     </div>
 
-    <!-- 웹뷰 영역 -->
     <iframe id="app-frame" src="https://economy-rho.vercel.app/?mode=app" sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-modals allow-top-navigation"></iframe>
 
-    <!-- 네비게이션 툴바 -->
     <div id="toolbar">
         <button class="tool-btn" onclick="goBack()" aria-label="뒤로가기">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
@@ -106,10 +111,8 @@
     </div>
 
     <script>
-        // Service Worker 등록
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                // ./service-worker.js를 등록하면, 현재 경로(index.html이 있는 곳) 기준 하위 스코프를 가집니다.
                 navigator.serviceWorker.register('./service-worker.js')
                     .then(reg => console.log('SW Registered!', reg))
                     .catch(err => console.log('SW Failed', err));
@@ -118,7 +121,6 @@
 
         const frame = document.getElementById('app-frame');
         
-        // 뒤로가기
         function goBack() {
             try { 
                 frame.contentWindow.history.back(); 
@@ -127,12 +129,10 @@
             }
         }
         
-        // 홈으로 이동
         function goHome() {
             frame.src = "https://economy-rho.vercel.app/?mode=app";
         }
         
-        // 새로고침
         function reloadPage() {
             try {
                 frame.contentWindow.location.reload();
@@ -141,7 +141,6 @@
             }
         }
 
-        // 로딩 바 시뮬레이션
         const bar = document.getElementById('loading-bar');
         
         frame.addEventListener('loadstart', () => {
@@ -157,7 +156,6 @@
             }, 500);
         };
 
-        // 오프라인 감지 및 처리
         function updateOnlineStatus() {
             const msg = document.getElementById('offline-msg');
             if (navigator.onLine) {
@@ -170,8 +168,6 @@
         }
         window.addEventListener('online', updateOnlineStatus);
         window.addEventListener('offline', updateOnlineStatus);
-        
-        // 초기 로드 시 확인
         if (!navigator.onLine) updateOnlineStatus();
     </script>
 </body>

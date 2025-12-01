@@ -1,6 +1,6 @@
 {
-  "name": "Class Bank(교사)",
-  "short_name": "Class Bank T",
+  "name": "Class Bank(학생)",
+  "short_name": "Class Bank S",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#ffffff",
