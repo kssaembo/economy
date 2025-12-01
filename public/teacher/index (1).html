@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Class Bank(교사)</title>
+    <meta name="theme-color" content="#3b82f6">
+    
+    <!-- PWA Settings -->
+    <link rel="manifest" href="./manifest.json">
+    <link rel="apple-touch-icon" href="./icon-192.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <!-- iOS Splash Screen Helper -->
+    <link rel="apple-touch-startup-image" href="./splash.png">
+
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; background-color: #ffffff; }
+        #app-frame { width: 100%; height: calc(100% - 50px); border: none; display: block; background: #fff; }
+        
+        /* 하단 툴바 스타일 */
+        #toolbar {
+            height: 50px;
+            background: #ffffff;
+            border-top: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            z-index: 100;
+            padding-bottom: env(safe-area-inset-bottom);
+            box-sizing: content-box;
+        }
+        .tool-btn {
+            background: none;
+            border: none;
+            padding: 10px;
+            cursor: pointer;
+            color: #374151;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .tool-btn:active { opacity: 0.6; }
+        .tool-btn svg { width: 24px; height: 24px; }
+        
+        /* 로딩 바 */
+        #loading-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 3px;
+            background-color: #3b82f6;
+            width: 0%;
+            transition: width 0.3s ease;
+            z-index: 101;
+        }
+
+        /* 오프라인 메시지 */
+        #offline-msg {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.85);
+            color: white;
+            padding: 24px;
+            border-radius: 12px;
+            text-align: center;
+            z-index: 200;
+            width: 80%;
+            max-width: 300px;
+            backdrop-filter: blur(4px);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loading-bar"></div>
+    <div id="offline-msg">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:16px; opacity:0.8"><line x1="1" y1="1" x2="23" y2="23"></line><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path><path d="M10.71 5.05A16 16 0 0 1 22.58 9"></path><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>
+        <h3 style="margin:0 0 8px 0; font-size:18px;">인터넷 연결 끊김</h3>
+        <p style="margin:0 0 16px 0; font-size:14px; opacity:0.8;">네트워크 상태를 확인해주세요.</p>
+        <button onclick="window.location.reload()" style="background:#3b82f6; color:white; border:none; padding:8px 20px; border-radius:20px; font-weight:bold; cursor:pointer;">재시도</button>
+    </div>
+
+    <!-- 웹뷰 영역 -->
+    <iframe id="app-frame" src="https://economy-rho.vercel.app/" sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-modals allow-top-navigation"></iframe>
+
+    <!-- 네비게이션 툴바 -->
+    <div id="toolbar">
+        <button class="tool-btn" onclick="goBack()" aria-label="뒤로가기">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <button class="tool-btn" onclick="goHome()" aria-label="홈으로">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        </button>
+        <button class="tool-btn" onclick="reloadPage()" aria-label="새로고침">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/></svg>
+        </button>
+    </div>
+
+    <script>
+        // Service Worker 등록
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                // ./service-worker.js를 등록하면, 현재 경로(index.html이 있는 곳) 기준 하위 스코프를 가집니다.
+                navigator.serviceWorker.register('./service-worker.js')
+                    .then(reg => console.log('SW Registered!', reg))
+                    .catch(err => console.log('SW Failed', err));
+            });
+        }
+
+        const frame = document.getElementById('app-frame');
+        
+        // 뒤로가기
+        function goBack() {
+            try { 
+                frame.contentWindow.history.back(); 
+            } catch(e) { 
+                console.log('Cross-origin restriction');
+            }
+        }
+        
+        // 홈으로 이동
+        function goHome() {
+            frame.src = "https://economy-rho.vercel.app/";
+        }
+        
+        // 새로고침
+        function reloadPage() {
+            try {
+                frame.contentWindow.location.reload();
+            } catch(e) {
+                frame.src = frame.src;
+            }
+        }
+
+        // 로딩 바 시뮬레이션
+        const bar = document.getElementById('loading-bar');
+        
+        frame.addEventListener('loadstart', () => {
+             bar.style.opacity = '1';
+             bar.style.width = '50%';
+        });
+        
+        frame.onload = function() {
+            bar.style.width = '100%';
+            setTimeout(() => { 
+                bar.style.opacity = '0'; 
+                setTimeout(() => { bar.style.width = '0%'; }, 300);
+            }, 500);
+        };
+
+        // 오프라인 감지 및 처리
+        function updateOnlineStatus() {
+            const msg = document.getElementById('offline-msg');
+            if (navigator.onLine) {
+                msg.style.display = 'none';
+                frame.style.opacity = '1';
+            } else {
+                msg.style.display = 'block';
+                frame.style.opacity = '0.3';
+            }
+        }
+        window.addEventListener('online', updateOnlineStatus);
+        window.addEventListener('offline', updateOnlineStatus);
+        
+        // 초기 로드 시 확인
+        if (!navigator.onLine) updateOnlineStatus();
+    </script>
+</body>
+</html>
