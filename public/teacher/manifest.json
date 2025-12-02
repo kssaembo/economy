@@ -3,7 +3,7 @@
   "short_name": "Class Bank T",
   "start_url": ".",
   "display": "standalone",
-  "background_color": "#186Fd0",
+  "background_color": "#3b82f6",
   "theme_color": "#3b82f6",
   "orientation": "any",
   "icons": [
