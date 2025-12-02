@@ -25,12 +25,17 @@ const AuthPage: React.FC = () => {
     const [successMessage, setSuccessMessage] = useState('');
     const [students, setStudents] = useState<User[]>([]);
 
+    // 1. 초기 로드 시 URL만 확인 (Dependency Array 비움 [])
     useEffect(() => {
-        // Check URL for app mode
         const params = new URLSearchParams(window.location.search);
         if (params.get('mode') === 'app') {
             setMode('app-login');
-        } else if (mode === 'student-select') {
+        }
+    }, []);
+
+    // 2. 모드가 변경될 때 필요한 데이터 로딩 (학생 선택 모드일 때만)
+    useEffect(() => {
+        if (mode === 'student-select') {
             api.getUsersByRole(Role.STUDENT).then(setStudents);
         }
     }, [mode]);
@@ -314,7 +319,7 @@ const AuthPage: React.FC = () => {
                         md:landscape:rounded-3xl">
                         <div 
                             className="absolute inset-0 bg-cover bg-center filter blur-[4px] brightness-90 transition-all duration-500 group-hover:scale-110 group-hover:brightness-100"
-                            style={{ backgroundImage: `url('https://cdn.pixabay.com/photo/2024/08/30/23/40/ai-generated-9010160_1280.jpg')` }}
+                            style={{ backgroundImage: `url('https://cdn.pixabay.com/photo-2024/08/30/23/40/ai-generated-9010160_1280.jpg')` }}
                         />
                         <div className="absolute inset-0 bg-black/30"></div>
                         <div className="shimmer absolute top-0 -left-full w-3/4 h-full bg-gradient-to-r from-transparent via-white/50 to-transparent transform -skew-x-12" />
@@ -355,6 +360,14 @@ const AuthPage: React.FC = () => {
             <footer className="text-center text-gray-600/90 mt-4 landscape:mt-0">
                 <p className="text-sm font-semibold" style={{ textShadow: '1px 1px 1px rgba(255,255,255,0.8)' }}>ⓒ 2025. Kwon's class. All rights reserved.</p>
             </footer>
+
+            {/* 임시 버튼: 프리뷰 환경에서 학생 로그인 페이지로 이동하기 위함 */}
+            <button 
+                onClick={() => setMode('app-login')}
+                className="fixed bottom-2 right-2 px-2 py-1 bg-white/50 hover:bg-white/80 rounded border border-gray-300 text-[10px] text-gray-600 backdrop-blur-sm transition-colors z-50 shadow-sm"
+            >
+                학생 로그인 페이지
+            </button>
         </div>
     );
 };
