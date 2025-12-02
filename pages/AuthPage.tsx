@@ -5,7 +5,7 @@ import { api } from '../services/api';
 import { Role, User } from '../types';
 import { StudentIcon, ManageIcon, NewMartIcon, NewBankerIcon, CheckIcon, ErrorIcon } from '../components/icons';
 
-type AuthMode = 'main' | 'login' | 'student-select' | 'app-login';
+type AuthMode = 'main' | 'login' | 'student-select' | 'app-login' | 'app-change-password';
 
 const AuthPage: React.FC = () => {
     const { login } = useContext(AuthContext);
@@ -18,9 +18,11 @@ const AuthPage: React.FC = () => {
     const [cls, setCls] = useState('');
     const [num, setNum] = useState('');
     const [appPassword, setAppPassword] = useState('');
+    const [newAppPassword, setNewAppPassword] = useState(''); // For password change
     
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [successMessage, setSuccessMessage] = useState('');
     const [students, setStudents] = useState<User[]>([]);
 
     useEffect(() => {
@@ -77,12 +79,45 @@ const AuthPage: React.FC = () => {
             setLoading(false);
         }
     }
+
+    const handleChangePassword = async () => {
+        if (!grade || !cls || !num || !appPassword || !newAppPassword) {
+            setError('모든 정보를 입력해주세요.');
+            return;
+        }
+        setLoading(true);
+        setError('');
+        setSuccessMessage('');
+        try {
+            // 1. Verify credentials first by trying to login
+            const user = await api.loginWithPassword(parseInt(grade), parseInt(cls), parseInt(num), appPassword);
+            if (user) {
+                // 2. If valid, change password
+                await api.changePassword(user.userId, appPassword, newAppPassword);
+                setSuccessMessage('비밀번호가 성공적으로 변경되었습니다. 새 비밀번호로 로그인해주세요.');
+                // Clear fields for login
+                setAppPassword(''); 
+                setNewAppPassword('');
+                setTimeout(() => {
+                    setMode('app-login');
+                    setSuccessMessage('');
+                }, 2000);
+            }
+        } catch (err: any) {
+            setError(err.message === '비밀번호가 일치하지 않습니다.' ? '현재 비밀번호가 일치하지 않습니다.' : err.message);
+        } finally {
+            setLoading(false);
+        }
+    }
     
     const reset = () => {
         // If in app mode, stay in app mode but clear errors
         const params = new URLSearchParams(window.location.search);
-        if (params.get('mode') === 'app') {
-             setGrade(''); setCls(''); setNum(''); setAppPassword(''); setError('');
+        if (params.get('mode') === 'app' || mode === 'app-login' || mode === 'app-change-password') {
+             if (mode === 'app-change-password') {
+                 setMode('app-login'); // Go back to login form
+             }
+             setGrade(''); setCls(''); setNum(''); setAppPassword(''); setNewAppPassword(''); setError(''); setSuccessMessage('');
              return;
         }
         
@@ -121,13 +156,70 @@ const AuthPage: React.FC = () => {
                             />
                             
                             {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+                            {successMessage && <p className="text-green-600 text-sm text-center">{successMessage}</p>}
                             
                             <button onClick={handleAppLogin} disabled={loading} className="w-full p-4 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg transition-transform active:scale-95 disabled:bg-gray-400">
                                 {loading ? '로그인 중...' : '로그인'}
                             </button>
+
+                            <button onClick={() => { setError(''); setMode('app-change-password'); }} className="w-full text-sm text-gray-500 hover:text-indigo-600 hover:underline mt-2">
+                                비밀번호 변경
+                            </button>
                         </div>
                     </div>
                     <p className="mt-8 text-xs text-gray-400">Class Bank Student App</p>
+                 </div>
+            </div>
+        );
+    }
+
+    // Student App Change Password View
+    if (mode === 'app-change-password') {
+        return (
+            <div className="flex flex-col h-full p-8 bg-gray-50">
+                 <div className="flex-grow flex flex-col items-center justify-center max-w-sm mx-auto w-full">
+                    <div className="bg-white p-8 rounded-2xl shadow-xl w-full">
+                        <div className="flex items-center mb-4">
+                            <button onClick={() => setMode('app-login')} className="text-gray-400 hover:text-gray-600 mr-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                                </svg>
+                            </button>
+                            <h2 className="text-2xl font-bold text-gray-800">비밀번호 변경</h2>
+                        </div>
+                        <p className="text-sm text-gray-500 mb-6">본인 확인을 위해 정보를 입력해주세요.</p>
+                        
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-3 gap-2">
+                                <input type="number" value={grade} onChange={e => setGrade(e.target.value)} placeholder="학년" className="p-3 border rounded-lg text-center" />
+                                <input type="number" value={cls} onChange={e => setCls(e.target.value)} placeholder="반" className="p-3 border rounded-lg text-center" />
+                                <input type="number" value={num} onChange={e => setNum(e.target.value)} placeholder="번호" className="p-3 border rounded-lg text-center" />
+                            </div>
+                            <input 
+                                type="password" 
+                                value={appPassword} 
+                                onChange={e => setAppPassword(e.target.value)} 
+                                placeholder="현재 비밀번호" 
+                                className="w-full p-3 border rounded-lg"
+                            />
+                            <input 
+                                type="password" 
+                                value={newAppPassword} 
+                                onChange={e => setNewAppPassword(e.target.value)} 
+                                placeholder="새 비밀번호 (4자리 이상)" 
+                                className="w-full p-3 border rounded-lg bg-indigo-50"
+                            />
+                            
+                            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+                            {successMessage && <div className="text-green-600 text-sm text-center bg-green-50 p-2 rounded">{successMessage}</div>}
+                            
+                            {!successMessage && (
+                                <button onClick={handleChangePassword} disabled={loading} className="w-full p-4 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg transition-transform active:scale-95 disabled:bg-gray-400">
+                                    {loading ? '변경 중...' : '비밀번호 변경하기'}
+                                </button>
+                            )}
+                        </div>
+                    </div>
                  </div>
             </div>
         );
