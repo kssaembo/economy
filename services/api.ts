@@ -1,6 +1,6 @@
 
 import { supabase } from './supabaseClient';
-import { Role, User, Account, StockProduct, StudentStock, SavingsProduct, StudentSaving, Job, TaxItemWithRecipients } from '../types';
+import { Role, User, Account, StockProduct, StockProductWithDetails, StudentStock, SavingsProduct, StudentSaving, Job, TaxItemWithRecipients, StockHistory } from '../types';
 
 // Helper function to handle Supabase errors
 const handleSupabaseError = (error: any, context: string) => {
@@ -96,7 +96,12 @@ const addStudent = async (name: string, grade: number, classNum: number, number:
     });
     
     handleSupabaseError(error, 'addStudent');
-    if (data && !data.success) throw new Error(data.message);
+    
+    // Check if data is an object and explicitly has success: false. 
+    // This prevents errors when the RPC returns a scalar (like a UUID string) or void/null on success.
+    if (data && typeof data === 'object' && 'success' in data && !data.success) {
+        throw new Error(data.message || '학생 추가 실패');
+    }
 };
 
 const deleteStudents = async (userIds: string[]): Promise<string> => {
@@ -269,7 +274,7 @@ const martTransfer = async (studentAccountId: string, amount: number, direction:
 
 // --- Stocks ---
 
-const getStockProducts = async (): Promise<any[]> => {
+const getStockProducts = async (): Promise<StockProductWithDetails[]> => {
     const { data, error } = await supabase.rpc('get_stock_products_with_details');
     handleSupabaseError(error, 'getStockProducts');
     return data || [];
@@ -290,6 +295,22 @@ const getStudentStocks = async (userId: string): Promise<StudentStock[]> => {
         delete (ss as any).stock_products;
         return { ...ss, stock } as StudentStock;
     });
+};
+
+const getStockHistory = async (stockId: string): Promise<StockHistory[]> => {
+    const { data, error } = await supabase
+        .from('stock_price_history')
+        .select('*')
+        .eq('stockId', stockId)
+        .order('createdAt', { ascending: true })
+        .limit(100); // Limit to recent 100 points
+        
+    // We don't throw error if table doesn't exist yet for backwards compatibility during migration
+    if (error) {
+        console.warn("Could not fetch stock history (Table might not exist yet):", error.message);
+        return [];
+    }
+    return data || [];
 };
 
 const buyStock = async (userId: string, stockId: string, quantity: number): Promise<string> => {
@@ -322,6 +343,14 @@ const updateStockPrice = async (stockId: string, newPrice: number): Promise<stri
     const { data, error } = await supabase.rpc('update_stock_price', { p_stock_id: stockId, p_new_price: newPrice });
     handleSupabaseError(error, 'updateStockPrice');
     return data.message;
+};
+
+const updateStockVolatility = async (stockId: string, volatility: number): Promise<void> => {
+    const { error } = await supabase
+        .from('stock_products')
+        .update({ volatility: volatility })
+        .eq('id', stockId);
+    handleSupabaseError(error, 'updateStockVolatility');
 };
 
 const deleteStockProducts = async (stockIds: string[]): Promise<string> => {
@@ -583,10 +612,12 @@ export const api = {
     martTransfer,
     getStockProducts,
     getStudentStocks,
+    getStockHistory,
     buyStock,
     sellStock,
     addStockProduct,
     updateStockPrice,
+    updateStockVolatility,
     deleteStockProducts,
     getStockHolders,
     getSavingsProducts,

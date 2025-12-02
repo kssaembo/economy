@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useContext } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
@@ -278,23 +279,45 @@ const PaymentView: React.FC<{
 
 // --- Transfer View ---
 const TransferView: React.FC<{ martAccount: Account, refreshAccount: () => void }> = ({ martAccount, refreshAccount }) => {
+    const { currentUser } = useContext(AuthContext);
+    const [target, setTarget] = useState<'student' | 'teacher'>('student');
     const [accountId, setAccountId] = useState('');
     const [amount, setAmount] = useState('');
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
     const handleTransfer = async () => {
-        const fullAccountId = `권쌤은행 ${accountId}`;
-        if (!accountId || !amount || parseInt(amount) <= 0) {
-            setResult({ type: 'error', text: '계좌번호와 금액을 올바르게 입력해주세요.' });
+        if (!amount || parseInt(amount) <= 0) {
+            setResult({ type: 'error', text: '금액을 올바르게 입력해주세요.' });
             return;
         }
+
         setLoading(true);
         setResult(null);
+
         try {
-            const message = await api.martTransfer(fullAccountId, parseInt(amount), 'TO_STUDENT');
-            setResult({ type: 'success', text: message });
-            refreshAccount(); // Refresh mart balance
+            if (target === 'student') {
+                const fullAccountId = `권쌤은행 ${accountId}`;
+                if (!accountId) throw new Error('계좌번호를 입력해주세요.');
+
+                const message = await api.martTransfer(fullAccountId, parseInt(amount), 'TO_STUDENT');
+                setResult({ type: 'success', text: message });
+            } else {
+                if (!currentUser) throw new Error('로그인 정보가 없습니다.');
+                
+                const teacherAcc = await api.getTeacherAccount();
+                if (!teacherAcc) throw new Error('교사(국고) 계좌를 찾을 수 없습니다.');
+                
+                const message = await api.transfer(
+                    currentUser.userId, 
+                    teacherAcc.id, 
+                    parseInt(amount), 
+                    '마트 수익금 송금'
+                );
+                setResult({ type: 'success', text: message });
+            }
+            
+            refreshAccount();
             setAccountId('');
             setAmount('');
         } catch (err: any) {
@@ -312,14 +335,41 @@ const TransferView: React.FC<{ martAccount: Account, refreshAccount: () => void 
                     <p className="text-sm text-gray-500">마트 계좌 잔액</p>
                     <p className="text-2xl font-bold">{martAccount.balance.toLocaleString()}권</p>
                 </div>
+
+                <div className="flex bg-gray-100 p-1 rounded-lg mb-6">
+                    <button 
+                        onClick={() => { setTarget('student'); setResult(null); }}
+                        className={`flex-1 py-2 text-sm font-bold rounded-md transition-colors ${target === 'student' ? 'bg-white shadow text-[#2B548F]' : 'text-gray-500 hover:text-gray-700'}`}
+                    >
+                        학생에게 송금
+                    </button>
+                    <button 
+                        onClick={() => { setTarget('teacher'); setResult(null); }}
+                        className={`flex-1 py-2 text-sm font-bold rounded-md transition-colors ${target === 'teacher' ? 'bg-white shadow text-[#2B548F]' : 'text-gray-500 hover:text-gray-700'}`}
+                    >
+                        권쌤(국고)에게 송금
+                    </button>
+                </div>
+
                 <div className="space-y-4">
-                    <div>
-                        <label className="font-semibold text-gray-700">받는 학생 계좌번호</label>
-                        <div className="flex items-center mt-1">
-                            <span className="p-3 bg-gray-100 border border-r-0 rounded-l-lg text-gray-600 w-2/3 text-center">권쌤은행</span>
-                            <input type="text" value={accountId} onChange={e => setAccountId(e.target.value)} placeholder="000-000" className="w-1/3 p-3 border rounded-r-lg" />
+                    {target === 'student' ? (
+                        <div>
+                            <label className="font-semibold text-gray-700">받는 학생 계좌번호</label>
+                            <div className="flex items-center mt-1">
+                                <span className="p-3 bg-gray-100 border border-r-0 rounded-l-lg text-gray-600 w-2/3 text-center">권쌤은행</span>
+                                <input type="text" value={accountId} onChange={e => setAccountId(e.target.value)} placeholder="000-000" className="w-1/3 p-3 border rounded-r-lg" />
+                            </div>
                         </div>
-                    </div>
+                    ) : (
+                         <div>
+                            <label className="font-semibold text-gray-700">받는 분</label>
+                            <div className="mt-1 p-3 bg-gray-50 border rounded-lg text-gray-800 font-bold flex items-center">
+                                <span className="bg-[#2B548F] text-white text-xs px-2 py-1 rounded mr-2">국고</span>
+                                권쌤
+                            </div>
+                        </div>
+                    )}
+
                     <div>
                         <label className="font-semibold text-gray-700">보낼 금액</label>
                         <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0" className="w-full p-3 border rounded-lg mt-1" />

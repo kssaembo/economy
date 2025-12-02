@@ -541,7 +541,7 @@ const AddStudentModal: React.FC<{ onClose: () => void; onComplete: () => void; }
                 onClose();
             }, 1500);
         } catch (err: any) {
-            setResult({ type: 'error', text: err.message });
+            setResult({ type: 'error', text: err.message || '알 수 없는 오류가 발생했습니다.' });
         } finally {
             setLoading(false);
         }
@@ -576,6 +576,7 @@ const AddStudentModal: React.FC<{ onClose: () => void; onComplete: () => void; }
     );
 };
 
+// ... (keep remaining code: QrCodeModal, PrintQrModal, AccountManageView, AccountDetailView, AddJobModal, AssignStudentModal, JobManagementView, TaxView, AddTaxModal) ...
 const QrCodeModal: React.FC<{ student: User & { account: Account | null }; baseUrl: string; onClose: () => void; }> = ({ student, baseUrl, onClose }) => {
     const qrToken = student.account?.qrToken;
     const loginUrl = qrToken ? generateQrUrl(baseUrl, qrToken) : '';

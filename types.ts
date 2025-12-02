@@ -54,6 +54,19 @@ export interface StockProduct {
   name: string;
   currentPrice: number;
   stockAccountId: string;
+  volatility?: number; // Price sensitivity (0.01 - 1.0)
+}
+
+export interface StockProductWithDetails extends StockProduct {
+  totalQuantity: number;
+  valuation: number;
+}
+
+export interface StockHistory {
+  id: string;
+  stockId: string;
+  price: number;
+  createdAt: string;
 }
 
 export interface StudentStock {

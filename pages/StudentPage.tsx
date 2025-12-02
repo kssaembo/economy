@@ -2,8 +2,9 @@
 import React, { useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
-import { Account, Transaction, StockProduct, StudentStock, SavingsProduct, StudentSaving, User, Job } from '../types';
+import { Account, Transaction, StockProduct, StudentStock, SavingsProduct, StudentSaving, User, Job, StockHistory } from '../types';
 import { HomeIcon, TransferIcon, NewStockIcon, NewPiggyBankIcon, BackIcon, XIcon, CheckIcon, ErrorIcon, PlusIcon, MinusIcon, NewJobIcon, NewTaxIcon, LogoutIcon } from '../components/icons';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 type View = 'home' | 'transfer' | 'stocks' | 'savings';
 type NotificationType = { type: 'success' | 'error', text: string };
@@ -124,7 +125,6 @@ const StudentPage: React.FC<StudentPageProps> = ({ initialView }) => {
     const { currentUser, logout } = useContext(AuthContext);
     
     // initialView가 유효한 View 타입이면 그것을 사용하고, 아니면 'transfer'(송금)를 기본값으로 사용
-    // (이전 로직 유지: 탭 순서만 시각적으로 변경하고 기본 진입 화면 로직은 유지합니다)
     const validViews: View[] = ['home', 'transfer', 'stocks', 'savings'];
     const startView: View = (initialView && validViews.includes(initialView as View)) 
         ? (initialView as View) 
@@ -443,9 +443,6 @@ const TransferView: React.FC<{
     refreshAccount: () => void;
     showNotification: (type: 'success' | 'error', text: string) => void;
 }> = ({ currentUser, account, refreshAccount, showNotification }) => {
-    // ... (TransferView logic identical to user's provided file)
-    // Assuming identical to previous turn or user's code. 
-    // I will include the full code for completeness as requested.
     type TransferTarget = 'mart' | 'teacher' | 'friend';
     type RecipientDetails = { user: User; account: Account };
 
@@ -722,12 +719,44 @@ const StockTransactionModal: React.FC<{
     const [quantity, setQuantity] = useState(1);
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+    const [chartData, setChartData] = useState<StockHistory[]>([]);
+    const [chartLoading, setChartLoading] = useState(false);
+
+    // Limits
+    const MAX_TRADE_QUANTITY = 10;
+    const MAX_HOLDING_QUANTITY = 50;
+
+    useEffect(() => {
+        const fetchHistory = async () => {
+            setChartLoading(true);
+            try {
+                const history = await api.getStockHistory(stock.id);
+                setChartData(history);
+            } catch (error) {
+                console.error("Failed to fetch history", error);
+            } finally {
+                setChartLoading(false);
+            }
+        }
+        fetchHistory();
+    }, [stock.id]);
 
     const handleTransaction = async () => {
         if (quantity <= 0) {
             setResult({ type: 'error', text: '수량은 1 이상이어야 합니다.'});
             return;
         }
+        if (quantity > MAX_TRADE_QUANTITY) {
+            setResult({ type: 'error', text: `한 번에 최대 ${MAX_TRADE_QUANTITY}주까지만 거래할 수 있습니다.` });
+            return;
+        }
+
+        const currentHolding = myStock?.quantity || 0;
+        if (mode === 'buy' && (currentHolding + quantity > MAX_HOLDING_QUANTITY)) {
+             setResult({ type: 'error', text: `종목당 최대 ${MAX_HOLDING_QUANTITY}주까지만 보유할 수 있습니다.\n(현재: ${currentHolding}주)` });
+             return;
+        }
+
         setLoading(true);
         setResult(null);
         try {
@@ -744,12 +773,41 @@ const StockTransactionModal: React.FC<{
 
     const totalPrice = stock.currentPrice * quantity;
     const maxSell = myStock?.quantity || 0;
+    
+    // Fee Calculation for Sell
+    const volatility = stock.volatility || 0.01;
+    // F = 10k / (1 + 10k)
+    const feeRate = (10 * volatility) / (1 + 10 * volatility); 
+    const feeAmount = Math.round(totalPrice * feeRate);
+    const estimatedPayout = totalPrice - feeAmount;
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={onClose}>
             <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
-                <h3 className="text-xl font-bold mb-2">{stock.name}</h3>
-                <p className="font-mono mb-4">현재가: {stock.currentPrice.toLocaleString()}권</p>
+                <h3 className="text-xl font-bold mb-1">{stock.name}</h3>
+                <p className="font-mono mb-2 text-sm text-gray-500">현재가: {stock.currentPrice.toLocaleString()}권</p>
+
+                {/* Stock Chart Area */}
+                <div className="h-40 w-full mb-4 bg-gray-50 rounded-lg border">
+                     {chartLoading ? (
+                        <div className="flex items-center justify-center h-full text-xs text-gray-500">차트 로딩 중...</div>
+                    ) : chartData.length > 0 ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={chartData}>
+                                <XAxis dataKey="createdAt" hide />
+                                <YAxis domain={['auto', 'auto']} hide />
+                                <Tooltip 
+                                    labelFormatter={(label) => new Date(label).toLocaleTimeString()}
+                                    formatter={(value: number) => [`${value.toLocaleString()}권`, '가격']}
+                                    contentStyle={{ fontSize: '12px' }}
+                                />
+                                <Line type="monotone" dataKey="price" stroke="#4F46E5" strokeWidth={2} dot={false} />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    ) : (
+                        <div className="flex items-center justify-center h-full text-xs text-gray-400">가격 변동 기록이 없습니다.</div>
+                    )}
+                </div>
 
                 <div className="flex rounded-lg bg-gray-200 p-1 mb-4">
                     <button onClick={() => setMode('buy')} className={`w-1/2 py-2 text-sm font-semibold rounded-md transition ${mode === 'buy' ? 'bg-white shadow' : ''}`}>매수</button>
@@ -757,24 +815,39 @@ const StockTransactionModal: React.FC<{
                 </div>
                 
                 <div className="flex items-center justify-between my-4">
-                    <p>수량:</p>
+                    <p>수량 (최대 10주):</p>
                     <div className="flex items-center gap-2">
                         <button onClick={() => setQuantity(q => Math.max(1, q - 1))} className="p-1 border rounded-full"><MinusIcon className="w-5 h-5"/></button>
-                        <input type="number" value={quantity} onChange={e => setQuantity(parseInt(e.target.value))} className="w-16 text-center font-bold text-lg border-b-2"/>
-                        <button onClick={() => setQuantity(q => q + 1)} className="p-1 border rounded-full"><PlusIcon className="w-5 h-5"/></button>
+                        <input type="number" value={quantity} onChange={e => setQuantity(Math.min(MAX_TRADE_QUANTITY, Math.max(1, parseInt(e.target.value) || 1)))} className="w-16 text-center font-bold text-lg border-b-2"/>
+                        <button onClick={() => setQuantity(q => Math.min(MAX_TRADE_QUANTITY, q + 1))} className="p-1 border rounded-full"><PlusIcon className="w-5 h-5"/></button>
                     </div>
                 </div>
                  {mode === 'sell' && <p className="text-right text-sm text-gray-500 mb-2">최대 {maxSell}주 매도 가능</p>}
+                 {mode === 'buy' && <p className="text-right text-sm text-gray-500 mb-2">총 {myStock?.quantity || 0}주 보유 중 (최대 50주)</p>}
 
-                <div className="flex justify-between items-center font-bold text-lg my-4">
-                    <p>총 {mode === 'buy' ? '금액' : '예상 정산액'}:</p>
-                    <p>{totalPrice.toLocaleString()}권</p>
+                <div className="border-t border-b py-3 my-4">
+                    <div className="flex justify-between items-center text-sm text-gray-600 mb-1">
+                        <p>{mode === 'buy' ? '주문 금액' : '매도 금액'}:</p>
+                        <p>{totalPrice.toLocaleString()}권</p>
+                    </div>
+                    {mode === 'sell' && (
+                        <div className="flex justify-between items-center text-sm text-red-500 mb-1">
+                            <p>수수료 ({(feeRate * 100).toFixed(1)}%):</p>
+                            <p>-{feeAmount.toLocaleString()}권</p>
+                        </div>
+                    )}
+                    <div className="flex justify-between items-center font-bold text-lg mt-2">
+                        <p>최종 {mode === 'buy' ? '결제 금액' : '정산 금액'}:</p>
+                        <p className={mode === 'buy' ? 'text-red-600' : 'text-blue-600'}>
+                            {mode === 'buy' ? totalPrice.toLocaleString() : estimatedPayout.toLocaleString()}권
+                        </p>
+                    </div>
                 </div>
 
                 {result && (
                     <div className={`mt-4 p-3 rounded-lg flex items-center ${result.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                         {result.type === 'success' ? <CheckIcon className="w-5 h-5 mr-2" /> : <ErrorIcon className="w-5 h-5 mr-2" />}
-                        <p className="text-sm">{result.text}</p>
+                        <p className="text-sm whitespace-pre-wrap">{result.text}</p>
                     </div>
                 )}
                 

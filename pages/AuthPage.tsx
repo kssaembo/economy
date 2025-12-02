@@ -83,7 +83,7 @@ const AuthPage: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }
+    };
 
     const handleChangePassword = async () => {
         if (!grade || !cls || !num || !appPassword || !newAppPassword) {
@@ -113,7 +113,7 @@ const AuthPage: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }
+    };
     
     const reset = () => {
         // If in app mode, stay in app mode but clear errors
@@ -280,7 +280,7 @@ const AuthPage: React.FC = () => {
         <div className="flex flex-col h-full p-6 bg-[length:auto_100%] bg-center bg-no-repeat transition-all duration-500 bg-[url('https://anvdmcqszhmipbnxltsg.supabase.co/storage/v1/object/public/images/Gemini_Generated_Image_nhj2hmnhj2hmnhj2.png')] landscape:bg-cover landscape:bg-[url('https://anvdmcqszhmipbnxltsg.supabase.co/storage/v1/object/public/images/Gemini_Generated_Image_aeqmp5aeqmp5aeqm.png')]">
             <div className="flex-grow flex flex-col items-center justify-center">
                 {/* Title Section: Mobile Landscape (smaller margin/text) vs Tablet Landscape (larger) */}
-                <div className="text-center mb-12 landscape:mb-2 md:landscape:mb-8">
+                <div className="text-center mb-6 landscape:mb-2 md:landscape:mb-8">
                     <h1 className="text-6xl font-extrabold text-gray-800 tracking-tight landscape:text-4xl md:landscape:text-7xl" style={{textShadow: '2px 2px 4px rgba(255,255,255,0.5)', fontFamily: "'Gamja Flower', cursive"}}>Class Bank</h1>
                     <p className="text-2xl font-medium text-gray-800 mt-4 landscape:mt-1 landscape:text-xl md:landscape:mt-4 md:landscape:text-3xl" style={{ fontFamily: "'Gamja Flower', cursive", textShadow: '1px 1px 2px rgba(255,255,255,0.5)' }}>권쌤과 경제활동</p>
                 </div>
@@ -319,7 +319,7 @@ const AuthPage: React.FC = () => {
                         md:landscape:rounded-3xl">
                         <div 
                             className="absolute inset-0 bg-cover bg-center filter blur-[4px] brightness-90 transition-all duration-500 group-hover:scale-110 group-hover:brightness-100"
-                            style={{ backgroundImage: `url('https://cdn.pixabay.com/photo-2024/08/30/23/40/ai-generated-9010160_1280.jpg')` }}
+                            style={{ backgroundImage: `url('https://cdn.pixabay.com/photo/2017/11/01/11/34/bank-2907728_1280.jpg')` }}
                         />
                         <div className="absolute inset-0 bg-black/30"></div>
                         <div className="shimmer absolute top-0 -left-full w-3/4 h-full bg-gradient-to-r from-transparent via-white/50 to-transparent transform -skew-x-12" />

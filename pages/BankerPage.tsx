@@ -1,8 +1,10 @@
+
 import React, { useState, useContext, useEffect, useCallback, useMemo } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
-import { Account, StockProduct, User, Role, SavingsProduct } from '../types';
-import { LogoutIcon, StockIcon, XIcon, PlusIcon, CheckIcon, ErrorIcon, TransferIcon, NewPiggyBankIcon } from '../components/icons';
+import { Account, StockProduct, StockProductWithDetails, User, Role, SavingsProduct, StockHistory } from '../types';
+import { LogoutIcon, StockIcon, XIcon, PlusIcon, CheckIcon, ErrorIcon, TransferIcon, NewPiggyBankIcon, ArrowDownIcon, ArrowUpIcon } from '../components/icons';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 type View = 'deposit_withdraw' | 'stock_exchange' | 'savings_management';
 
@@ -181,14 +183,18 @@ const TransactionModal: React.FC<{ student: User & { account: Account | null }, 
 
 // --- Stock Exchange View ---
 const StockExchangeView: React.FC = () => {
-    type StockWithDetails = StockProduct & { totalQuantity: number; valuation: number };
-    const [stocks, setStocks] = useState<StockWithDetails[]>([]);
+    const [stocks, setStocks] = useState<StockProductWithDetails[]>([]);
     const [loading, setLoading] = useState(true);
-    const [showModal, setShowModal] = useState<'add' | 'price' | 'delete' | 'holders' | null>(null);
-    const [selectedStock, setSelectedStock] = useState<StockWithDetails | null>(null);
+    const [showModal, setShowModal] = useState<'add' | 'price' | 'delete' | 'holders' | 'volatility' | null>(null);
+    const [selectedStock, setSelectedStock] = useState<StockProductWithDetails | null>(null);
     const [deleteMode, setDeleteMode] = useState(false);
     const [stocksToDelete, setStocksToDelete] = useState<string[]>([]);
     
+    // Chart states
+    const [expandedStockId, setExpandedStockId] = useState<string | null>(null);
+    const [chartData, setChartData] = useState<StockHistory[]>([]);
+    const [chartLoading, setChartLoading] = useState(false);
+
     const fetchStocks = useCallback(async () => {
         setLoading(true);
         try {
@@ -211,9 +217,27 @@ const StockExchangeView: React.FC = () => {
         );
     };
 
-    const handleOpenHoldersModal = (stock: StockWithDetails) => {
+    const handleOpenHoldersModal = (stock: StockProductWithDetails) => {
         setSelectedStock(stock);
         setShowModal('holders');
+    };
+    
+    const handleToggleExpand = async (stockId: string) => {
+        if (expandedStockId === stockId) {
+            setExpandedStockId(null);
+            setChartData([]);
+        } else {
+            setExpandedStockId(stockId);
+            setChartLoading(true);
+            try {
+                const history = await api.getStockHistory(stockId);
+                setChartData(history);
+            } catch (error) {
+                console.error("Failed to fetch history", error);
+            } finally {
+                setChartLoading(false);
+            }
+        }
     };
 
     if (loading) return <div className="text-center p-8">주식 정보를 불러오는 중...</div>;
@@ -221,6 +245,7 @@ const StockExchangeView: React.FC = () => {
     return (
         <div>
             <div className="flex justify-end items-center mb-4 gap-2">
+                <button onClick={() => setShowModal('volatility')} className="px-3 py-2 bg-blue-500 text-white text-xs font-semibold rounded-lg shadow hover:bg-blue-600">민감도 조정</button>
                 <button onClick={() => setShowModal('add')} className="px-3 py-2 bg-green-600 text-white text-xs font-semibold rounded-lg shadow hover:bg-green-700">종목 추가</button>
                 <button onClick={() => {
                     if (deleteMode && stocksToDelete.length > 0) {
@@ -248,20 +273,50 @@ const StockExchangeView: React.FC = () => {
                     </thead>
                     <tbody>
                         {stocks.map(s => (
-                            <tr key={s.id} className="border-t">
-                                {deleteMode && <td className="p-3 text-center"><input type="checkbox" checked={stocksToDelete.includes(s.id)} onChange={() => handleSelectForDelete(s.id)} /></td>}
-                                <td className="p-3 font-medium">{s.name}</td>
-                                <td className="p-3 text-right font-mono">{s.currentPrice.toLocaleString()}권</td>
-                                <td className="p-3 text-right font-mono">
-                                     <button onClick={() => handleOpenHoldersModal(s)} className="hover:underline" disabled={s.totalQuantity === 0}>
-                                        {s.totalQuantity.toLocaleString()}주
-                                    </button>
-                                </td>
-                                <td className="p-3 text-right font-mono">{s.valuation.toLocaleString()}권</td>
-                                <td className="p-3 text-center">
-                                    <button onClick={() => { setSelectedStock(s); setShowModal('price'); }} className="px-3 py-1 bg-gray-200 text-gray-800 text-[8px] font-semibold rounded-md hover:bg-gray-300 whitespace-nowrap">입력</button>
-                                </td>
-                            </tr>
+                            <React.Fragment key={s.id}>
+                                <tr className={`border-t ${expandedStockId === s.id ? 'bg-indigo-50' : 'hover:bg-gray-50'}`}>
+                                    {deleteMode && <td className="p-3 text-center"><input type="checkbox" checked={stocksToDelete.includes(s.id)} onChange={() => handleSelectForDelete(s.id)} /></td>}
+                                    <td className="p-3 font-medium cursor-pointer flex items-center" onClick={() => handleToggleExpand(s.id)}>
+                                        {s.name}
+                                        {expandedStockId === s.id ? <ArrowUpIcon className="w-3 h-3 ml-1 text-gray-400"/> : <ArrowDownIcon className="w-3 h-3 ml-1 text-gray-400"/>}
+                                    </td>
+                                    <td className="p-3 text-right font-mono">{s.currentPrice.toLocaleString()}권</td>
+                                    <td className="p-3 text-right font-mono">
+                                         <button onClick={() => handleOpenHoldersModal(s)} className="hover:underline" disabled={s.totalQuantity === 0}>
+                                            {s.totalQuantity.toLocaleString()}주
+                                        </button>
+                                    </td>
+                                    <td className="p-3 text-right font-mono">{s.valuation.toLocaleString()}권</td>
+                                    <td className="p-3 text-center">
+                                        <button onClick={() => { setSelectedStock(s); setShowModal('price'); }} className="px-3 py-1 bg-gray-200 text-gray-800 text-[8px] font-semibold rounded-md hover:bg-gray-300 whitespace-nowrap">입력</button>
+                                    </td>
+                                </tr>
+                                {expandedStockId === s.id && (
+                                    <tr>
+                                        <td colSpan={deleteMode ? 6 : 5} className="p-4 bg-gray-50 border-t border-b">
+                                            <div className="h-64 w-full">
+                                                {chartLoading ? (
+                                                    <div className="flex items-center justify-center h-full text-gray-500">차트 로딩 중...</div>
+                                                ) : chartData.length > 0 ? (
+                                                    <ResponsiveContainer width="100%" height="100%">
+                                                        <LineChart data={chartData}>
+                                                            <XAxis dataKey="createdAt" tickFormatter={(time) => new Date(time).toLocaleDateString()} hide />
+                                                            <YAxis domain={['auto', 'auto']} />
+                                                            <Tooltip 
+                                                                labelFormatter={(label) => new Date(label).toLocaleString()}
+                                                                formatter={(value: number) => [`${value.toLocaleString()}권`, '가격']}
+                                                            />
+                                                            <Line type="monotone" dataKey="price" stroke="#4F46E5" strokeWidth={2} dot={false} />
+                                                        </LineChart>
+                                                    </ResponsiveContainer>
+                                                ) : (
+                                                    <div className="flex items-center justify-center h-full text-gray-400 text-sm">가격 변동 기록이 없습니다.</div>
+                                                )}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                )}
+                            </React.Fragment>
                         ))}
                     </tbody>
                 </table>
@@ -270,6 +325,7 @@ const StockExchangeView: React.FC = () => {
             {showModal === 'price' && selectedStock && <UpdatePriceModal stock={selectedStock} onClose={() => setShowModal(null)} onComplete={fetchStocks} />}
             {showModal === 'delete' && <DeleteStockModal stockIds={stocksToDelete} onClose={() => setShowModal(null)} onComplete={() => { fetchStocks(); setDeleteMode(false); setStocksToDelete([]); }}/>}
             {showModal === 'holders' && selectedStock && <StockHoldersModal stock={selectedStock} onClose={() => setShowModal(null)} />}
+            {showModal === 'volatility' && <VolatilityModal stocks={stocks} onClose={() => setShowModal(null)} onComplete={fetchStocks} />}
         </div>
     );
 };
@@ -362,7 +418,7 @@ const DeleteStockModal: React.FC<{stockIds: string[], onClose: ()=>void, onCompl
     )
 };
 
-const StockHoldersModal: React.FC<{ stock: StockProduct & { totalQuantity: number }, onClose: () => void }> = ({ stock, onClose }) => {
+const StockHoldersModal: React.FC<{ stock: StockProductWithDetails, onClose: () => void }> = ({ stock, onClose }) => {
     const [holders, setHolders] = useState<{ studentName: string; quantity: number }[]>([]);
 
     useEffect(() => {
@@ -387,6 +443,82 @@ const StockHoldersModal: React.FC<{ stock: StockProduct & { totalQuantity: numbe
                         </tbody>
                     </table>
                 </div>
+                <button onClick={onClose} className="mt-4 w-full p-2 bg-gray-200 font-bold rounded-lg">닫기</button>
+            </div>
+        </div>
+    );
+};
+
+const VolatilityModal: React.FC<{ stocks: StockProduct[], onClose: () => void, onComplete: () => void }> = ({ stocks, onClose, onComplete }) => {
+    // Map stockId -> volatility value
+    const [volatilities, setVolatilities] = useState<Record<string, number>>({});
+    const [loading, setLoading] = useState(false);
+    const [successMsg, setSuccessMsg] = useState('');
+
+    useEffect(() => {
+        const initial = stocks.reduce((acc, stock) => {
+            acc[stock.id] = stock.volatility || 0.01;
+            return acc;
+        }, {} as Record<string, number>);
+        setVolatilities(initial);
+    }, [stocks]);
+
+    const handleSave = async (stockId: string) => {
+        const val = volatilities[stockId];
+        if (val < 0.01 || val > 1) {
+            alert('민감도는 0.01에서 1 사이여야 합니다.');
+            return;
+        }
+        setLoading(true);
+        try {
+            await api.updateStockVolatility(stockId, val);
+            setSuccessMsg('저장됨');
+            setTimeout(() => setSuccessMsg(''), 1000);
+            onComplete(); // refresh parent
+        } catch (err: any) {
+            alert('오류: ' + err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={onClose}>
+            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
+                <h3 className="text-xl font-bold mb-2">가격 변동 민감도 설정</h3>
+                <p className="text-xs text-gray-500 mb-4">
+                    민감도에 따라 학생들의 매도 수수료가 자동으로 설정됩니다.<br/>
+                    (예: 0.01 → 수수료 0.9%)
+                </p>
+                <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
+                    {stocks.map(stock => {
+                        const k = volatilities[stock.id] || 0.01;
+                        const feeRate = (10 * k) / (1 + 10 * k); // F = 10k / (1+10k)
+                        return (
+                            <div key={stock.id} className="flex flex-col bg-gray-50 p-2 rounded">
+                                <div className="flex justify-between items-center mb-1">
+                                    <span className="text-sm font-medium w-1/3 truncate">{stock.name}</span>
+                                    <div className="flex gap-2 w-2/3 justify-end">
+                                        <input 
+                                            type="number" 
+                                            step="0.01" 
+                                            min="0.01" 
+                                            max="1" 
+                                            value={volatilities[stock.id]} 
+                                            onChange={(e) => setVolatilities({...volatilities, [stock.id]: parseFloat(e.target.value)})}
+                                            className="w-20 p-1 border rounded text-right text-sm"
+                                        />
+                                        <button onClick={() => handleSave(stock.id)} className="px-2 py-1 bg-indigo-600 text-white text-xs rounded hover:bg-indigo-700">저장</button>
+                                    </div>
+                                </div>
+                                <div className="text-right text-[10px] text-gray-500">
+                                    학생 수수료: 약 {(feeRate * 100).toFixed(1)}%
+                                </div>
+                            </div>
+                        )
+                    })}
+                </div>
+                {successMsg && <p className="text-center text-green-600 text-xs mt-2">{successMsg}</p>}
                 <button onClick={onClose} className="mt-4 w-full p-2 bg-gray-200 font-bold rounded-lg">닫기</button>
             </div>
         </div>
