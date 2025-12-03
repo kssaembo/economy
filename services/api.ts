@@ -275,9 +275,34 @@ const martTransfer = async (studentAccountId: string, amount: number, direction:
 // --- Stocks ---
 
 const getStockProducts = async (): Promise<StockProductWithDetails[]> => {
-    const { data, error } = await supabase.rpc('get_stock_products_with_details');
-    handleSupabaseError(error, 'getStockProducts');
-    return data || [];
+    // 1. Get complex details (valuation, total quantity) from RPC
+    const { data: rpcData, error: rpcError } = await supabase.rpc('get_stock_products_with_details');
+    if (rpcError) {
+        console.error("RPC Error:", rpcError);
+        throw new Error(rpcError.message);
+    }
+
+    // 2. Get fresh price and volatility directly from table to ensure latest data
+    const { data: tableData, error: tableError } = await supabase
+        .from('stock_products')
+        .select('id, currentPrice, volatility');
+    
+    if (tableError) {
+        console.error("Table Fetch Error:", tableError);
+        throw new Error(tableError.message);
+    }
+
+    // 3. Merge data
+    const mergedData = (rpcData || []).map((rpcItem: any) => {
+        const freshItem = tableData.find((t: any) => t.id === rpcItem.id);
+        return {
+            ...rpcItem,
+            currentPrice: freshItem ? freshItem.currentPrice : rpcItem.currentPrice,
+            volatility: freshItem ? freshItem.volatility : (rpcItem.volatility || 0.01)
+        };
+    });
+
+    return mergedData;
 };
 
 const getStudentStocks = async (userId: string): Promise<StudentStock[]> => {
@@ -305,12 +330,40 @@ const getStockHistory = async (stockId: string): Promise<StockHistory[]> => {
         .order('createdAt', { ascending: true })
         .limit(100); // Limit to recent 100 points
         
-    // We don't throw error if table doesn't exist yet for backwards compatibility during migration
+    let history: StockHistory[] = [];
+
     if (error) {
-        console.warn("Could not fetch stock history (Table might not exist yet):", error.message);
-        return [];
+        // We don't throw error if table doesn't exist yet for backwards compatibility
+        console.warn("Could not fetch stock history:", error.message);
+    } else {
+        // Normalize keys to handle case sensitivity (Postgres might return lowercase)
+        history = (data || []).map((item: any) => ({
+            id: item.id,
+            stockId: item.stockId || item.stockid, 
+            price: item.price,
+            createdAt: item.createdAt || item.createdat 
+        }));
     }
-    return data || [];
+
+    // Fallback: If no history exists (e.g., initial state), fetch current price to show at least one point
+    if (history.length === 0) {
+        const { data: stock } = await supabase
+            .from('stock_products')
+            .select('currentPrice')
+            .eq('id', stockId)
+            .single();
+            
+        if (stock) {
+            history = [{
+                id: 'initial',
+                stockId: stockId,
+                price: stock.currentPrice,
+                createdAt: new Date().toISOString()
+            }];
+        }
+    }
+
+    return history;
 };
 
 const buyStock = async (userId: string, stockId: string, quantity: number): Promise<string> => {
@@ -324,13 +377,14 @@ const buyStock = async (userId: string, stockId: string, quantity: number): Prom
 };
 
 const sellStock = async (userId: string, stockId: string, quantity: number): Promise<string> => {
-     const { error } = await supabase.rpc('sell_stock', {
+     const { data, error } = await supabase.rpc('sell_stock', {
         p_user_id: userId,
         p_stock_id: stockId,
         p_quantity: quantity
     });
     handleSupabaseError(error, 'sellStock');
-    return '주식을 성공적으로 판매했습니다.';
+    // sell_stock returns a string message now
+    return typeof data === 'string' ? data : '주식을 성공적으로 판매했습니다.';
 };
 
 const addStockProduct = async (name: string, price: number): Promise<string> => {
@@ -346,10 +400,11 @@ const updateStockPrice = async (stockId: string, newPrice: number): Promise<stri
 };
 
 const updateStockVolatility = async (stockId: string, volatility: number): Promise<void> => {
-    const { error } = await supabase
-        .from('stock_products')
-        .update({ volatility: volatility })
-        .eq('id', stockId);
+    // RLS가 켜져 있으므로 직접 업데이트(.update)는 실패합니다. RPC 함수를 사용해야 합니다.
+    const { error } = await supabase.rpc('update_stock_volatility', {
+        p_stock_id: stockId,
+        p_volatility: volatility
+    });
     handleSupabaseError(error, 'updateStockVolatility');
 };
 
