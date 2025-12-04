@@ -36,6 +36,8 @@ export enum TransactionType {
   SAVINGS_CANCEL = 'SavingsCancel',
   SAVINGS_MATURITY = 'SavingsMaturity',
   TAX = 'Tax',
+  FUND_JOIN = 'FundJoin',
+  FUND_PAYOUT = 'FundPayout',
 }
 
 export interface Transaction {
@@ -129,4 +131,42 @@ export interface TaxRecipient {
 
 export interface TaxItemWithRecipients extends TaxItem {
     recipients: TaxRecipient[];
+}
+
+// --- Fund Types ---
+
+export enum FundStatus {
+  RECRUITING = 'RECRUITING', // 모집중
+  ONGOING = 'ONGOING',       // 운영중 (평가대기)
+  SUCCESS = 'SUCCESS',       // 달성
+  EXCEED = 'EXCEED',         // 초과달성
+  FAIL = 'FAIL'              // 실패
+}
+
+export interface Fund {
+  id: string;
+  name: string;
+  description: string;
+  creatorId: string; // 펀드 제안 학생 ID
+  creatorName?: string; // 조인된 학생 이름
+  teacherId: string;
+  unitPrice: number; // 1좌당 가격
+  targetAmount: number; // 목표 금액 (참고용)
+  baseReward: number; // 달성 시 보상 (좌당)
+  incentiveReward: number; // 초과 달성 시 추가 보상 (좌당)
+  recruitmentDeadline: string; // 모집 마감일
+  maturityDate: string; // 펀드 종료(평가)일
+  status: FundStatus;
+  createdAt: string;
+  totalInvestedAmount?: number; // 총 투자된 금액 (계산됨)
+  investorCount?: number; // 투자자 수 (계산됨)
+}
+
+export interface FundInvestment {
+  id: string;
+  fundId: string;
+  studentUserId: string;
+  units: number;
+  investedAt: string;
+  fund?: Fund;
 }

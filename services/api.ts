@@ -1,6 +1,5 @@
-
 import { supabase } from './supabaseClient';
-import { Role, User, Account, StockProduct, StockProductWithDetails, StudentStock, SavingsProduct, StudentSaving, Job, TaxItemWithRecipients, StockHistory } from '../types';
+import { Role, User, Account, StockProduct, StockProductWithDetails, StudentStock, SavingsProduct, StudentSaving, Job, TaxItemWithRecipients, StockHistory, Fund, FundInvestment, FundStatus } from '../types';
 
 // Helper function to handle Supabase errors
 const handleSupabaseError = (error: any, context: string) => {
@@ -15,10 +14,16 @@ const handleSupabaseError = (error: any, context: string) => {
         }
         // 권한 에러나 함수 없음 에러에 대한 친절한 메시지
         if (error.code === '42883') {
-             throw new Error('삭제 기능(RPC)을 찾을 수 없습니다. Supabase SQL Editor에서 삭제 함수를 생성해주세요.');
+             throw new Error('기능(RPC)을 찾을 수 없습니다. Supabase SQL Editor에서 함수를 생성/업데이트해주세요.');
         }
         if (error.code === '42501' || error.message.includes('permission denied')) {
-             throw new Error('삭제 권한이 없습니다. Supabase에서 "GRANT EXECUTE" 권한 설정을 확인해주세요.');
+             throw new Error('권한이 없습니다. Supabase에서 "GRANT EXECUTE" 권한 설정을 확인해주세요.');
+        }
+        if (error.message.includes('invalid input syntax for type uuid')) {
+             throw new Error('시스템 오류: 계좌 ID 형식이 잘못되었습니다. (DB 함수 변수 타입 수정 필요)');
+        }
+        if (error.message.includes('invalid input value for enum transaction_type')) {
+             throw new Error('DB 업데이트 필요: 트랜잭션 타입(FundJoin/FundPayout)이 누락되었습니다. Supabase SQL에서 ENUM을 추가해주세요.');
         }
         
         throw new Error(error.message || `An error occurred during ${context}.`);
@@ -647,6 +652,93 @@ const payTax = async (userId: string, taxId: string): Promise<string> => {
     return data;
 };
 
+// --- Funds ---
+
+const getFunds = async (): Promise<Fund[]> => {
+    const { data, error } = await supabase.rpc('get_funds_with_stats');
+    handleSupabaseError(error, 'getFunds');
+    // Normalize case sensitivity issues if any
+    return (data || []).map((f: any) => ({
+        ...f,
+        creatorId: f.creatorId || f.creator_student_id,
+        creatorName: f.creatorName || f.creator_name,
+        teacherId: f.teacherId || f.teacher_id,
+        unitPrice: f.unitPrice || f.unit_price,
+        targetAmount: f.targetAmount || f.target_amount,
+        baseReward: f.baseReward || f.base_reward,
+        incentiveReward: f.incentiveReward || f.incentive_reward,
+        recruitmentDeadline: f.recruitmentDeadline || f.recruitment_deadline,
+        maturityDate: f.maturityDate || f.maturity_date,
+        totalInvestedAmount: f.totalInvestedAmount || f.total_invested_amount || 0,
+        investorCount: f.investorCount || f.investor_count || 0,
+        createdAt: f.createdAt || f.created_at
+    }));
+};
+
+const createFund = async (fund: Omit<Fund, 'id' | 'createdAt' | 'status'>): Promise<string> => {
+    const { data, error } = await supabase.rpc('create_fund', {
+        p_name: fund.name,
+        p_description: fund.description,
+        p_creator_id: fund.creatorId,
+        p_unit_price: fund.unitPrice,
+        p_target_amount: fund.targetAmount,
+        p_base_reward: fund.baseReward,
+        p_incentive_reward: fund.incentiveReward,
+        p_recruitment_deadline: fund.recruitmentDeadline,
+        p_maturity_date: fund.maturityDate
+    });
+    handleSupabaseError(error, 'createFund');
+    return data.message;
+};
+
+const joinFund = async (userId: string, fundId: string, units: number): Promise<string> => {
+    const { data, error } = await supabase.rpc('join_fund', {
+        p_user_id: userId,
+        p_fund_id: fundId,
+        p_units: units
+    });
+    handleSupabaseError(error, 'joinFund');
+    return data.message;
+};
+
+const settleFund = async (fundId: string, resultStatus: FundStatus): Promise<string> => {
+    const { data, error } = await supabase.rpc('settle_fund', {
+        p_fund_id: fundId,
+        p_status: resultStatus
+    });
+    handleSupabaseError(error, 'settleFund');
+    return data.message;
+};
+
+const getMyFundInvestments = async (userId: string): Promise<FundInvestment[]> => {
+     const { data, error } = await supabase
+        .from('fund_investments')
+        .select('*, funds(*)')
+        .eq('student_user_id', userId);
+    
+    handleSupabaseError(error, 'getMyFundInvestments');
+    
+    return (data || []).map((inv: any) => ({
+        id: inv.id,
+        fundId: inv.fund_id,
+        studentUserId: inv.student_user_id,
+        units: inv.units,
+        investedAt: inv.invested_at,
+        fund: inv.funds ? {
+             ...inv.funds,
+            creatorId: inv.funds.creator_student_id,
+            teacherId: inv.funds.teacher_id,
+            unitPrice: inv.funds.unit_price,
+            targetAmount: inv.funds.target_amount,
+            baseReward: inv.funds.base_reward,
+            incentiveReward: inv.funds.incentive_reward,
+            recruitmentDeadline: inv.funds.recruitment_deadline,
+            maturityDate: inv.funds.maturity_date,
+        } : undefined
+    }));
+};
+
+
 export const api = {
     login,
     loginWithPassword,
@@ -695,4 +787,9 @@ export const api = {
     deleteTax,
     getMyUnpaidTaxes,
     payTax,
+    getFunds,
+    createFund,
+    joinFund,
+    settleFund,
+    getMyFundInvestments,
 };

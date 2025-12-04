@@ -176,3 +176,7 @@ export const NewBankerIcon: React.FC<ImgIconProps> = (props) => (
 export const NewTaxIcon: React.FC<ImgIconProps> = (props) => (
     <img src="https://cdn-icons-png.flaticon.com/512/2921/2921222.png" alt="Tax" {...props} />
 );
+
+export const NewFundIcon: React.FC<ImgIconProps> = (props) => (
+    <img src="https://cdn-icons-png.flaticon.com/512/4270/4270202.png" alt="Fund" {...props} />
+);
