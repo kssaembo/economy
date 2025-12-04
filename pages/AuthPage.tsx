@@ -3,7 +3,7 @@ import React, { useState, useContext, useEffect } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
 import { Role, User } from '../types';
-import { StudentIcon, ManageIcon, NewMartIcon, NewBankerIcon, CheckIcon, ErrorIcon } from '../components/icons';
+import { StudentIcon, MainAdminIcon, MainBankIcon, MainMartIcon, CheckIcon, ErrorIcon } from '../components/icons';
 
 type AuthMode = 'main' | 'login' | 'student-select' | 'app-login' | 'app-change-password';
 
@@ -296,52 +296,37 @@ const AuthPage: React.FC = () => {
                     
                     <button 
                         onClick={() => { setLoginTarget({ role: Role.TEACHER, title: "교사 관리자", userId: 'teacher-01' }); setMode('login'); }}
-                        className="relative w-full py-6 rounded-2xl border-2 border-white/80 shadow-lg overflow-hidden group transition-all duration-300 hover:shadow-xl hover:shadow-blue-400/30 hover:-translate-y-1.5 
+                        className="relative w-full py-6 rounded-2xl border-2 border-gray-400 shadow-lg overflow-hidden group transition-all duration-300 hover:shadow-xl hover:shadow-blue-400/30 hover:-translate-y-1.5 bg-[#EBEFF3]
                         landscape:flex-1 landscape:rounded-2xl landscape:py-0 
                         md:landscape:rounded-3xl">
-                        <div 
-                            className="absolute inset-0 bg-cover bg-center filter blur-[4px] brightness-90 transition-all duration-500 group-hover:scale-110 group-hover:brightness-100"
-                            style={{ backgroundImage: `url('https://images.unsplash.com/photo-1580582932707-520aed937b7b?q=80&w=1932&auto=format&fit=crop')` }}
-                        />
-                        <div className="absolute inset-0 bg-black/30"></div>
                         <div className="shimmer absolute top-0 -left-full w-3/4 h-full bg-gradient-to-r from-transparent via-white/50 to-transparent transform -skew-x-12" />
                         <div className="relative z-10 flex flex-col items-center justify-center h-full">
-                            {/* Icon Size: Mobile (Small) -> Tablet (Large) */}
-                            <ManageIcon className="w-10 h-10 text-white mb-2 landscape:w-6 landscape:h-6 landscape:mb-1 md:landscape:w-14 md:landscape:h-14 md:landscape:mb-4" style={{ filter: 'drop-shadow(1px 1px 2px rgba(0,0,0,0.5))' }}/>
+                            {/* Icon Size: Half of previous (w-32 -> w-16, etc) */}
+                            <MainAdminIcon className="w-16 h-16 mb-2 landscape:w-10 landscape:h-10 landscape:mb-1 md:landscape:w-24 md:landscape:h-24 md:landscape:mb-3"/>
                             {/* Text Size: Mobile (Small) -> Tablet (Large) */}
-                            <span className="font-bold text-white text-xl landscape:text-sm md:landscape:text-2xl" style={{ textShadow: '1px 1px 3px rgba(0,0,0,0.5)' }}>교사 관리자</span>
+                            <span className="font-bold text-gray-800 text-xl landscape:text-sm md:landscape:text-2xl">교사 관리자</span>
                         </div>
                     </button>
                      <button
                         onClick={() => { setLoginTarget({ role: Role.BANKER, title: "은행원", userId: 'banker-01' }); setMode('login'); }}
-                        className="relative w-full py-6 rounded-2xl border-2 border-white/80 shadow-lg overflow-hidden group transition-all duration-300 hover:shadow-xl hover:shadow-blue-400/30 hover:-translate-y-1.5 
+                        className="relative w-full py-6 rounded-2xl border-2 border-gray-400 shadow-lg overflow-hidden group transition-all duration-300 hover:shadow-xl hover:shadow-blue-400/30 hover:-translate-y-1.5 bg-[#EBEFF3]
                         landscape:flex-1 landscape:rounded-2xl landscape:py-0 
                         md:landscape:rounded-3xl">
-                        <div 
-                            className="absolute inset-0 bg-cover bg-center filter blur-[4px] brightness-90 transition-all duration-500 group-hover:scale-110 group-hover:brightness-100"
-                            style={{ backgroundImage: `url('https://cdn.pixabay.com/photo/2017/11/01/11/34/bank-2907728_1280.jpg')` }}
-                        />
-                        <div className="absolute inset-0 bg-black/30"></div>
                         <div className="shimmer absolute top-0 -left-full w-3/4 h-full bg-gradient-to-r from-transparent via-white/50 to-transparent transform -skew-x-12" />
                         <div className="relative z-10 flex flex-col items-center justify-center h-full">
-                            <NewBankerIcon className="w-10 h-10 mb-2 landscape:w-6 landscape:h-6 landscape:mb-1 md:landscape:w-14 md:landscape:h-14 md:landscape:mb-4" style={{ filter: 'invert(1) drop-shadow(1px 1px 2px rgba(0,0,0,0.5))' }}/>
-                            <span className="font-bold text-white text-xl landscape:text-sm md:landscape:text-2xl" style={{ textShadow: '1px 1px 3px rgba(0,0,0,0.5)' }}>은행원</span>
+                            <MainBankIcon className="w-16 h-16 mb-2 landscape:w-10 landscape:h-10 landscape:mb-1 md:landscape:w-24 md:landscape:h-24 md:landscape:mb-3"/>
+                            <span className="font-bold text-gray-800 text-xl landscape:text-sm md:landscape:text-2xl">은행원</span>
                         </div>
                     </button>
                      <button
                         onClick={() => { setLoginTarget({ role: Role.MART, title: "마트", userId: 'mart-01' }); setMode('login'); }}
-                        className="relative w-full py-6 rounded-2xl border-2 border-white/80 shadow-lg overflow-hidden group transition-all duration-300 hover:shadow-xl hover:shadow-blue-400/30 hover:-translate-y-1.5 
+                        className="relative w-full py-6 rounded-2xl border-2 border-gray-400 shadow-lg overflow-hidden group transition-all duration-300 hover:shadow-xl hover:shadow-blue-400/30 hover:-translate-y-1.5 bg-[#EBEFF3]
                         landscape:flex-1 landscape:rounded-2xl landscape:py-0 
                         md:landscape:rounded-3xl">
-                        <div 
-                            className="absolute inset-0 bg-cover bg-center filter blur-[4px] brightness-90 transition-all duration-500 group-hover:scale-110 group-hover:brightness-100"
-                            style={{ backgroundImage: `url('https://images.unsplash.com/photo-1583258292688-d0213dc5a3a8?q=80&w=1974&auto=format&fit=crop')` }}
-                        />
-                        <div className="absolute inset-0 bg-black/30"></div>
                         <div className="shimmer absolute top-0 -left-full w-3/4 h-full bg-gradient-to-r from-transparent via-white/50 to-transparent transform -skew-x-12" />
                         <div className="relative z-10 flex flex-col items-center justify-center h-full">
-                            <NewMartIcon className="w-10 h-10 mb-2 landscape:w-6 landscape:h-6 landscape:mb-1 md:landscape:w-14 md:landscape:h-14 md:landscape:mb-4" style={{ filter: 'invert(1) drop-shadow(1px 1px 2px rgba(0,0,0,0.5))' }}/>
-                            <span className="font-bold text-white text-xl landscape:text-sm md:landscape:text-2xl" style={{ textShadow: '1px 1px 3px rgba(0,0,0,0.5)' }}>마트</span>
+                            <MainMartIcon className="w-16 h-16 mb-2 landscape:w-10 landscape:h-10 landscape:mb-1 md:landscape:w-24 md:landscape:h-24 md:landscape:mb-3"/>
+                            <span className="font-bold text-gray-800 text-xl landscape:text-sm md:landscape:text-2xl">마트</span>
                         </div>
                     </button>
                     <button

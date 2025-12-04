@@ -138,11 +138,15 @@ export const BriefcaseIcon: React.FC<IconProps> = (props) => (
 );
 
 export const NewDashboardIcon: React.FC<ImgIconProps> = (props) => (
-    <img src="https://cdn-icons-png.flaticon.com/512/12238/12238085.png" alt="Dashboard" {...props} />
+    <img src="https://anvdmcqszhmipbnxltsg.supabase.co/storage/v1/object/public/images/admin%20dashboard2.png" alt="Dashboard" {...props} />
+);
+
+export const NewStudentIcon: React.FC<ImgIconProps> = (props) => (
+    <img src="https://anvdmcqszhmipbnxltsg.supabase.co/storage/v1/object/public/images/admin_student-removebg-preview.png" alt="Student Management" {...props} />
 );
 
 export const NewBriefcaseIcon: React.FC<ImgIconProps> = (props) => (
-    <img src="https://cdn-icons-png.flaticon.com/512/5146/5146077.png" alt="Jobs" {...props} />
+    <img src="https://anvdmcqszhmipbnxltsg.supabase.co/storage/v1/object/public/images/admin_role-removebg-preview.png" alt="Jobs" {...props} />
 );
 
 export const NewJobIcon: React.FC<ImgIconProps> = (props) => (
@@ -150,7 +154,7 @@ export const NewJobIcon: React.FC<ImgIconProps> = (props) => (
 );
 
 export const NewManageAccountsIcon: React.FC<ImgIconProps> = (props) => (
-    <img src="https://cdn-icons-png.flaticon.com/512/10176/10176013.png" alt="Account Management" {...props} />
+    <img src="https://anvdmcqszhmipbnxltsg.supabase.co/storage/v1/object/public/images/admin_account-removebg-preview.png" alt="Account Management" {...props} />
 );
 
 export const NewStockIcon: React.FC<ImgIconProps> = (props) => (
@@ -174,9 +178,21 @@ export const NewBankerIcon: React.FC<ImgIconProps> = (props) => (
 );
 
 export const NewTaxIcon: React.FC<ImgIconProps> = (props) => (
-    <img src="https://cdn-icons-png.flaticon.com/512/2921/2921222.png" alt="Tax" {...props} />
+    <img src="https://anvdmcqszhmipbnxltsg.supabase.co/storage/v1/object/public/images/admin_tax-removebg-preview.png" alt="Tax" {...props} />
 );
 
 export const NewFundIcon: React.FC<ImgIconProps> = (props) => (
-    <img src="https://cdn-icons-png.flaticon.com/512/4270/4270202.png" alt="Fund" {...props} />
+    <img src="https://anvdmcqszhmipbnxltsg.supabase.co/storage/v1/object/public/images/admin_fund-removebg-preview.png" alt="Fund" {...props} />
+);
+
+export const MainAdminIcon: React.FC<ImgIconProps> = (props) => (
+    <img src="https://anvdmcqszhmipbnxltsg.supabase.co/storage/v1/object/public/images/main_admin-removebg-preview.png" alt="Admin" {...props} />
+);
+
+export const MainBankIcon: React.FC<ImgIconProps> = (props) => (
+    <img src="https://anvdmcqszhmipbnxltsg.supabase.co/storage/v1/object/public/images/main_bank-removebg-preview.png" alt="Banker" {...props} />
+);
+
+export const MainMartIcon: React.FC<ImgIconProps> = (props) => (
+    <img src="https://anvdmcqszhmipbnxltsg.supabase.co/storage/v1/object/public/images/main_mart-removebg-preview.png" alt="Mart" {...props} />
 );

@@ -3,9 +3,9 @@ import React, { useState, useContext, useEffect, useCallback, useMemo } from 're
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
 import { User, Role, Account, Transaction, Job, AssignedStudent, TransactionType, TaxItemWithRecipients, Fund, FundStatus } from '../types';
-import { LogoutIcon, QrCodeIcon, UserAddIcon, XIcon, CheckIcon, ErrorIcon, BackIcon, NewDashboardIcon, NewBriefcaseIcon, NewManageAccountsIcon, ManageIcon, NewTaxIcon, NewFundIcon } from '../components/icons';
+import { LogoutIcon, QrCodeIcon, UserAddIcon, XIcon, CheckIcon, ErrorIcon, BackIcon, NewDashboardIcon, NewBriefcaseIcon, NewManageAccountsIcon, ManageIcon, NewTaxIcon, NewFundIcon, NewStudentIcon } from '../components/icons';
 
-type View = 'dashboard' | 'students' | 'jobs' | 'accounts' | 'taxes' | 'funds';
+type View = 'dashboard' | 'students' | 'jobs' | 'taxes' | 'funds';
 
 // --- Custom Modals for Sandbox Environment ---
 const ConfirmModal: React.FC<{
@@ -127,8 +127,6 @@ const TeacherDashboard: React.FC = () => {
                 return <StudentManageView students={studentData.students} loading={studentData.loading} refresh={studentData.refresh} />;
             case 'jobs':
                 return <JobManagementView allStudents={studentData.students} />;
-            case 'accounts':
-                 return <AccountManageView students={studentData.students} loading={studentData.loading} />;
             case 'taxes':
                  return <TaxView students={studentData.students} />;
             case 'funds':
@@ -146,12 +144,11 @@ const TeacherDashboard: React.FC = () => {
                     <p className="text-sm text-gray-500">{currentUser?.name}</p>
                 </div>
                 <nav className="mt-8 flex flex-col space-y-2">
-                    <DesktopNavButton label="대시보드" Icon={NewDashboardIcon} active={view === 'dashboard'} onClick={() => setView('dashboard')} />
-                    <DesktopNavButton label="학생 등록" Icon={UserAddIcon} active={view === 'students'} onClick={() => setView('students')} />
-                    <DesktopNavButton label="1인 1역" Icon={NewBriefcaseIcon} active={view === 'jobs'} onClick={() => setView('jobs')} />
-                    <DesktopNavButton label="계좌 관리" Icon={NewManageAccountsIcon} active={view === 'accounts'} onClick={() => setView('accounts')} />
-                    <DesktopNavButton label="세금 관리" Icon={NewTaxIcon} active={view === 'taxes'} onClick={() => setView('taxes')} />
-                    <DesktopNavButton label="펀드 관리" Icon={NewFundIcon} active={view === 'funds'} onClick={() => setView('funds')} />
+                    <DesktopNavButton label="대시보드" Icon={NewDashboardIcon} active={view === 'dashboard'} onClick={() => setView('dashboard')} iconClassName="w-16 h-16" />
+                    <DesktopNavButton label="학생 관리" Icon={NewStudentIcon} active={view === 'students'} onClick={() => setView('students')} iconClassName="w-16 h-16" />
+                    <DesktopNavButton label="1인 1역" Icon={NewBriefcaseIcon} active={view === 'jobs'} onClick={() => setView('jobs')} iconClassName="w-16 h-16" />
+                    <DesktopNavButton label="세금 관리" Icon={NewTaxIcon} active={view === 'taxes'} onClick={() => setView('taxes')} iconClassName="w-16 h-16" />
+                    <DesktopNavButton label="펀드 관리" Icon={NewFundIcon} active={view === 'funds'} onClick={() => setView('funds')} iconClassName="w-16 h-16" />
                 </nav>
                 <div className="mt-auto">
                     <button onClick={logout} className="w-full flex items-center p-3 text-sm text-gray-600 rounded-lg hover:bg-gray-200/50 transition-colors">
@@ -176,29 +173,28 @@ const TeacherDashboard: React.FC = () => {
                     {renderView()}
                 </main>
 
-                <nav className="md:hidden grid grid-cols-6 bg-white p-1 border-t sticky bottom-0 z-10">
-                    <NavButton label="대시보드" Icon={NewDashboardIcon} active={view === 'dashboard'} onClick={() => setView('dashboard')} />
-                    <NavButton label="학생등록" Icon={UserAddIcon} active={view === 'students'} onClick={() => setView('students')} />
-                    <NavButton label="1인1역" Icon={NewBriefcaseIcon} active={view === 'jobs'} onClick={() => setView('jobs')} />
-                    <NavButton label="계좌관리" Icon={NewManageAccountsIcon} active={view === 'accounts'} onClick={() => setView('accounts')} />
-                    <NavButton label="세금관리" Icon={NewTaxIcon} active={view === 'taxes'} onClick={() => setView('taxes')} />
-                    <NavButton label="펀드관리" Icon={NewFundIcon} active={view === 'funds'} onClick={() => setView('funds')} />
+                <nav className="md:hidden grid grid-cols-5 bg-white p-1 border-t sticky bottom-0 z-10">
+                    <NavButton label="대시보드" Icon={NewDashboardIcon} active={view === 'dashboard'} onClick={() => setView('dashboard')} iconClassName="w-12 h-12" />
+                    <NavButton label="학생관리" Icon={NewStudentIcon} active={view === 'students'} onClick={() => setView('students')} iconClassName="w-9 h-9" />
+                    <NavButton label="1인1역" Icon={NewBriefcaseIcon} active={view === 'jobs'} onClick={() => setView('jobs')} iconClassName="w-9 h-9" />
+                    <NavButton label="세금관리" Icon={NewTaxIcon} active={view === 'taxes'} onClick={() => setView('taxes')} iconClassName="w-11 h-11" />
+                    <NavButton label="펀드관리" Icon={NewFundIcon} active={view === 'funds'} onClick={() => setView('funds')} iconClassName="w-11 h-11" />
                 </nav>
             </div>
         </div>
     );
 };
 
-const NavButton: React.FC<{ label: string, Icon: React.FC<any>, active: boolean, onClick: () => void }> = ({ label, Icon, active, onClick }) => (
+const NavButton: React.FC<{ label: string, Icon: React.FC<any>, active: boolean, onClick: () => void, iconClassName?: string }> = ({ label, Icon, active, onClick, iconClassName }) => (
     <button onClick={onClick} className={`flex flex-col items-center justify-center w-full py-2 rounded-lg transition-colors ${active ? 'text-[#2B548F]' : 'text-gray-500 hover:bg-blue-50'}`}>
-        <Icon className="w-6 h-6 mb-1" />
+        <Icon className={`${iconClassName || 'w-6 h-6'} mb-1 object-contain transition-all`} />
         <span className="text-xs font-medium whitespace-nowrap scale-90">{label}</span>
     </button>
 );
 
-const DesktopNavButton: React.FC<{ label: string, Icon: React.FC<any>, active: boolean, onClick: () => void }> = ({ label, Icon, active, onClick }) => (
+const DesktopNavButton: React.FC<{ label: string, Icon: React.FC<any>, active: boolean, onClick: () => void, iconClassName?: string }> = ({ label, Icon, active, onClick, iconClassName }) => (
     <button onClick={onClick} className={`flex items-center w-full p-3 rounded-lg transition-colors text-sm font-semibold ${active ? 'bg-[#2B548F] text-white' : 'text-gray-600 hover:bg-gray-200/50'}`}>
-        <Icon className="w-5 h-5 mr-3" />
+        <Icon className={`${iconClassName || 'w-5 h-5'} mr-3 object-contain transition-all`} />
         <span>{label}</span>
     </button>
 );
@@ -342,6 +338,11 @@ const StudentManageView: React.FC<{ students: (User & { account: Account | null 
     const [showAddModal, setShowAddModal] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState(false);
     const [messageModal, setMessageModal] = useState<{ isOpen: boolean, type: 'success' | 'error', message: string }>({ isOpen: false, type: 'success', message: '' });
+    
+    // New states for functionality
+    const [selectedDetailStudent, setSelectedDetailStudent] = useState<(User & { account: Account | null }) | null>(null);
+    const [selectedQrStudent, setSelectedQrStudent] = useState<(User & { account: Account | null }) | null>(null);
+    const [showBatchQr, setShowBatchQr] = useState(false);
 
     const toggleSelect = (id: string) => {
         setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -360,16 +361,29 @@ const StudentManageView: React.FC<{ students: (User & { account: Account | null 
         }
     };
 
+    const handleResetPassword = async (userId: string) => {
+        if(!window.confirm('비밀번호를 "1234"로 초기화하시겠습니까?')) return;
+        try {
+            await api.resetPassword(userId);
+            setMessageModal({ isOpen: true, type: 'success', message: '비밀번호가 1234로 초기화되었습니다.' });
+        } catch(err: any) {
+            setMessageModal({ isOpen: true, type: 'error', message: err.message });
+        }
+    };
+
     return (
         <div className="bg-white rounded-xl shadow-sm overflow-hidden h-full flex flex-col">
             <div className="p-4 border-b flex justify-between items-center bg-gray-50">
-                <h2 className="text-lg font-bold text-gray-800">학생 명단 관리 ({students.length}명)</h2>
+                <h2 className="text-lg font-bold text-gray-800">학생 관리 ({students.length}명)</h2>
                 <div className="flex gap-2">
                     {selectedIds.length > 0 && (
                         <button onClick={() => setConfirmDelete(true)} className="px-3 py-2 bg-red-100 text-red-700 rounded-lg text-sm font-semibold hover:bg-red-200">
                             선택 삭제 ({selectedIds.length})
                         </button>
                     )}
+                    <button onClick={() => setShowBatchQr(true)} className="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-300 flex items-center">
+                        <QrCodeIcon className="w-4 h-4 mr-1"/> QR 일괄 출력
+                    </button>
                     <button onClick={() => setShowAddModal(true)} className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 flex items-center">
                         <UserAddIcon className="w-4 h-4 mr-1" /> 학생 추가
                     </button>
@@ -383,9 +397,9 @@ const StudentManageView: React.FC<{ students: (User & { account: Account | null 
                             <th className="p-4 w-4">
                                 <input type="checkbox" onChange={(e) => setSelectedIds(e.target.checked ? students.map(s => s.userId) : [])} checked={selectedIds.length === students.length && students.length > 0} />
                             </th>
-                            <th className="p-4">번호/이름</th>
-                            <th className="p-4">자산 현황</th>
-                            <th className="p-4">로그인 ID</th>
+                            <th className="p-4 min-w-[105px]">번호/이름</th>
+                            <th className="p-4">계좌번호</th>
+                            <th className="p-4 text-center">기능</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -395,20 +409,40 @@ const StudentManageView: React.FC<{ students: (User & { account: Account | null 
                                     <input type="checkbox" checked={selectedIds.includes(s.userId)} onChange={() => toggleSelect(s.userId)} />
                                 </td>
                                 <td className="p-4 font-medium text-gray-900">
-                                    <div className="flex items-center">
-                                        <div className="h-8 w-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold mr-3">
+                                    <div 
+                                        className="flex items-center cursor-pointer hover:bg-gray-100 rounded p-1 -m-1"
+                                        onClick={() => setSelectedDetailStudent(s)}
+                                    >
+                                        <div className="h-8 w-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold mr-3 shrink-0">
                                             {s.number}
                                         </div>
                                         <div>
-                                            <div className="font-bold">{s.name}</div>
-                                            <div className="text-xs text-gray-500">{s.grade}학년 {s.class}반</div>
+                                            <div className="font-bold underline decoration-dotted decoration-gray-400 underline-offset-2 whitespace-nowrap">{s.name}</div>
+                                            <div className="text-xs text-gray-500 whitespace-nowrap">{s.grade}학년 {s.class}반</div>
                                         </div>
                                     </div>
                                 </td>
-                                <td className="p-4 font-mono">
-                                    {s.account ? `${s.account.balance.toLocaleString()}권` : <span className="text-red-500">계좌 없음</span>}
+                                <td className="p-4 font-mono text-gray-600">
+                                    {s.account ? s.account.accountId : <span className="text-red-500">계좌 없음</span>}
                                 </td>
-                                <td className="p-4 text-gray-500 text-xs">{s.userId}</td>
+                                <td className="p-4">
+                                    <div className="flex justify-center gap-2">
+                                        <button 
+                                            onClick={() => setSelectedQrStudent(s)} 
+                                            className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs hover:bg-gray-200 border border-gray-200"
+                                            title="QR 코드 보기"
+                                        >
+                                            QR
+                                        </button>
+                                        <button 
+                                            onClick={() => handleResetPassword(s.userId)} 
+                                            className="px-2 py-1 bg-red-50 text-red-600 rounded text-xs hover:bg-red-100 border border-red-100 whitespace-nowrap"
+                                            title="비밀번호 초기화"
+                                        >
+                                            초기화
+                                        </button>
+                                    </div>
+                                </td>
                             </tr>
                         ))}
                         {students.length === 0 && (
@@ -419,6 +453,42 @@ const StudentManageView: React.FC<{ students: (User & { account: Account | null 
             </div>
 
             {showAddModal && <AddStudentModal onClose={() => setShowAddModal(false)} onComplete={refresh} />}
+            
+            {/* Student Detail Modal */}
+            {selectedDetailStudent && (
+                <StudentDetailModal 
+                    student={selectedDetailStudent} 
+                    onClose={() => setSelectedDetailStudent(null)} 
+                />
+            )}
+
+            {/* QR View Modal */}
+            {selectedQrStudent && selectedQrStudent.account && (
+                <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4" onClick={() => setSelectedQrStudent(null)}>
+                    <div className="bg-white p-8 rounded-2xl max-w-sm w-full text-center" onClick={e => e.stopPropagation()}>
+                        <h3 className="text-2xl font-bold mb-2">{selectedQrStudent.name}의 QR 코드</h3>
+                        <p className="text-gray-500 mb-6 text-sm">학생 앱 로그인 또는 송금 시 사용하세요.</p>
+                        <div className="bg-white p-4 inline-block rounded-xl border-4 border-gray-100 mb-6">
+                            <img 
+                                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(generateQrUrl(window.location.origin, selectedQrStudent.account.qrToken || ''))}`} 
+                                alt="QR Code" 
+                                className="w-48 h-48"
+                            />
+                        </div>
+                        <p className="text-xs text-gray-400 break-all mb-6">{generateQrUrl(window.location.origin, selectedQrStudent.account.qrToken || '')}</p>
+                        <button onClick={() => setSelectedQrStudent(null)} className="w-full py-3 bg-gray-800 text-white rounded-xl font-bold">닫기</button>
+                    </div>
+                </div>
+            )}
+
+            {/* Batch QR Print Modal */}
+            {showBatchQr && (
+                <BatchQrPrintModal 
+                    students={students} 
+                    onClose={() => setShowBatchQr(false)} 
+                />
+            )}
+
             <ConfirmModal 
                 isOpen={confirmDelete} 
                 title="학생 삭제" 
@@ -434,6 +504,177 @@ const StudentManageView: React.FC<{ students: (User & { account: Account | null 
                 message={messageModal.message} 
                 onClose={() => setMessageModal({ ...messageModal, isOpen: false })} 
             />
+        </div>
+    );
+};
+
+const StudentDetailModal: React.FC<{ student: User & { account: Account | null }, onClose: () => void }> = ({ student, onClose }) => {
+    const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [assets, setAssets] = useState({ cash: 0, stock: 0, savings: 0, total: 0 });
+
+    useEffect(() => {
+        const fetchData = async () => {
+            if (!student.account) return;
+            setLoading(true);
+            try {
+                // Fetch transactions
+                const trans = await api.getTransactionsByAccountId(student.account.accountId);
+                setTransactions(trans);
+
+                // Fetch stocks
+                const stocks = await api.getStudentStocks(student.userId);
+                const stockVal = stocks.reduce((sum, s) => sum + (s.quantity * (s.stock?.currentPrice || 0)), 0);
+
+                // Fetch savings
+                const savings = await api.getStudentSavings(student.userId);
+                const savingsVal = savings.reduce((sum, s) => sum + s.amount, 0);
+
+                setAssets({
+                    cash: student.account.balance,
+                    stock: stockVal,
+                    savings: savingsVal,
+                    total: student.account.balance + stockVal + savingsVal
+                });
+            } catch (error) {
+                console.error("Error fetching detail data", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchData();
+    }, [student]);
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={onClose}>
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                <div className="p-6 border-b flex justify-between items-center bg-gray-50 rounded-t-xl">
+                    <div>
+                        <h3 className="text-2xl font-bold text-gray-800 flex items-center">
+                            {student.name} 
+                            <span className="text-sm font-normal text-gray-500 ml-2 bg-gray-200 px-2 py-0.5 rounded-full">
+                                {student.number}번
+                            </span>
+                        </h3>
+                        <p className="text-xs text-gray-400 mt-1">{student.userId}</p>
+                    </div>
+                    <button onClick={onClose} className="p-2 hover:bg-gray-200 rounded-full">
+                        <XIcon className="w-6 h-6 text-gray-500" />
+                    </button>
+                </div>
+                
+                <div className="p-6 overflow-y-auto">
+                    {loading ? (
+                        <div className="text-center py-10 text-gray-500">데이터 로딩 중...</div>
+                    ) : (
+                        <>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                                <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 text-center">
+                                    <p className="text-xs text-blue-600 font-bold uppercase mb-1">총 자산</p>
+                                    <p className="font-bold text-lg text-gray-800">{assets.total.toLocaleString()}</p>
+                                </div>
+                                <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 text-center">
+                                    <p className="text-xs text-gray-500 font-bold uppercase mb-1">현금</p>
+                                    <p className="font-bold text-lg text-gray-800">{assets.cash.toLocaleString()}</p>
+                                </div>
+                                <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 text-center">
+                                    <p className="text-xs text-gray-500 font-bold uppercase mb-1">주식</p>
+                                    <p className="font-bold text-lg text-gray-800">{assets.stock.toLocaleString()}</p>
+                                </div>
+                                <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 text-center">
+                                    <p className="text-xs text-gray-500 font-bold uppercase mb-1">적금</p>
+                                    <p className="font-bold text-lg text-gray-800">{assets.savings.toLocaleString()}</p>
+                                </div>
+                            </div>
+
+                            <h4 className="font-bold text-gray-800 mb-3 border-b pb-2">최근 거래 내역</h4>
+                            <div className="bg-white rounded-lg border border-gray-100">
+                                {transactions.length > 0 ? (
+                                    <ul className="divide-y divide-gray-100">
+                                        {transactions.map(t => (
+                                            <li key={t.transactionId} className="p-4 flex justify-between items-center hover:bg-gray-50">
+                                                <div>
+                                                    <p className="font-medium text-sm text-gray-900">{t.description}</p>
+                                                    <p className="text-xs text-gray-400">{new Date(t.date).toLocaleString()}</p>
+                                                </div>
+                                                <span className={`font-bold text-sm ${t.amount > 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                                                    {t.amount > 0 ? '+' : ''}{t.amount.toLocaleString()}
+                                                </span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : (
+                                    <p className="text-center text-gray-400 py-6">거래 내역이 없습니다.</p>
+                                )}
+                            </div>
+                        </>
+                    )}
+                </div>
+                
+                <div className="p-4 border-t bg-gray-50 rounded-b-xl flex justify-end">
+                    <button onClick={onClose} className="px-6 py-2 bg-white border border-gray-300 text-gray-700 font-bold rounded-lg hover:bg-gray-50 shadow-sm">
+                        닫기
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const BatchQrPrintModal: React.FC<{ students: (User & { account: Account | null })[], onClose: () => void }> = ({ students, onClose }) => {
+    // Filter only students with accounts
+    const validStudents = students.filter(s => s.account && s.account.qrToken);
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+             {/* The modal content container */}
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+                <div className="p-4 border-b flex justify-between items-center">
+                    <h3 className="text-xl font-bold">QR 코드 일괄 출력</h3>
+                    <div className="flex gap-2">
+                        <button 
+                            onClick={() => window.print()} 
+                            className="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 flex items-center"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-1">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0 1 10.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0 .229 2.523a1.125 1.125 0 0 1-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0 0 21 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 0 0-1.913-.247M6.34 18H5.25A2.25 2.25 0 0 1 3 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 0 1 1.913-.247m10.5 0a48.536 48.536 0 0 0-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5Zm-3 0h.008v.008H15V10.5Z" />
+                            </svg>
+                            인쇄하기
+                        </button>
+                        <button onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-bold hover:bg-gray-300">닫기</button>
+                    </div>
+                </div>
+
+                <div className="overflow-y-auto p-8 bg-gray-100" id="print-section">
+                    <div className="grid grid-cols-4 gap-6 print:grid-cols-4 print:gap-4">
+                        {validStudents.map(s => (
+                            <div key={s.userId} className="bg-white p-4 rounded-lg border border-gray-300 flex flex-col items-center justify-center text-center page-break-inside-avoid shadow-sm">
+                                <p className="font-bold text-lg text-gray-800 mb-1">{s.number}. {s.name}</p>
+                                <p className="text-xs text-gray-500 mb-2">{s.grade}학년 {s.class}반</p>
+                                <img 
+                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(generateQrUrl(window.location.origin, s.account!.qrToken!))}`} 
+                                    alt="QR Code" 
+                                    className="w-32 h-32 mb-2 border p-1"
+                                />
+                                <p className="text-[10px] text-gray-400 break-all leading-tight">{s.account!.qrToken!.substring(0, 8)}...</p>
+                            </div>
+                        ))}
+                    </div>
+                     {validStudents.length === 0 && <p className="text-center text-gray-500">출력할 QR 코드가 없습니다.</p>}
+                </div>
+            </div>
+            {/* Print Styles Injection */}
+             <style>{`
+                @media print {
+                    @page { margin: 1cm; size: A4; }
+                    body * { visibility: hidden; }
+                    #print-section, #print-section * { visibility: visible; }
+                    #print-section { position: absolute; left: 0; top: 0; width: 100%; height: auto; overflow: visible; background: white; padding: 0; }
+                    .page-break-inside-avoid { break-inside: avoid; }
+                    /* Hide scrollbars during print */
+                    ::-webkit-scrollbar { display: none; }
+                }
+            `}</style>
         </div>
     );
 };
@@ -683,80 +924,6 @@ const AssignStudentModal: React.FC<{ job: Job, allStudents: User[], onClose: () 
                     <button onClick={handleSave} className="flex-1 p-3 bg-blue-600 text-white rounded-lg font-bold">저장</button>
                 </div>
             </div>
-        </div>
-    );
-};
-
-// --- Account Manage View ---
-const AccountManageView: React.FC<{ students: (User & { account: Account | null })[], loading: boolean }> = ({ students, loading }) => {
-    const [selectedStudent, setSelectedStudent] = useState<User & { account: Account | null } | null>(null);
-    const [messageModal, setMessageModal] = useState<{ isOpen: boolean, type: 'success'|'error', message: string }>({isOpen: false, type: 'success', message: ''});
-
-    const handleResetPassword = async (userId: string) => {
-        if(!window.confirm('비밀번호를 "1234"로 초기화하시겠습니까?')) return;
-        try {
-            await api.resetPassword(userId);
-            setMessageModal({ isOpen: true, type: 'success', message: '비밀번호가 1234로 초기화되었습니다.' });
-        } catch(err: any) {
-            setMessageModal({ isOpen: true, type: 'error', message: err.message });
-        }
-    };
-
-    return (
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden flex flex-col h-full">
-            <div className="p-4 border-b">
-                <h2 className="text-lg font-bold text-gray-800">계좌 및 접속 관리</h2>
-            </div>
-            <div className="flex-grow overflow-auto p-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {students.map(s => (
-                        <div key={s.userId} className="border rounded-xl p-4 flex justify-between items-center hover:bg-gray-50">
-                            <div>
-                                <div className="font-bold text-gray-800">{s.name} <span className="text-xs text-gray-500 font-normal">({s.number}번)</span></div>
-                                <div className="text-xs text-gray-400 mt-1">ID: {s.userId}</div>
-                                {s.account && (
-                                    <div className="text-xs font-mono text-blue-600 mt-1 bg-blue-50 inline-block px-1 rounded">
-                                        {s.account.accountId}
-                                    </div>
-                                )}
-                            </div>
-                            <div className="flex flex-col gap-2">
-                                <button onClick={() => setSelectedStudent(s)} className="px-3 py-1.5 bg-gray-100 text-gray-700 text-xs rounded hover:bg-gray-200 flex items-center justify-center">
-                                    <QrCodeIcon className="w-3 h-3 mr-1"/> QR 보기
-                                </button>
-                                <button onClick={() => handleResetPassword(s.userId)} className="px-3 py-1.5 bg-red-50 text-red-600 text-xs rounded hover:bg-red-100">
-                                    비번 초기화
-                                </button>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            {selectedStudent && selectedStudent.account && (
-                <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4" onClick={() => setSelectedStudent(null)}>
-                    <div className="bg-white p-8 rounded-2xl max-w-sm w-full text-center" onClick={e => e.stopPropagation()}>
-                        <h3 className="text-2xl font-bold mb-2">{selectedStudent.name}의 QR 코드</h3>
-                        <p className="text-gray-500 mb-6 text-sm">학생 앱 로그인 또는 송금 시 사용하세요.</p>
-                        <div className="bg-white p-4 inline-block rounded-xl border-4 border-gray-100 mb-6">
-                             {/* QR Code generation using an external API for simplicity */}
-                            <img 
-                                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(generateQrUrl(window.location.origin, selectedStudent.account.qrToken || ''))}`} 
-                                alt="QR Code" 
-                                className="w-48 h-48"
-                            />
-                        </div>
-                        <p className="text-xs text-gray-400 break-all mb-6">{generateQrUrl(window.location.origin, selectedStudent.account.qrToken || '')}</p>
-                        <button onClick={() => setSelectedStudent(null)} className="w-full py-3 bg-gray-800 text-white rounded-xl font-bold">닫기</button>
-                    </div>
-                </div>
-            )}
-             <MessageModal 
-                isOpen={messageModal.isOpen}
-                type={messageModal.type}
-                message={messageModal.message}
-                onClose={() => setMessageModal({ ...messageModal, isOpen: false })}
-            />
         </div>
     );
 };

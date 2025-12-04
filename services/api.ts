@@ -675,7 +675,7 @@ const getFunds = async (): Promise<Fund[]> => {
     }));
 };
 
-const createFund = async (fund: Omit<Fund, 'id' | 'createdAt' | 'status'>): Promise<string> => {
+const createFund = async (fund: Omit<Fund, 'id' | 'createdAt' | 'status' | 'teacherId' | 'creatorName' | 'totalInvestedAmount' | 'investorCount'>): Promise<string> => {
     const { data, error } = await supabase.rpc('create_fund', {
         p_name: fund.name,
         p_description: fund.description,
