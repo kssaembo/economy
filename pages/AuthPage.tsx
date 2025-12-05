@@ -1,4 +1,5 @@
 
+
 import React, { useState, useContext, useEffect } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
@@ -287,16 +288,16 @@ const AuthPage: React.FC = () => {
 
                 {/* 
                     Button Container Strategy:
-                    1. Mobile Landscape ('landscape:'): Height 32vh (approx 1/2 of screen), Row layout.
-                    2. Tablet Landscape ('md:landscape:'): Height 30vh (approx 1/2 of screen), Row layout.
+                    1. Mobile Landscape ('landscape:'): Height 24vh (approx 3/4 of previous 32vh), Row layout.
+                    2. Tablet Landscape ('md:landscape:'): Height 22.5vh (approx 3/4 of previous 30vh), Row layout.
                 */}
                 <div className="w-full max-w-xs flex flex-col gap-4 
-                    landscape:flex-row landscape:max-w-5xl landscape:w-full landscape:px-4 landscape:gap-3 landscape:h-[32vh] landscape:items-stretch
-                    md:landscape:max-w-7xl md:landscape:px-8 md:landscape:gap-6 md:landscape:h-[30vh]">
+                    landscape:flex-row landscape:max-w-5xl landscape:w-full landscape:px-4 landscape:gap-3 landscape:h-[24vh] landscape:items-stretch
+                    md:landscape:max-w-7xl md:landscape:px-8 md:landscape:gap-6 md:landscape:h-[22.5vh]">
                     
                     <button 
                         onClick={() => { setLoginTarget({ role: Role.TEACHER, title: "교사 관리자", userId: 'teacher-01' }); setMode('login'); }}
-                        className="relative w-full py-6 rounded-2xl border-2 border-gray-400 shadow-lg overflow-hidden group transition-all duration-300 hover:shadow-xl hover:shadow-blue-400/30 hover:-translate-y-1.5 bg-[#EBEFF3]
+                        className="relative w-full py-4 rounded-2xl border-2 border-gray-400 shadow-lg overflow-hidden group transition-all duration-300 hover:shadow-xl hover:shadow-blue-400/30 hover:-translate-y-1.5 bg-[#EBEFF3]
                         landscape:flex-1 landscape:rounded-2xl landscape:py-0 
                         md:landscape:rounded-3xl">
                         <div className="shimmer absolute top-0 -left-full w-3/4 h-full bg-gradient-to-r from-transparent via-white/50 to-transparent transform -skew-x-12" />
@@ -309,7 +310,7 @@ const AuthPage: React.FC = () => {
                     </button>
                      <button
                         onClick={() => { setLoginTarget({ role: Role.BANKER, title: "은행원", userId: 'banker-01' }); setMode('login'); }}
-                        className="relative w-full py-6 rounded-2xl border-2 border-gray-400 shadow-lg overflow-hidden group transition-all duration-300 hover:shadow-xl hover:shadow-blue-400/30 hover:-translate-y-1.5 bg-[#EBEFF3]
+                        className="relative w-full py-4 rounded-2xl border-2 border-gray-400 shadow-lg overflow-hidden group transition-all duration-300 hover:shadow-xl hover:shadow-blue-400/30 hover:-translate-y-1.5 bg-[#EBEFF3]
                         landscape:flex-1 landscape:rounded-2xl landscape:py-0 
                         md:landscape:rounded-3xl">
                         <div className="shimmer absolute top-0 -left-full w-3/4 h-full bg-gradient-to-r from-transparent via-white/50 to-transparent transform -skew-x-12" />
@@ -320,7 +321,7 @@ const AuthPage: React.FC = () => {
                     </button>
                      <button
                         onClick={() => { setLoginTarget({ role: Role.MART, title: "마트", userId: 'mart-01' }); setMode('login'); }}
-                        className="relative w-full py-6 rounded-2xl border-2 border-gray-400 shadow-lg overflow-hidden group transition-all duration-300 hover:shadow-xl hover:shadow-blue-400/30 hover:-translate-y-1.5 bg-[#EBEFF3]
+                        className="relative w-full py-4 rounded-2xl border-2 border-gray-400 shadow-lg overflow-hidden group transition-all duration-300 hover:shadow-xl hover:shadow-blue-400/30 hover:-translate-y-1.5 bg-[#EBEFF3]
                         landscape:flex-1 landscape:rounded-2xl landscape:py-0 
                         md:landscape:rounded-3xl">
                         <div className="shimmer absolute top-0 -left-full w-3/4 h-full bg-gradient-to-r from-transparent via-white/50 to-transparent transform -skew-x-12" />
