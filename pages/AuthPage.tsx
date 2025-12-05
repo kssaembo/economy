@@ -288,46 +288,46 @@ const AuthPage: React.FC = () => {
 
                 {/* 
                     Button Container Strategy:
-                    1. Mobile Landscape ('landscape:'): Height 24vh (approx 3/4 of previous 32vh), Row layout.
-                    2. Tablet Landscape ('md:landscape:'): Height 22.5vh (approx 3/4 of previous 30vh), Row layout.
+                    1. Mobile Landscape ('landscape:'): Height 18vh (approx 3/4 of previous 24vh), Row layout.
+                    2. Tablet Landscape ('md:landscape:'): Height 17vh (approx 3/4 of previous 22.5vh), Row layout.
                 */}
                 <div className="w-full max-w-xs flex flex-col gap-4 
-                    landscape:flex-row landscape:max-w-5xl landscape:w-full landscape:px-4 landscape:gap-3 landscape:h-[24vh] landscape:items-stretch
-                    md:landscape:max-w-7xl md:landscape:px-8 md:landscape:gap-6 md:landscape:h-[22.5vh]">
+                    landscape:flex-row landscape:max-w-5xl landscape:w-full landscape:px-4 landscape:gap-3 landscape:h-[18vh] landscape:items-stretch
+                    md:landscape:max-w-7xl md:landscape:px-8 md:landscape:gap-6 md:landscape:h-[17vh]">
                     
                     <button 
                         onClick={() => { setLoginTarget({ role: Role.TEACHER, title: "교사 관리자", userId: 'teacher-01' }); setMode('login'); }}
-                        className="relative w-full py-4 rounded-2xl border-2 border-gray-400 shadow-lg overflow-hidden group transition-all duration-300 hover:shadow-xl hover:shadow-blue-400/30 hover:-translate-y-1.5 bg-[#EBEFF3]
+                        className="relative w-full py-3 rounded-2xl border-2 border-gray-400 shadow-lg overflow-hidden group transition-all duration-300 hover:shadow-xl hover:shadow-blue-400/30 hover:-translate-y-1.5 bg-[#EBEFF3]
                         landscape:flex-1 landscape:rounded-2xl landscape:py-0 
                         md:landscape:rounded-3xl">
                         <div className="shimmer absolute top-0 -left-full w-3/4 h-full bg-gradient-to-r from-transparent via-white/50 to-transparent transform -skew-x-12" />
                         <div className="relative z-10 flex flex-col items-center justify-center h-full">
-                            {/* Icon Size: Half of previous (w-32 -> w-16, etc) */}
-                            <MainAdminIcon className="w-16 h-16 mb-2 landscape:w-10 landscape:h-10 landscape:mb-1 md:landscape:w-24 md:landscape:h-24 md:landscape:mb-3"/>
-                            {/* Text Size: Mobile (Small) -> Tablet (Large) */}
-                            <span className="font-bold text-gray-800 text-xl landscape:text-sm md:landscape:text-2xl">교사 관리자</span>
+                            {/* Icon Size: 3/4 of previous (w-16 -> w-12, etc) */}
+                            <MainAdminIcon className="w-12 h-12 mb-2 landscape:w-8 landscape:h-8 landscape:mb-1 md:landscape:w-20 md:landscape:h-20 md:landscape:mb-3"/>
+                            {/* Text Size: Reduced */}
+                            <span className="font-bold text-gray-800 text-lg landscape:text-xs md:landscape:text-xl">교사 관리자</span>
                         </div>
                     </button>
                      <button
                         onClick={() => { setLoginTarget({ role: Role.BANKER, title: "은행원", userId: 'banker-01' }); setMode('login'); }}
-                        className="relative w-full py-4 rounded-2xl border-2 border-gray-400 shadow-lg overflow-hidden group transition-all duration-300 hover:shadow-xl hover:shadow-blue-400/30 hover:-translate-y-1.5 bg-[#EBEFF3]
+                        className="relative w-full py-3 rounded-2xl border-2 border-gray-400 shadow-lg overflow-hidden group transition-all duration-300 hover:shadow-xl hover:shadow-blue-400/30 hover:-translate-y-1.5 bg-[#EBEFF3]
                         landscape:flex-1 landscape:rounded-2xl landscape:py-0 
                         md:landscape:rounded-3xl">
                         <div className="shimmer absolute top-0 -left-full w-3/4 h-full bg-gradient-to-r from-transparent via-white/50 to-transparent transform -skew-x-12" />
                         <div className="relative z-10 flex flex-col items-center justify-center h-full">
-                            <MainBankIcon className="w-16 h-16 mb-2 landscape:w-10 landscape:h-10 landscape:mb-1 md:landscape:w-24 md:landscape:h-24 md:landscape:mb-3"/>
-                            <span className="font-bold text-gray-800 text-xl landscape:text-sm md:landscape:text-2xl">은행원</span>
+                            <MainBankIcon className="w-12 h-12 mb-2 landscape:w-8 landscape:h-8 landscape:mb-1 md:landscape:w-20 md:landscape:h-20 md:landscape:mb-3"/>
+                            <span className="font-bold text-gray-800 text-lg landscape:text-xs md:landscape:text-xl">은행원</span>
                         </div>
                     </button>
                      <button
                         onClick={() => { setLoginTarget({ role: Role.MART, title: "마트", userId: 'mart-01' }); setMode('login'); }}
-                        className="relative w-full py-4 rounded-2xl border-2 border-gray-400 shadow-lg overflow-hidden group transition-all duration-300 hover:shadow-xl hover:shadow-blue-400/30 hover:-translate-y-1.5 bg-[#EBEFF3]
+                        className="relative w-full py-3 rounded-2xl border-2 border-gray-400 shadow-lg overflow-hidden group transition-all duration-300 hover:shadow-xl hover:shadow-blue-400/30 hover:-translate-y-1.5 bg-[#EBEFF3]
                         landscape:flex-1 landscape:rounded-2xl landscape:py-0 
                         md:landscape:rounded-3xl">
                         <div className="shimmer absolute top-0 -left-full w-3/4 h-full bg-gradient-to-r from-transparent via-white/50 to-transparent transform -skew-x-12" />
                         <div className="relative z-10 flex flex-col items-center justify-center h-full">
-                            <MainMartIcon className="w-16 h-16 mb-2 landscape:w-10 landscape:h-10 landscape:mb-1 md:landscape:w-24 md:landscape:h-24 md:landscape:mb-3"/>
-                            <span className="font-bold text-gray-800 text-xl landscape:text-sm md:landscape:text-2xl">마트</span>
+                            <MainMartIcon className="w-12 h-12 mb-2 landscape:w-8 landscape:h-8 landscape:mb-1 md:landscape:w-20 md:landscape:h-20 md:landscape:mb-3"/>
+                            <span className="font-bold text-gray-800 text-lg landscape:text-xs md:landscape:text-xl">마트</span>
                         </div>
                     </button>
                     <button
