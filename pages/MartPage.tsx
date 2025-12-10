@@ -7,22 +7,46 @@ import { LogoutIcon, StudentIcon, CheckIcon, ErrorIcon, BackIcon, TransferIcon, 
 
 type MartView = 'pos' | 'transfer' | 'history';
 
+// Message Modal Component
+const MessageModal: React.FC<{
+    isOpen: boolean;
+    type: 'success' | 'error';
+    message: string;
+    onClose: () => void;
+}> = ({ isOpen, type, message, onClose }) => {
+    if (!isOpen) return null;
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm flex flex-col items-center text-center">
+                {type === 'success' ? <CheckIcon className="w-12 h-12 text-green-500 mb-4" /> : <ErrorIcon className="w-12 h-12 text-red-500 mb-4" />}
+                <h3 className={`text-xl font-bold mb-2 ${type === 'success' ? 'text-gray-900' : 'text-red-600'}`}>
+                    {type === 'success' ? '성공' : '오류'}
+                </h3>
+                <p className="text-gray-600 mb-6 whitespace-pre-wrap">{message}</p>
+                <button onClick={onClose} className="w-full px-4 py-2 bg-gray-200 text-gray-800 rounded-lg font-medium hover:bg-gray-300">
+                    확인
+                </button>
+            </div>
+        </div>
+    );
+};
+
 const MartPage: React.FC = () => {
     const { currentUser, logout } = useContext(AuthContext);
     const [view, setView] = useState<MartView>('pos');
     const [martAccount, setMartAccount] = useState<Account | null>(null);
     const [loading, setLoading] = useState(true);
 
-    const fetchMartAccount = useCallback(async () => {
+    const fetchMartAccount = useCallback(async (silent = false) => {
         if (currentUser) {
-            setLoading(true);
+            if (!silent) setLoading(true);
             try {
                 const acc = await api.getStudentAccountByUserId(currentUser.userId);
                 setMartAccount(acc);
             } catch (error) {
                 console.error("Failed to fetch mart account", error);
             } finally {
-                setLoading(false);
+                if (!silent) setLoading(false);
             }
         }
     }, [currentUser]);
@@ -40,7 +64,8 @@ const MartPage: React.FC = () => {
             case 'pos':
                 return <PosView currentUser={currentUser} />;
             case 'transfer':
-                return <TransferView martAccount={martAccount} refreshAccount={fetchMartAccount} />;
+                // Pass silent refresh to prevent unmounting TransferView (and hiding modal)
+                return <TransferView martAccount={martAccount} refreshAccount={() => fetchMartAccount(true)} />;
             case 'history':
                 return <HistoryView martAccount={martAccount} />;
             default:
@@ -98,7 +123,7 @@ const MartPage: React.FC = () => {
 };
 
 
-// --- POS View ---
+// ... (PosView, PaymentView - Keep them as is)
 const PosView: React.FC<{currentUser: User | null}> = ({currentUser}) => {
     type PosSubView = 'student-select' | 'payment' | 'result';
 
@@ -284,44 +309,47 @@ const TransferView: React.FC<{ martAccount: Account, refreshAccount: () => void 
     const [accountId, setAccountId] = useState('');
     const [amount, setAmount] = useState('');
     const [loading, setLoading] = useState(false);
-    const [result, setResult] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+    
+    // Modal State
+    const [messageModal, setMessageModal] = useState<{ isOpen: boolean, type: 'success' | 'error', text: string }>({ 
+        isOpen: false, type: 'success', text: '' 
+    });
 
     const handleTransfer = async () => {
         if (!amount || parseInt(amount) <= 0) {
-            setResult({ type: 'error', text: '금액을 올바르게 입력해주세요.' });
+            setMessageModal({ isOpen: true, type: 'error', text: '금액을 올바르게 입력해주세요.' });
             return;
         }
 
         setLoading(true);
-        setResult(null);
 
         try {
+            let message = '';
             if (target === 'student') {
                 const fullAccountId = `권쌤은행 ${accountId}`;
                 if (!accountId) throw new Error('계좌번호를 입력해주세요.');
 
-                const message = await api.martTransfer(fullAccountId, parseInt(amount), 'TO_STUDENT');
-                setResult({ type: 'success', text: message });
+                message = await api.martTransfer(fullAccountId, parseInt(amount), 'TO_STUDENT');
             } else {
                 if (!currentUser) throw new Error('로그인 정보가 없습니다.');
                 
                 const teacherAcc = await api.getTeacherAccount();
                 if (!teacherAcc) throw new Error('교사(국고) 계좌를 찾을 수 없습니다.');
                 
-                const message = await api.transfer(
+                message = await api.transfer(
                     currentUser.userId, 
-                    teacherAcc.id, 
+                    teacherAcc.accountId, 
                     parseInt(amount), 
                     '마트 수익금 송금'
                 );
-                setResult({ type: 'success', text: message });
             }
             
+            setMessageModal({ isOpen: true, type: 'success', text: message });
             refreshAccount();
             setAccountId('');
             setAmount('');
         } catch (err: any) {
-            setResult({ type: 'error', text: err.message });
+            setMessageModal({ isOpen: true, type: 'error', text: err.message });
         } finally {
             setLoading(false);
         }
@@ -338,13 +366,13 @@ const TransferView: React.FC<{ martAccount: Account, refreshAccount: () => void 
 
                 <div className="flex bg-gray-100 p-1 rounded-lg mb-6">
                     <button 
-                        onClick={() => { setTarget('student'); setResult(null); }}
+                        onClick={() => { setTarget('student'); }}
                         className={`flex-1 py-2 text-sm font-bold rounded-md transition-colors ${target === 'student' ? 'bg-white shadow text-[#2B548F]' : 'text-gray-500 hover:text-gray-700'}`}
                     >
                         학생에게 송금
                     </button>
                     <button 
-                        onClick={() => { setTarget('teacher'); setResult(null); }}
+                        onClick={() => { setTarget('teacher'); }}
                         className={`flex-1 py-2 text-sm font-bold rounded-md transition-colors ${target === 'teacher' ? 'bg-white shadow text-[#2B548F]' : 'text-gray-500 hover:text-gray-700'}`}
                     >
                         권쌤(국고)에게 송금
@@ -375,23 +403,26 @@ const TransferView: React.FC<{ martAccount: Account, refreshAccount: () => void 
                         <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0" className="w-full p-3 border rounded-lg mt-1" />
                     </div>
                 </div>
-                {result && (
-                    <div className={`mt-4 p-3 rounded-lg flex items-center ${result.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                        {result.type === 'success' ? <CheckIcon className="w-5 h-5 mr-2" /> : <ErrorIcon className="w-5 h-5 mr-2" />}
-                        <p className="text-sm">{result.text}</p>
-                    </div>
-                )}
+                
                 <button onClick={handleTransfer} disabled={loading} className="mt-6 w-full p-3 bg-[#2B548F] text-white font-bold rounded-lg disabled:bg-gray-400">
                     {loading ? '송금 중...' : '확인'}
                 </button>
             </div>
+            
+            <MessageModal 
+                isOpen={messageModal.isOpen}
+                type={messageModal.type}
+                message={messageModal.text}
+                onClose={() => setMessageModal(prev => ({ ...prev, isOpen: false }))}
+            />
         </div>
     );
 };
 
 
-// --- History View ---
+// --- HistoryView, NavButton, DesktopNavButton - keep as is)
 const HistoryView: React.FC<{ martAccount: Account }> = ({ martAccount }) => {
+    // ...
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(true);
 

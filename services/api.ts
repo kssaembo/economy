@@ -5,32 +5,67 @@ import { Role, User, Account, StockProduct, StockProductWithDetails, StudentStoc
 const handleSupabaseError = (error: any, context: string) => {
     if (error) {
         console.error(`Error in ${context}:`, error);
-        // Try to parse a more specific message from Supabase RPC errors
+        
+        // 1. 함수가 없을 때 (404 Not Found / PGRST202)
+        if (error.code === 'PGRST202' || error.message.includes('Could not find the function')) {
+             throw new Error(`Supabase에 해당 함수가 없습니다. (${context})\nSQL Editor에서 함수를 업데이트해주세요.`);
+        }
+        
+        // 2. 권한 문제 (RLS)
+        if (error.code === '42501' || error.message.includes('permission denied') || error.message.includes('violates row-level security policy')) {
+             throw new Error('권한이 없습니다 (RLS Error). 관리자에게 문의하거나 함수에 SECURITY DEFINER를 설정하세요.');
+        }
+
+        // 3. RPC 함수 매개변수 불일치 등
+        if (error.code === '42883') {
+             throw new Error(`함수 매개변수가 일치하지 않습니다. (${context})\nSupabase SQL Editor에서 함수 정의를 확인해주세요.`);
+        }
+
+        // 4. 데이터 타입 불일치 (22P02) - UUID/Text 등
+        if (error.code === '22P02') {
+             throw new Error(`데이터 형식 오류입니다. (${context})\n입력된 데이터가 DB 타입과 맞지 않습니다. (예: 텍스트 ID를 UUID로 처리 시도)\n개발자 도구 콘솔을 확인하세요.`);
+        }
+
+        // 5. 컬럼 없음 (42703) - SQL에서 참조하는 컬럼이 테이블에 없을 때
+        if (error.code === '42703') {
+             // Extract column name if possible
+             const match = error.message.match(/column "(.+?)"/);
+             const colName = match ? match[1] : '알 수 없는 컬럼';
+             throw new Error(`데이터베이스 스키마 오류: '${colName}' 컬럼이 테이블에 존재하지 않습니다.\nSQL 함수가 해당 컬럼을 참조하고 있습니다.`);
+        }
+
+        // 6. NULL 제약 조건 위반 (23502)
+        if (error.code === '23502') {
+             const match = error.message.match(/column "(.+?)"/);
+             const colName = match ? match[1] : '데이터';
+             throw new Error(`데이터베이스 오류: 필수 항목(${colName})이 누락되었습니다.\nSQL 함수에서 해당 필드 값을 생성하거나 전달하는지 확인하세요.`);
+        }
+
+        // 7. 기타 DB 에러 상세 파싱
         if (error.message.includes('Database error saving new record') || error.message.includes('error running function')) {
             const match = error.message.match(/DETAIL: (.*)/) || error.message.match(/error: (.*)/);
             if (match && match[1]) {
                 throw new Error(match[1]);
             }
         }
-        // 권한 에러나 함수 없음 에러에 대한 친절한 메시지
-        if (error.code === '42883') {
-             throw new Error('기능(RPC)을 찾을 수 없습니다. Supabase SQL Editor에서 함수를 생성/업데이트해주세요.');
-        }
-        if (error.code === '42501' || error.message.includes('permission denied')) {
-             throw new Error('권한이 없습니다. Supabase에서 "GRANT EXECUTE" 권한 설정을 확인해주세요.');
-        }
-        if (error.message.includes('invalid input syntax for type uuid')) {
-             throw new Error('시스템 오류: 계좌 ID 형식이 잘못되었습니다. (DB 함수 변수 타입 수정 필요)');
-        }
-        if (error.message.includes('invalid input value for enum transaction_type')) {
-             throw new Error('DB 업데이트 필요: 트랜잭션 타입(FundJoin/FundPayout)이 누락되었습니다. Supabase SQL에서 ENUM을 추가해주세요.');
-        }
         
         throw new Error(error.message || `An error occurred during ${context}.`);
     }
 };
 
-// --- User & Auth ---
+const uuidv4 = () => {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        try {
+            return crypto.randomUUID();
+        } catch (e) {
+            // Fallback if crypto.randomUUID fails (e.g. insecure context)
+        }
+    }
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+};
 
 const login = async (userId: string): Promise<User | null> => {
     const { data, error } = await supabase
@@ -93,20 +128,17 @@ const getUsersByRole = async (role: Role): Promise<User[]> => {
 };
 
 const addStudent = async (name: string, grade: number, classNum: number, number: number): Promise<void> => {
-    const { data, error } = await supabase.rpc('add_student_and_account', {
+    const userId = uuidv4();
+
+    const { error } = await supabase.rpc('add_student', {
+        p_user_id: userId,
         p_name: name,
         p_grade: grade,
         p_class: classNum,
         p_number: number
     });
-    
+
     handleSupabaseError(error, 'addStudent');
-    
-    // Check if data is an object and explicitly has success: false. 
-    // This prevents errors when the RPC returns a scalar (like a UUID string) or void/null on success.
-    if (data && typeof data === 'object' && 'success' in data && !data.success) {
-        throw new Error(data.message || '학생 추가 실패');
-    }
 };
 
 const deleteStudents = async (userIds: string[]): Promise<string> => {
@@ -114,11 +146,10 @@ const deleteStudents = async (userIds: string[]): Promise<string> => {
     const errors: string[] = [];
     let lastErrorMsg = "";
 
-    console.log("Deleting students:", userIds); // 디버깅용 로그
+    console.log("Deleting students:", userIds);
 
     for (const userId of userIds) {
         try {
-            // Call the backend RPC function which has SECURITY DEFINER to bypass RLS
             const { error } = await supabase.rpc('delete_student', { p_user_id: userId });
             
             if (error) {
@@ -129,18 +160,17 @@ const deleteStudents = async (userIds: string[]): Promise<string> => {
         } catch (error: any) {
             console.error(`Failed to delete student ${userId}:`, error);
             lastErrorMsg = error.message || JSON.stringify(error);
-            // 특정 에러 코드 처리 (42883: 함수 없음, 42501: 권한 없음)
+            
             if (error.code === '42883') {
-                lastErrorMsg = "백엔드에 'delete_student' 함수가 없습니다. SQL을 실행해주세요.";
+                lastErrorMsg = "백엔드에 'delete_student' 함수가 없습니다.";
             } else if (error.code === '42501') {
-                lastErrorMsg = "삭제 권한이 없습니다. SQL에서 GRANT EXECUTE 명령어를 실행해주세요.";
+                lastErrorMsg = "삭제 권한이 없습니다.";
             }
             errors.push(userId);
         }
     }
 
     if (successCount === 0 && errors.length > 0) {
-        // Throw the specific error from the DB to help debugging
         throw new Error(`삭제 실패: ${lastErrorMsg}`);
     }
 
@@ -160,14 +190,13 @@ const getStudentAccountByUserId = async (userId: string): Promise<Account | null
         .select('*')
         .eq('userId', userId)
         .single();
-    if (error && error.code !== 'PGRST116') { // Ignore 'No rows found' error
+    if (error && error.code !== 'PGRST116') {
         handleSupabaseError(error, 'getStudentAccountByUserId');
     }
     return data;
 };
 
 const getTeacherAccount = async (): Promise<Account | null> => {
-    // 1. Find the first user with 'teacher' role
     const { data: users, error: userError } = await supabase
         .from('users')
         .select('userId')
@@ -176,7 +205,6 @@ const getTeacherAccount = async (): Promise<Account | null> => {
     
     if (userError || !users || users.length === 0) return null;
     
-    // 2. Get the account for that user
     const { data: account, error: accountError } = await supabase
         .from('accounts')
         .select('*')
@@ -221,17 +249,23 @@ const getRecipientDetailsByAccountId = async (accountId: string): Promise<{ user
     return { user: userData, account: accountData };
 };
 
-const transfer = async (senderUserId: string, recipientAccountPkId: string, amount: number, memo?: string): Promise<string> => {
+const transfer = async (senderUserId: string, recipientAccountNumber: string, amount: number, memo?: string): Promise<string> => {
+    if (!senderUserId) throw new Error("보내는 사람 정보가 없습니다.");
+    if (!recipientAccountNumber) throw new Error("받는 사람 계좌번호가 없습니다.");
+    if (amount <= 0) throw new Error("송금 금액이 올바르지 않습니다.");
+
     const { data, error } = await supabase.rpc('transfer_funds', {
         p_sender_user_id: senderUserId,
-        p_receiver_account_pk_id: recipientAccountPkId, // Use the primary key
+        p_receiver_account_number: recipientAccountNumber,
         p_transfer_amount: amount,
         p_memo: memo
     });
     handleSupabaseError(error, 'transfer');
-    // Ensure the return value is a string to prevent UI rendering errors.
-    const message = data?.message || data;
-    return typeof message === 'string' ? message : '';
+    
+    if (typeof data === 'object' && data !== null && 'message' in data) {
+        return data.message;
+    }
+    return typeof data === 'string' ? data : '송금이 완료되었습니다.';
 };
 
 const studentWithdraw = async (userId: string, amount: number, target: 'mart' | 'teacher'): Promise<string> => {
@@ -241,7 +275,6 @@ const studentWithdraw = async (userId: string, amount: number, target: 'mart' | 
         p_target_role: target,
     });
     handleSupabaseError(error, 'studentWithdraw');
-    // Ensure the return value is a string to prevent UI rendering errors.
     const message = data?.message || data;
     return typeof message === 'string' ? message : '';
 };
@@ -280,30 +313,30 @@ const martTransfer = async (studentAccountId: string, amount: number, direction:
 // --- Stocks ---
 
 const getStockProducts = async (): Promise<StockProductWithDetails[]> => {
-    // 1. Get complex details (valuation, total quantity) from RPC
-    const { data: rpcData, error: rpcError } = await supabase.rpc('get_stock_products_with_details');
-    if (rpcError) {
-        console.error("RPC Error:", rpcError);
-        throw new Error(rpcError.message);
-    }
-
-    // 2. Get fresh price and volatility directly from table to ensure latest data
     const { data: tableData, error: tableError } = await supabase
         .from('stock_products')
-        .select('id, currentPrice, volatility');
+        .select('id, name, currentPrice, volatility');
     
     if (tableError) {
         console.error("Table Fetch Error:", tableError);
         throw new Error(tableError.message);
     }
 
-    // 3. Merge data
-    const mergedData = (rpcData || []).map((rpcItem: any) => {
-        const freshItem = tableData.find((t: any) => t.id === rpcItem.id);
+    const { data: rpcData, error: rpcError } = await supabase.rpc('get_stock_products_with_details');
+    if (rpcError) {
+        console.warn("RPC Error (non-critical):", rpcError);
+    }
+
+    const mergedData = (tableData || []).map((tableItem: any) => {
+        const rpcItem = (rpcData || []).find((r: any) => r.id === tableItem.id);
         return {
-            ...rpcItem,
-            currentPrice: freshItem ? freshItem.currentPrice : rpcItem.currentPrice,
-            volatility: freshItem ? freshItem.volatility : (rpcItem.volatility || 0.01)
+            id: tableItem.id,
+            name: tableItem.name,
+            currentPrice: tableItem.currentPrice,
+            volatility: tableItem.volatility || 0.01,
+            stockAccountId: rpcItem?.stockAccountId || '',
+            totalQuantity: rpcItem?.totalQuantity || 0,
+            valuation: rpcItem?.valuation || 0
         };
     });
 
@@ -333,15 +366,13 @@ const getStockHistory = async (stockId: string): Promise<StockHistory[]> => {
         .select('*')
         .eq('stockId', stockId)
         .order('createdAt', { ascending: true })
-        .limit(100); // Limit to recent 100 points
+        .limit(100);
         
     let history: StockHistory[] = [];
 
     if (error) {
-        // We don't throw error if table doesn't exist yet for backwards compatibility
         console.warn("Could not fetch stock history:", error.message);
     } else {
-        // Normalize keys to handle case sensitivity (Postgres might return lowercase)
         history = (data || []).map((item: any) => ({
             id: item.id,
             stockId: item.stockId || item.stockid, 
@@ -350,7 +381,6 @@ const getStockHistory = async (stockId: string): Promise<StockHistory[]> => {
         }));
     }
 
-    // Fallback: If no history exists (e.g., initial state), fetch current price to show at least one point
     if (history.length === 0) {
         const { data: stock } = await supabase
             .from('stock_products')
@@ -388,24 +418,36 @@ const sellStock = async (userId: string, stockId: string, quantity: number): Pro
         p_quantity: quantity
     });
     handleSupabaseError(error, 'sellStock');
-    // sell_stock returns a string message now
     return typeof data === 'string' ? data : '주식을 성공적으로 판매했습니다.';
 };
 
 const addStockProduct = async (name: string, price: number): Promise<string> => {
-    const { data, error } = await supabase.rpc('add_stock_product', { p_name: name, p_initial_price: price });
+    const { data, error } = await supabase.rpc('add_stock_product', {
+        p_name: name,
+        p_initial_price: price
+    });
     handleSupabaseError(error, 'addStockProduct');
-    return data.message;
+    return typeof data === 'string' ? data : '새로운 주식 종목이 추가되었습니다.';
 };
 
 const updateStockPrice = async (stockId: string, newPrice: number): Promise<string> => {
-    const { data, error } = await supabase.rpc('update_stock_price', { p_stock_id: stockId, p_new_price: newPrice });
-    handleSupabaseError(error, 'updateStockPrice');
-    return data.message;
+    const { error: updateError } = await supabase
+        .from('stock_products')
+        .update({ currentPrice: newPrice })
+        .eq('id', stockId);
+    
+    if (updateError) handleSupabaseError(updateError, 'updateStockPrice (Table)');
+
+    const { error: historyError } = await supabase
+        .from('stock_price_history')
+        .insert({ stockId: stockId, price: newPrice });
+    
+    if (historyError) console.error("History insert failed", historyError);
+
+    return '가격이 변경되었습니다.';
 };
 
 const updateStockVolatility = async (stockId: string, volatility: number): Promise<void> => {
-    // RLS가 켜져 있으므로 직접 업데이트(.update)는 실패합니다. RPC 함수를 사용해야 합니다.
     const { error } = await supabase.rpc('update_stock_volatility', {
         p_stock_id: stockId,
         p_volatility: volatility
@@ -414,9 +456,13 @@ const updateStockVolatility = async (stockId: string, volatility: number): Promi
 };
 
 const deleteStockProducts = async (stockIds: string[]): Promise<string> => {
-    const { data, error } = await supabase.rpc('delete_stock_products', { p_stock_ids: stockIds });
-    handleSupabaseError(error, 'deleteStockProducts');
-    return data.message;
+    const { error } = await supabase
+        .from('stock_products')
+        .delete()
+        .in('id', stockIds);
+        
+    handleSupabaseError(error, 'deleteStockProducts (Table)');
+    return '선택한 종목이 삭제되었습니다.';
 };
 
 const getStockHolders = async (stockId: string): Promise<{ studentName: string, quantity: number }[]> => {
@@ -424,7 +470,6 @@ const getStockHolders = async (stockId: string): Promise<{ studentName: string, 
     handleSupabaseError(error, 'getStockHolders');
     return data || [];
 };
-
 
 // --- Savings ---
 
@@ -462,12 +507,13 @@ const joinSavings = async (userId: string, productId: string, amount: number): P
 };
 
 const cancelSavings = async (userId: string, savingId: string): Promise<string> => {
-     const { error } = await supabase.rpc('cancel_savings', {
+    // FIXED: Use unambiguous function name 'cancel_student_savings' to match the database and error logs
+    const { data, error } = await supabase.rpc('cancel_student_savings', {
         p_user_id: userId,
         p_saving_id: savingId
     });
     handleSupabaseError(error, 'cancelSavings');
-    return '적금을 성공적으로 해지했습니다.';
+    return typeof data === 'string' ? data : '적금을 성공적으로 해지했습니다.';
 };
 
 const addSavingsProduct = async (product: Omit<SavingsProduct, 'id'>): Promise<string> => {
@@ -507,50 +553,33 @@ const addJob = async (name: string, description: string, salary: number): Promis
     return '새로운 직업이 추가되었습니다.';
 };
 
+const updateJob = async (id: string, name: string, description: string, salary: number): Promise<void> => {
+    const { error } = await supabase
+        .from('jobs')
+        .update({ jobName: name, description: description, salary: salary })
+        .eq('id', id);
+    handleSupabaseError(error, 'updateJob');
+};
+
 const deleteJob = async (jobId: string): Promise<string> => {
-    // Reuse plural function for consistency
     return deleteJobs([jobId]);
 };
 
 const deleteJobs = async (jobIds: string[]): Promise<string> => {
     let successCount = 0;
     const errors: string[] = [];
-    let lastErrorMsg = "";
-
     console.log("Deleting jobs:", jobIds);
-
     for (const jobId of jobIds) {
         try {
-            // Call the backend RPC function which has SECURITY DEFINER
             const { error } = await supabase.rpc('delete_job', { p_job_id: jobId });
-            
-            if (error) {
-                 console.error(`Supabase RPC Error for job ${jobId}:`, error);
-                 throw error;
-            }
+            if (error) throw error;
             successCount++;
         } catch (error: any) {
-            console.error(`Failed to delete job ${jobId}:`, error);
-            lastErrorMsg = error.message || JSON.stringify(error);
-             if (error.code === '42883') {
-                lastErrorMsg = "백엔드에 'delete_job' 함수가 없습니다. SQL을 실행해주세요.";
-            } else if (error.code === '42501') {
-                lastErrorMsg = "삭제 권한이 없습니다. SQL에서 GRANT EXECUTE 명령어를 실행해주세요.";
-            }
             errors.push(jobId);
         }
     }
-    
-    if (successCount === 0 && errors.length > 0) {
-         throw new Error(`삭제 실패: ${lastErrorMsg}`);
-    }
-    
-    let message = `${successCount}개의 직업을 삭제했습니다.`;
-    if (errors.length > 0) {
-        message += `\n삭제 실패 (ID): ${errors.join(', ')}`;
-    }
-    
-    return message;
+    if (successCount === 0 && errors.length > 0) throw new Error("삭제 실패");
+    return `${successCount}개의 직업을 삭제했습니다.`;
 };
 
 const manageJobAssignment = async (jobId: string, studentUserIds: string[]): Promise<void> => {
@@ -581,15 +610,9 @@ const getTaxes = async (): Promise<TaxItemWithRecipients[]> => {
         .from('tax_items')
         .select('*')
         .order('created_at', { ascending: false });
-    
     if (taxError) throw new Error(taxError.message);
-
-    const { data: recipients, error: rcptError } = await supabase
-        .from('tax_recipients')
-        .select('*');
-
+    const { data: recipients, error: rcptError } = await supabase.from('tax_recipients').select('*');
     if (rcptError) throw new Error(rcptError.message);
-
     return taxes.map((tax: any) => ({
         id: tax.id,
         name: tax.name,
@@ -609,12 +632,7 @@ const getTaxes = async (): Promise<TaxItemWithRecipients[]> => {
 };
 
 const createTax = async (name: string, amount: number, dueDate: string, studentIds: string[]): Promise<string> => {
-    const { data, error } = await supabase.rpc('create_tax', {
-        p_name: name,
-        p_amount: amount,
-        p_due_date: dueDate,
-        p_student_ids: studentIds
-    });
+    const { data, error } = await supabase.rpc('create_tax', { p_name: name, p_amount: amount, p_due_date: dueDate, p_student_ids: studentIds });
     handleSupabaseError(error, 'createTax');
     return data;
 };
@@ -631,9 +649,7 @@ const getMyUnpaidTaxes = async (userId: string): Promise<{ recipientId: string, 
         .select('*, tax_items(*)')
         .eq('student_user_id', userId)
         .eq('is_paid', false);
-    
     handleSupabaseError(error, 'getMyUnpaidTaxes');
-    
     return data.map((r: any) => ({
         recipientId: r.id,
         taxId: r.tax_id,
@@ -644,20 +660,15 @@ const getMyUnpaidTaxes = async (userId: string): Promise<{ recipientId: string, 
 };
 
 const payTax = async (userId: string, taxId: string): Promise<string> => {
-     const { data, error } = await supabase.rpc('pay_tax', {
-        p_user_id: userId,
-        p_tax_id: taxId
-    });
+     const { data, error } = await supabase.rpc('pay_tax', { p_user_id: userId, p_tax_id: taxId });
     handleSupabaseError(error, 'payTax');
     return data;
 };
 
 // --- Funds ---
-
 const getFunds = async (): Promise<Fund[]> => {
     const { data, error } = await supabase.rpc('get_funds_with_stats');
     handleSupabaseError(error, 'getFunds');
-    // Normalize case sensitivity issues if any
     return (data || []).map((f: any) => ({
         ...f,
         creatorId: f.creatorId || f.creator_student_id,
@@ -692,20 +703,13 @@ const createFund = async (fund: Omit<Fund, 'id' | 'createdAt' | 'status' | 'teac
 };
 
 const joinFund = async (userId: string, fundId: string, units: number): Promise<string> => {
-    const { data, error } = await supabase.rpc('join_fund', {
-        p_user_id: userId,
-        p_fund_id: fundId,
-        p_units: units
-    });
+    const { data, error } = await supabase.rpc('join_fund', { p_user_id: userId, p_fund_id: fundId, p_units: units });
     handleSupabaseError(error, 'joinFund');
     return data.message;
 };
 
 const settleFund = async (fundId: string, resultStatus: FundStatus): Promise<string> => {
-    const { data, error } = await supabase.rpc('settle_fund', {
-        p_fund_id: fundId,
-        p_status: resultStatus
-    });
+    const { data, error } = await supabase.rpc('settle_fund', { p_fund_id: fundId, p_status: resultStatus });
     handleSupabaseError(error, 'settleFund');
     return data.message;
 };
@@ -715,9 +719,7 @@ const getMyFundInvestments = async (userId: string): Promise<FundInvestment[]> =
         .from('fund_investments')
         .select('*, funds(*)')
         .eq('student_user_id', userId);
-    
     handleSupabaseError(error, 'getMyFundInvestments');
-    
     return (data || []).map((inv: any) => ({
         id: inv.id,
         fundId: inv.fund_id,
@@ -737,7 +739,6 @@ const getMyFundInvestments = async (userId: string): Promise<FundInvestment[]> =
         } : undefined
     }));
 };
-
 
 export const api = {
     login,
@@ -776,6 +777,7 @@ export const api = {
     getSavingsEnrollees,
     getJobs,
     addJob,
+    updateJob,
     deleteJob,
     deleteJobs,
     manageJobAssignment,

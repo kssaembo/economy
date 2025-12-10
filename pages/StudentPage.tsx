@@ -1,4 +1,5 @@
 
+// ... (imports)
 import React, { useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
@@ -6,6 +7,7 @@ import { Account, Transaction, StockProduct, StudentStock, SavingsProduct, Stude
 import { HomeIcon, TransferIcon, NewStockIcon, NewPiggyBankIcon, BackIcon, XIcon, CheckIcon, ErrorIcon, PlusIcon, MinusIcon, NewJobIcon, NewTaxIcon, LogoutIcon, NewFundIcon, ArrowUpIcon, ArrowDownIcon } from '../components/icons';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
+// ... (types and interfaces)
 type View = 'home' | 'transfer' | 'stocks' | 'savings' | 'funds';
 type NotificationType = { type: 'success' | 'error', text: string };
 
@@ -13,7 +15,7 @@ interface StudentPageProps {
     initialView?: string;
 }
 
-// --- Custom Modals for Student Page ---
+// ... (Modals: ConfirmModal, MessageModal, ChangePasswordModal - Keep them as is)
 const ConfirmModal: React.FC<{
     isOpen: boolean;
     title: string;
@@ -63,6 +65,7 @@ const MessageModal: React.FC<{
 };
 
 const ChangePasswordModal: React.FC<{ isOpen: boolean, onClose: () => void }> = ({ isOpen, onClose }) => {
+    // ... (Keep existing implementation)
     const { currentUser } = useContext(AuthContext);
     const [currentPw, setCurrentPw] = useState('');
     const [newPw, setNewPw] = useState('');
@@ -119,9 +122,9 @@ const ChangePasswordModal: React.FC<{ isOpen: boolean, onClose: () => void }> = 
     );
 };
 
-
-// --- Main Student Page Component ---
+// ... (StudentPage component - Keep mostly same, only update TransferView)
 const StudentPage: React.FC<StudentPageProps> = ({ initialView }) => {
+    // ... (Keep existing implementation)
     const { currentUser, logout } = useContext(AuthContext);
     
     // initialView가 유효한 View 타입이면 그것을 사용하고, 아니면 'transfer'(송금)를 기본값으로 사용
@@ -170,11 +173,11 @@ const StudentPage: React.FC<StudentPageProps> = ({ initialView }) => {
         if (loading || !currentUser || !account) return <div className="text-center p-8">로딩 중...</div>;
         switch (view) {
             case 'home':
-                return <HomeView account={account} currentUser={currentUser} refreshAccount={fetchAccount} />;
+                return <HomeView account={account} currentUser={currentUser} refreshAccount={fetchAccount} showNotification={showNotification} />;
             case 'transfer':
                 return <TransferView currentUser={currentUser} account={account} refreshAccount={fetchAccount} showNotification={showNotification} />;
             case 'stocks':
-                return <StocksView currentUser={currentUser} refreshAccount={fetchAccount} />;
+                return <StocksView currentUser={currentUser} refreshAccount={fetchAccount} showNotification={showNotification} />;
             case 'funds':
                 return <FundView currentUser={currentUser} refreshAccount={fetchAccount} />;
             case 'savings':
@@ -233,11 +236,17 @@ const StudentPage: React.FC<StudentPageProps> = ({ initialView }) => {
             </div>
 
             {/* Global Notification Modal */}
-            {notification && notification.type === 'success' && (
+            {notification && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-sm text-center">
-                        <CheckIcon className="w-16 h-16 text-green-500 mx-auto mb-4" />
-                        <h3 className="text-2xl font-bold mb-2">성공!</h3>
+                        {notification.type === 'success' ? (
+                            <CheckIcon className="w-16 h-16 text-green-500 mx-auto mb-4" />
+                        ) : (
+                            <ErrorIcon className="w-16 h-16 text-red-500 mx-auto mb-4" />
+                        )}
+                        <h3 className={`text-2xl font-bold mb-2 ${notification.type === 'success' ? 'text-gray-900' : 'text-red-600'}`}>
+                            {notification.type === 'success' ? '성공!' : '오류'}
+                        </h3>
                         <p className="text-gray-700">{notification.text}</p>
                     </div>
                 </div>
@@ -246,7 +255,7 @@ const StudentPage: React.FC<StudentPageProps> = ({ initialView }) => {
     );
 };
 
-// --- Common Components ---
+// ... (Common Components: NavButton, DesktopNavButton - Keep them as is)
 const NavButton: React.FC<{ label: string, Icon: React.FC<any>, active: boolean, onClick: () => void }> = ({ label, Icon, active, onClick }) => (
     <button onClick={onClick} className={`flex flex-col items-center justify-center w-full py-2 rounded-lg transition-colors ${active ? 'text-indigo-600' : 'text-gray-500 hover:bg-indigo-50'}`}>
         <Icon className="w-6 h-6 mb-1" />
@@ -261,12 +270,16 @@ const DesktopNavButton: React.FC<{ label: string, Icon: React.FC<any>, active: b
     </button>
 );
 
-// --- Home View ---
-const HomeView: React.FC<{ account: Account, currentUser: User, refreshAccount: () => void }> = ({ account, currentUser, refreshAccount }) => {
+// ... (HomeView - Keep mostly same)
+const HomeView: React.FC<{ account: Account, currentUser: User, refreshAccount: () => void, showNotification: (type: 'success'|'error', text: string) => void }> = ({ account, currentUser, refreshAccount, showNotification }) => {
+    // ... (Keep existing implementation)
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [myStocks, setMyStocks] = useState<StudentStock[]>([]);
     const [mySavings, setMySavings] = useState<StudentSaving[]>([]);
     const [unpaidTaxes, setUnpaidTaxes] = useState<any[]>([]);
+    
+    // NEW STATE: 세금 납부 확인용 상태
+    const [taxToPay, setTaxToPay] = useState<{taxId: string, amount: number, name: string} | null>(null);
 
     useEffect(() => {
         api.getTransactionsByAccountId(account.accountId).then(setTransactions);
@@ -280,13 +293,28 @@ const HomeView: React.FC<{ account: Account, currentUser: User, refreshAccount: 
     const savingsValue = mySavings.reduce((sum, item) => sum + item.amount, 0);
     const totalAssets = account.balance + stockValue + savingsValue;
 
-    const handlePayTax = async (taxId: string) => {
-        if(!window.confirm('세금을 납부하시겠습니까?')) return;
+    // REPLACED handlePayTax with handlePayClick and confirm logic
+    const handlePayClick = (taxId: string, amount: number, name: string) => {
+        // 1. Frontend Check: Insufficient Funds
+        if (account.balance < amount) {
+            showNotification('error', '잔액이 부족하여 세금을 납부할 수 없습니다.');
+            return;
+        }
+        setTaxToPay({ taxId, amount, name });
+    };
+
+    const handleConfirmPayment = async () => {
+        if (!taxToPay) return;
         try {
-            await api.payTax(currentUser.userId, taxId);
+            const message = await api.payTax(currentUser.userId, taxToPay.taxId);
+            showNotification('success', message);
             api.getMyUnpaidTaxes(currentUser.userId).then(setUnpaidTaxes);
             refreshAccount();
-        } catch(e: any) { alert(e.message); }
+        } catch(e: any) { 
+            showNotification('error', e.message); 
+        } finally {
+            setTaxToPay(null);
+        }
     };
 
     return (
@@ -323,7 +351,7 @@ const HomeView: React.FC<{ account: Account, currentUser: User, refreshAccount: 
                                 </div>
                                 <div className="flex items-center gap-3">
                                     <span className="font-bold text-red-600">{tax.amount.toLocaleString()}권</span>
-                                    <button onClick={() => handlePayTax(tax.taxId)} className="px-3 py-1 bg-red-600 text-white text-xs rounded-full font-bold">납부</button>
+                                    <button onClick={() => handlePayClick(tax.taxId, tax.amount, tax.name)} className="px-3 py-1 bg-red-600 text-white text-xs rounded-full font-bold hover:bg-red-700 transition-colors">납부</button>
                                 </div>
                             </div>
                         ))}
@@ -348,14 +376,25 @@ const HomeView: React.FC<{ account: Account, currentUser: User, refreshAccount: 
                     {transactions.length === 0 && <div className="p-6 text-center text-gray-400">거래 내역이 없습니다.</div>}
                 </div>
             </div>
+
+            {/* Custom Confirm Modal for Tax Payment */}
+            <ConfirmModal 
+                isOpen={!!taxToPay}
+                title="세금 납부"
+                message={`'${taxToPay?.name}' 세금 ${taxToPay?.amount.toLocaleString()}권을 납부하시겠습니까?`}
+                onConfirm={handleConfirmPayment}
+                onCancel={() => setTaxToPay(null)}
+                confirmText="납부하기"
+            />
         </div>
     );
 };
 
+
 // --- Transfer View ---
 const TransferView: React.FC<{ currentUser: User, account: Account, refreshAccount: () => void, showNotification: (type: 'success' | 'error', text: string) => void }> = ({ currentUser, account, refreshAccount, showNotification }) => {
+    // ... existing TransferView code ...
     const [targetType, setTargetType] = useState<'student' | 'teacher'>('student');
-    const [studentName, setStudentName] = useState(''); // Just for UI placeholder if needed, but we use account ID mainly
     const [targetAccountId, setTargetAccountId] = useState('');
     const [amount, setAmount] = useState('');
     const [memo, setMemo] = useState('');
@@ -387,41 +426,6 @@ const TransferView: React.FC<{ currentUser: User, account: Account, refreshAccou
         }
     }, [targetAccountId, targetType]);
 
-    const handleTransfer = async () => {
-        if (!amount || parseInt(amount) <= 0) return;
-        setLoading(true);
-        try {
-            if (targetType === 'teacher') {
-                const teacherAcc = await api.getTeacherAccount();
-                if (!teacherAcc) throw new Error("선생님 계좌를 찾을 수 없습니다.");
-                await api.transfer(currentUser.userId, teacherAcc.id, parseInt(amount), memo || '선생님께 송금');
-            } else {
-                if (!recipientInfo) throw new Error("받는 사람 정보를 확인해주세요.");
-                const fullId = `권쌤은행 ${targetAccountId}`;
-                await api.transfer(currentUser.userId, fullId, parseInt(amount), memo || '송금'); // Note: API expects PK ID or accountID? check API
-                // Checking API: transfer expects p_receiver_account_pk_id. But our UI inputs '000-000'.
-                // Ideally API should handle AccountID string too or we assume 'transfer' handles it.
-                // Let's check api.ts -> transfer uses p_receiver_account_pk_id. 
-                // Wait, recipientInfo comes from getRecipientDetailsByAccountId which returns account object.
-                // So we need to fetch the account PK. 
-                // Let's perform a direct fetch in submit if we don't have PK.
-                // Actually `getRecipientDetailsByAccountId` returns { user, account }. 
-                // We should store the account PK when verifying.
-            }
-            showNotification('success', '송금이 완료되었습니다.');
-            setAmount('');
-            setMemo('');
-            setTargetAccountId('');
-            setRecipientInfo(null);
-            refreshAccount();
-        } catch (e: any) {
-            showNotification('error', e.message);
-        } finally {
-            setLoading(false);
-        }
-    };
-    
-    // Override handleTransfer to be safer with PKs
     const safeHandleTransfer = async () => {
         if (!amount || parseInt(amount) <= 0) return;
         setLoading(true);
@@ -429,15 +433,16 @@ const TransferView: React.FC<{ currentUser: User, account: Account, refreshAccou
              if (targetType === 'teacher') {
                 const teacherAcc = await api.getTeacherAccount();
                 if (!teacherAcc) throw new Error("선생님 계좌를 찾을 수 없습니다.");
-                // api.transfer expects SenderUserID and ReceiverAccountPK
-                await api.transfer(currentUser.userId, teacherAcc.id, parseInt(amount), memo || '선생님께 송금');
+                // FIXED: Use teacherAcc.accountId instead of id (uuid)
+                await api.transfer(currentUser.userId, teacherAcc.accountId, parseInt(amount), memo || '선생님께 송금');
              } else {
-                 // For student, we need to get the account PK from the input AccountID
+                 // For student, we construct the account ID string directly
                  const fullId = `권쌤은행 ${targetAccountId}`;
                  const details = await api.getRecipientDetailsByAccountId(fullId);
                  if(!details) throw new Error("받는 사람 계좌가 존재하지 않습니다.");
                  
-                 await api.transfer(currentUser.userId, details.account.id, parseInt(amount), memo || '송금');
+                 // FIXED: Use details.account.accountId (string) instead of id (uuid)
+                 await api.transfer(currentUser.userId, details.account.accountId, parseInt(amount), memo || '송금');
              }
              showNotification('success', '송금이 완료되었습니다.');
              setAmount('');
@@ -544,8 +549,9 @@ const TransferView: React.FC<{ currentUser: User, account: Account, refreshAccou
     );
 };
 
-// --- Stocks View ---
-const StocksView: React.FC<{ currentUser: User, refreshAccount: () => void }> = ({ currentUser, refreshAccount }) => {
+// ... (rest of the file remains unchanged)
+const StocksView: React.FC<{ currentUser: User, refreshAccount: () => void, showNotification: (type: 'success' | 'error', text: string) => void }> = ({ currentUser, refreshAccount, showNotification }) => {
+    // ... (StocksView implementation)
     const [stocks, setStocks] = useState<StockProduct[]>([]);
     const [myStocks, setMyStocks] = useState<StudentStock[]>([]);
     const [selectedStock, setSelectedStock] = useState<StockProduct | null>(null);
@@ -582,7 +588,6 @@ const StocksView: React.FC<{ currentUser: User, refreshAccount: () => void }> = 
                                 <span className="font-bold text-gray-800">{s.name}</span>
                                 <div className="text-right">
                                     <div className="font-mono font-bold">{s.currentPrice.toLocaleString()}권</div>
-                                    {/* Fluctuation logic could be added here if we had previous price */}
                                 </div>
                             </div>
                         ))}
@@ -623,7 +628,7 @@ const StocksView: React.FC<{ currentUser: User, refreshAccount: () => void }> = 
 
             {selectedStock && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedStock(null)}>
-                    <div className="bg-white w-full max-w-md rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+                    <div className="bg-white w-full max-w-md rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh] relative" onClick={e => e.stopPropagation()}>
                         <div className="p-4 border-b flex justify-between items-center bg-gray-50">
                             <h3 className="font-bold text-lg">{selectedStock.name}</h3>
                             <button onClick={() => setSelectedStock(null)}><XIcon className="w-6 h-6 text-gray-400"/></button>
@@ -660,38 +665,50 @@ const StocksView: React.FC<{ currentUser: User, refreshAccount: () => void }> = 
                                 </button>
                             </div>
                         </div>
+
+                        {/* Modal nested properly here to avoid closing on click */}
+                        {(selectedStock as any).mode && (
+                            <StockTransactionModal 
+                                mode={(selectedStock as any).mode} 
+                                stock={selectedStock} 
+                                userId={currentUser.userId}
+                                onClose={() => setSelectedStock(null)}
+                                onComplete={(msg) => {
+                                    if(msg) showNotification('success', msg);
+                                    setSelectedStock(null);
+                                    fetchData();
+                                    refreshAccount();
+                                }}
+                            />
+                        )}
                     </div>
-                     {/* Nested Modal for Buy/Sell Action */}
-                    {(selectedStock as any).mode && (
-                        <StockTransactionModal 
-                            mode={(selectedStock as any).mode} 
-                            stock={selectedStock} 
-                            userId={currentUser.userId}
-                            onClose={() => setSelectedStock(null)}
-                            onComplete={() => {
-                                setSelectedStock(null);
-                                fetchData();
-                                refreshAccount();
-                            }}
-                        />
-                    )}
                 </div>
             )}
         </div>
     );
 };
 
-const StockTransactionModal: React.FC<{ mode: 'buy'|'sell', stock: StockProduct, userId: string, onClose: ()=>void, onComplete: ()=>void }> = ({mode, stock, userId, onClose, onComplete}) => {
+// ... (Rest of components: StockTransactionModal, SavingsView, FundView, etc. - keep unchanged)
+const StockTransactionModal: React.FC<{ mode: 'buy'|'sell', stock: StockProduct, userId: string, onClose: ()=>void, onComplete: (msg?: string)=>void }> = ({mode, stock, userId, onClose, onComplete}) => {
+    // ...
     const [quantity, setQuantity] = useState(1);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     
     const handleTrade = async () => {
         setLoading(true);
+        setError(null);
         try {
-            if(mode === 'buy') await api.buyStock(userId, stock.id, quantity);
-            else await api.sellStock(userId, stock.id, quantity);
-            onComplete();
-        } catch(e: any) { alert(e.message); }
+            let message = '';
+            if(mode === 'buy') {
+                message = await api.buyStock(userId, stock.id, quantity);
+            } else {
+                message = await api.sellStock(userId, stock.id, quantity);
+            }
+            onComplete(message);
+        } catch(e: any) { 
+            setError(e.message); 
+        }
         finally { setLoading(false); }
     };
 
@@ -708,9 +725,15 @@ const StockTransactionModal: React.FC<{ mode: 'buy'|'sell', stock: StockProduct,
                     <button onClick={() => setQuantity(quantity + 1)} className="p-3 rounded-full bg-gray-100"><PlusIcon className="w-6 h-6"/></button>
                 </div>
 
-                <div className="text-lg text-gray-600">
+                <div className="text-lg text-gray-600 mb-4">
                     총 {mode === 'buy' ? '구매' : '판매'} 금액: <span className="font-bold text-black">{(stock.currentPrice * quantity).toLocaleString()}권</span>
                 </div>
+
+                {error && (
+                    <div className="w-full p-3 bg-red-50 text-red-600 rounded-lg text-sm text-center border border-red-100">
+                        {error}
+                    </div>
+                )}
             </div>
             <div className="grid grid-cols-2 gap-3 mt-auto">
                 <button onClick={onClose} className="py-3 bg-gray-200 font-bold rounded-xl text-gray-700">취소</button>
@@ -722,11 +745,12 @@ const StockTransactionModal: React.FC<{ mode: 'buy'|'sell', stock: StockProduct,
     );
 };
 
-// --- Savings View ---
 const SavingsView: React.FC<{ currentUser: User, refreshAccount: () => void }> = ({ currentUser, refreshAccount }) => {
+    // ...
     const [products, setProducts] = useState<SavingsProduct[]>([]);
     const [mySavings, setMySavings] = useState<StudentSaving[]>([]);
     const [selectedProduct, setSelectedProduct] = useState<SavingsProduct | null>(null);
+    const [cancelTargetId, setCancelTargetId] = useState<string | null>(null);
 
     const fetchData = useCallback(async () => {
         const prodList = await api.getSavingsProducts();
@@ -747,13 +771,19 @@ const SavingsView: React.FC<{ currentUser: User, refreshAccount: () => void }> =
         } catch(e: any) { alert(e.message); }
     };
 
-    const handleCancel = async (id: string) => {
-        if(!window.confirm('중도 해지하시겠습니까? 원금의 일부만 돌려받을 수 있습니다.')) return;
+    const handleConfirmCancel = async () => {
+        if(!cancelTargetId) return;
         try {
-            await api.cancelSavings(currentUser.userId, id);
+            await api.cancelSavings(currentUser.userId, cancelTargetId);
             fetchData();
             refreshAccount();
         } catch(e: any) { alert(e.message); }
+        finally { setCancelTargetId(null); }
+    };
+
+    const requestCancel = (id: string) => {
+        // FIXED: Replaced window.confirm with ConfirmModal state
+        setCancelTargetId(id);
     };
 
     return (
@@ -766,7 +796,7 @@ const SavingsView: React.FC<{ currentUser: User, refreshAccount: () => void }> =
                             <div key={s.savingId} className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-green-500">
                                 <div className="flex justify-between items-start mb-2">
                                     <div className="font-bold">{s.product?.name}</div>
-                                    <button onClick={() => handleCancel(s.savingId)} className="text-xs text-gray-400 underline">해지</button>
+                                    <button onClick={() => requestCancel(s.savingId)} className="text-xs text-gray-400 underline">해지</button>
                                 </div>
                                 <div className="flex justify-between text-sm text-gray-600 mb-1">
                                     <span>가입금액</span>
@@ -812,48 +842,21 @@ const SavingsView: React.FC<{ currentUser: User, refreshAccount: () => void }> =
                     onJoin={handleJoin} 
                 />
             )}
+
+            <ConfirmModal 
+                isOpen={!!cancelTargetId}
+                title="적금 해지"
+                message="정말로 적금을 해지하시겠습니까? 중도 해지 시 약정된 이자를 받을 수 없으며 원금의 일부만 돌려받을 수 있습니다."
+                onConfirm={handleConfirmCancel}
+                onCancel={() => setCancelTargetId(null)}
+                confirmText="해지하기"
+            />
         </div>
     );
 };
 
-const JoinSavingsModal: React.FC<{ product: SavingsProduct, onClose: ()=>void, onJoin: (amount: number)=>void }> = ({product, onClose, onJoin}) => {
-    const [amount, setAmount] = useState('');
-    
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white p-6 rounded-2xl w-full max-w-sm">
-                <h3 className="text-xl font-bold mb-2">{product.name} 가입</h3>
-                <p className="text-sm text-gray-500 mb-4">
-                    {product.maturityDays}일 뒤에 이자 {(product.rate * 100).toFixed(0)}%가 추가되어 지급됩니다.<br/>
-                    중도 해지 시 {(product.cancellationRate * 100).toFixed(0)}%의 수수료가 발생합니다.
-                </p>
-                
-                <input 
-                    type="number" 
-                    value={amount} 
-                    onChange={e => setAmount(e.target.value)} 
-                    placeholder={`최대 ${product.maxAmount}권`}
-                    className="w-full p-3 border rounded-lg mb-4"
-                />
-                
-                <button 
-                    onClick={() => {
-                        const val = parseInt(amount);
-                        if(val > 0 && val <= product.maxAmount) onJoin(val);
-                        else alert('올바른 금액을 입력하세요.');
-                    }} 
-                    className="w-full p-3 bg-green-600 text-white font-bold rounded-lg mb-2"
-                >
-                    가입하기
-                </button>
-                <button onClick={onClose} className="w-full p-3 text-gray-500">취소</button>
-            </div>
-        </div>
-    );
-};
-
-// --- Fund View ---
 const FundView: React.FC<{ currentUser: User, refreshAccount: () => void }> = ({ currentUser, refreshAccount }) => {
+    // ... (FundView impl)
     const [funds, setFunds] = useState<Fund[]>([]);
     const [myInvestments, setMyInvestments] = useState<FundInvestment[]>([]);
     const [loading, setLoading] = useState(true);
@@ -869,27 +872,21 @@ const FundView: React.FC<{ currentUser: User, refreshAccount: () => void }> = ({
             setFunds(fundList);
             setMyInvestments(myInv);
         } catch (error) {
-            console.error("Failed to fetch fund data", error);
+            console.error("Failed to fetch funds", error);
         } finally {
             setLoading(false);
         }
     }, [currentUser.userId]);
-    
+
     useEffect(() => {
         fetchData();
     }, [fetchData]);
-
-    const handleTransactionComplete = () => {
-        setSelectedFund(null);
-        refreshAccount();
-        fetchData();
-    };
 
     const getStatusBadge = (status: FundStatus) => {
         switch (status) {
             case FundStatus.RECRUITING: return <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-bold">모집중</span>;
             case FundStatus.ONGOING: return <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-bold">운용중</span>;
-            case FundStatus.SUCCESS: return <span className="px-2 py-1 bg-indigo-100 text-indigo-800 rounded-full text-xs font-bold">달성</span>;
+            case FundStatus.SUCCESS: return <span className="px-2 py-1 bg-indigo-100 text-indigo-800 rounded-full text-xs font-bold">달성 완료</span>;
             case FundStatus.EXCEED: return <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-bold">초과 달성</span>;
             case FundStatus.FAIL: return <span className="px-2 py-1 bg-gray-200 text-gray-600 rounded-full text-xs font-bold">실패</span>;
             default: return null;
@@ -899,70 +896,71 @@ const FundView: React.FC<{ currentUser: User, refreshAccount: () => void }> = ({
     if (loading) return <div className="text-center p-8">펀드 정보를 불러오는 중...</div>;
 
     return (
-        <div>
+        <div className="space-y-6">
             {myInvestments.length > 0 && (
-                <div className="mb-6">
-                    <div className="flex items-center mb-2">
-                         <NewFundIcon className="w-6 h-6 mr-2 text-indigo-600"/>
-                         <h2 className="text-xl font-bold">내 투자 현황</h2>
-                    </div>
+                <div>
+                    <h3 className="text-lg font-bold text-gray-800 mb-3">내 투자 현황</h3>
                     <div className="space-y-3">
-                        {myInvestments.map(inv => inv.fund && (
-                            <div key={inv.id} className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-indigo-500">
+                        {myInvestments.map(inv => (
+                            <div key={inv.id} className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-blue-500">
                                 <div className="flex justify-between items-start mb-2">
-                                    <h3 className="font-bold">{inv.fund.name}</h3>
-                                    {getStatusBadge(inv.fund.status)}
+                                    <div className="font-bold">{inv.fund?.name}</div>
+                                    {inv.fund && getStatusBadge(inv.fund.status)}
+                                </div>
+                                <div className="flex justify-between text-sm text-gray-600 mb-1">
+                                    <span>투자 금액</span>
+                                    <span className="font-bold">{(inv.units * (inv.fund?.unitPrice || 0)).toLocaleString()}권 ({inv.units}좌)</span>
                                 </div>
                                 <div className="flex justify-between text-sm text-gray-600">
-                                    <span>{inv.units}좌 투자</span>
-                                    <span className="font-medium">{(inv.units * inv.fund.unitPrice).toLocaleString()}권</span>
-                                </div>
-                                <div className="text-xs text-gray-400 mt-2 text-right">
-                                    {new Date(inv.investedAt).toLocaleDateString()} 가입
+                                    <span>평가일</span>
+                                    <span className="text-blue-600">{inv.fund?.maturityDate ? new Date(inv.fund.maturityDate).toLocaleDateString() : '-'}</span>
                                 </div>
                             </div>
                         ))}
                     </div>
                 </div>
             )}
-            
-            <h2 className="text-xl font-bold mb-4">모집 중인 펀드</h2>
-            <div className="space-y-4">
-                {funds.filter(f => f.status === FundStatus.RECRUITING).map(fund => (
-                    <div key={fund.id} className="bg-white p-5 rounded-xl shadow-md cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setSelectedFund(fund)}>
-                        <div className="flex justify-between items-start mb-2">
-                            <div>
-                                <h3 className="font-bold text-lg">{fund.name}</h3>
-                                <p className="text-xs text-gray-500">제안: {fund.creatorName}</p>
+
+            <div>
+                <h3 className="text-lg font-bold text-gray-800 mb-3">투자 가능한 펀드</h3>
+                <div className="grid grid-cols-1 gap-3">
+                    {funds.map(f => (
+                        <div key={f.id} onClick={() => f.status === FundStatus.RECRUITING && setSelectedFund(f)} className={`bg-white p-5 rounded-xl shadow-sm transition-colors ${f.status === FundStatus.RECRUITING ? 'cursor-pointer hover:bg-green-50' : 'opacity-70'}`}>
+                            <div className="flex justify-between items-start mb-2">
+                                <div className="font-bold text-lg">{f.name}</div>
+                                {getStatusBadge(f.status)}
                             </div>
-                            <span className="px-2 py-1 bg-red-50 text-red-600 rounded-lg text-xs font-bold border border-red-100">
-                                D-{Math.ceil((new Date(fund.recruitmentDeadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))}
-                            </span>
+                            <p className="text-xs text-gray-500 mb-3 line-clamp-2">{f.description}</p>
+                            
+                            <div className="flex justify-between text-sm text-gray-600">
+                                <span>1좌 가격</span>
+                                <span className="font-bold">{f.unitPrice.toLocaleString()}권</span>
+                            </div>
+                            <div className="flex justify-between text-sm text-gray-600 mt-1">
+                                <span>모집 마감</span>
+                                <span>{new Date(f.recruitmentDeadline).toLocaleDateString()}</span>
+                            </div>
+                            <div className="flex justify-between text-sm text-gray-600 mt-1">
+                                <span>성공 보상</span>
+                                <span className="text-blue-600">+{f.baseReward.toLocaleString()}권/좌</span>
+                            </div>
                         </div>
-                        <p className="text-sm text-gray-600 mb-3 line-clamp-2">{fund.description}</p>
-                        
-                        <div className="bg-gray-50 p-3 rounded-lg flex justify-between items-center text-sm">
-                            <div>
-                                <p className="text-gray-500 text-xs">1좌 금액</p>
-                                <p className="font-bold">{fund.unitPrice.toLocaleString()}권</p>
-                            </div>
-                            <div className="text-right">
-                                <p className="text-gray-500 text-xs">예상 수익(성공시)</p>
-                                <p className="font-bold text-red-500">+{((fund.baseReward / fund.unitPrice) * 100).toFixed(1)}%</p>
-                            </div>
-                        </div>
-                    </div>
-                ))}
-                {funds.filter(f => f.status === FundStatus.RECRUITING).length === 0 && (
-                    <div className="text-center py-10 bg-white rounded-xl text-gray-500 shadow-sm">
-                        현재 모집 중인 펀드가 없습니다.
-                    </div>
-                )}
+                    ))}
+                    {funds.length === 0 && <div className="text-center text-gray-500 py-4">현재 모집 중인 펀드가 없습니다.</div>}
+                </div>
             </div>
 
-            {/* Expired/Past Funds Section could go here if needed */}
-
-            {selectedFund && <JoinFundModal fund={selectedFund} onClose={() => setSelectedFund(null)} onComplete={handleTransactionComplete} userId={currentUser.userId}/>}
+            {selectedFund && (
+                <JoinFundModal 
+                    fund={selectedFund} 
+                    userId={currentUser.userId}
+                    onClose={() => setSelectedFund(null)} 
+                    onComplete={() => {
+                        fetchData();
+                        refreshAccount();
+                    }} 
+                />
+            )}
         </div>
     );
 };
@@ -973,6 +971,7 @@ const JoinFundModal: React.FC<{
     onComplete: () => void;
     userId: string;
 }> = ({ fund, onClose, onComplete, userId }) => {
+    // ...
     const [units, setUnits] = useState(1);
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<{ type: 'success' | 'error', text: string } | null>(null);
@@ -1041,6 +1040,43 @@ const JoinFundModal: React.FC<{
                 <button onClick={handleJoin} disabled={loading} className="w-full p-3 font-bold rounded-lg text-white mt-4 bg-indigo-600 shadow-md">
                     {loading ? '투자 처리 중...' : '투자하기'}
                 </button>
+            </div>
+        </div>
+    );
+};
+
+const JoinSavingsModal: React.FC<{ product: SavingsProduct, onClose: ()=>void, onJoin: (amount: number)=>void }> = ({product, onClose, onJoin}) => {
+    // ...
+    const [amount, setAmount] = useState('');
+    
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white p-6 rounded-2xl w-full max-w-sm">
+                <h3 className="text-xl font-bold mb-2">{product.name} 가입</h3>
+                <p className="text-sm text-gray-500 mb-4">
+                    {product.maturityDays}일 뒤에 이자 {(product.rate * 100).toFixed(0)}%가 추가되어 지급됩니다.<br/>
+                    중도 해지 시 {(product.cancellationRate * 100).toFixed(0)}%의 수수료가 발생합니다.
+                </p>
+                
+                <input 
+                    type="number" 
+                    value={amount} 
+                    onChange={e => setAmount(e.target.value)} 
+                    placeholder={`최대 ${product.maxAmount}권`}
+                    className="w-full p-3 border rounded-lg mb-4"
+                />
+                
+                <button 
+                    onClick={() => {
+                        const val = parseInt(amount);
+                        if(val > 0 && val <= product.maxAmount) onJoin(val);
+                        else alert('올바른 금액을 입력하세요.');
+                    }} 
+                    className="w-full p-3 bg-green-600 text-white font-bold rounded-lg mb-2"
+                >
+                    가입하기
+                </button>
+                <button onClick={onClose} className="w-full p-3 text-gray-500">취소</button>
             </div>
         </div>
     );

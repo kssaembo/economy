@@ -3,11 +3,18 @@ import React, { useState, useContext, useEffect, useCallback, useMemo } from 're
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
 import { User, Role, Account, Transaction, Job, AssignedStudent, TransactionType, TaxItemWithRecipients, Fund, FundStatus } from '../types';
-import { LogoutIcon, QrCodeIcon, UserAddIcon, XIcon, CheckIcon, ErrorIcon, BackIcon, NewDashboardIcon, NewBriefcaseIcon, NewManageAccountsIcon, ManageIcon, NewTaxIcon, NewFundIcon, NewStudentIcon } from '../components/icons';
+import { LogoutIcon, QrCodeIcon, UserAddIcon, XIcon, CheckIcon, ErrorIcon, BackIcon, NewDashboardIcon, NewBriefcaseIcon, NewManageAccountsIcon, ManageIcon, NewTaxIcon, NewFundIcon, NewStudentIcon, PencilIcon, ArrowDownIcon, ArrowUpIcon, PlusIcon } from '../components/icons';
+import { QRCodeSVG } from 'qrcode.react';
 
-type View = 'dashboard' | 'students' | 'jobs' | 'taxes' | 'funds';
+// --- Helpers ---
+const getQrBaseUrl = () => {
+    // 개발/프리뷰 환경 등에서의 URL 오류를 방지하기 위해 
+    // 실제 배포된 서비스 주소로 고정합니다.
+    return 'https://economy-rho.vercel.app';
+};
 
-// --- Custom Modals for Sandbox Environment ---
+// --- Modals ---
+
 const ConfirmModal: React.FC<{
     isOpen: boolean;
     title: string;
@@ -57,152 +64,11 @@ const MessageModal: React.FC<{
     );
 };
 
-
-const useStudentsWithAccounts = () => {
-    const [students, setStudents] = useState<(User & { account: Account | null })[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [transactions, setTransactions] = useState<Transaction[]>([]);
-
-    const fetchAllData = useCallback(async () => {
-        setLoading(true);
-        try {
-            const studentUsers = await api.getUsersByRole(Role.STUDENT);
-            const studentsWithAccounts = await Promise.all(
-                studentUsers.map(async (user) => {
-                    const account = await api.getStudentAccountByUserId(user.userId);
-                    return { ...user, account };
-                })
-            );
-            
-            studentsWithAccounts.sort((a, b) => {
-                if (a.grade !== b.grade) return (a.grade || 0) - (b.grade || 0);
-                if (a.class !== b.class) return (a.class || 0) - (b.class || 0);
-                return (a.number || 0) - (b.number || 0);
-            });
-            setStudents(studentsWithAccounts);
-
-            const allTransactions = (await Promise.all(
-                studentsWithAccounts
-                    .filter(s => s.account)
-                    .map(s => api.getTransactionsByAccountId(s.account!.accountId))
-            )).flat();
-            setTransactions(allTransactions);
-
-        } catch (error) {
-            console.error("Failed to fetch students data", error);
-        } finally {
-            setLoading(false);
-        }
-    }, []);
-
-    useEffect(() => {
-        fetchAllData();
-    }, [fetchAllData]);
-
-    return { students, transactions, loading, refresh: fetchAllData };
-};
-
-// Helper to generate full QR URL from base and token
-const generateQrUrl = (baseUrl: string, token: string) => {
-    try {
-        // Ensure baseUrl doesn't end with slash
-        const cleanBase = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
-        // Add token AND view=transfer to force the transfer screen
-        return `${cleanBase}?token=${token}&view=transfer`;
-    } catch (e) {
-        return `${baseUrl}?token=${token}&view=transfer`;
-    }
-};
-
-const TeacherDashboard: React.FC = () => {
-    const { currentUser, logout } = useContext(AuthContext);
-    const [view, setView] = useState<View>('dashboard');
-    const studentData = useStudentsWithAccounts();
-
-    const renderView = () => {
-        switch (view) {
-            case 'dashboard':
-                return <DashboardView {...studentData} />;
-            case 'students':
-                return <StudentManageView students={studentData.students} loading={studentData.loading} refresh={studentData.refresh} />;
-            case 'jobs':
-                return <JobManagementView allStudents={studentData.students} />;
-            case 'taxes':
-                 return <TaxView students={studentData.students} />;
-            case 'funds':
-                return <FundManagementView students={studentData.students} />;
-            default:
-                return <DashboardView {...studentData} />;
-        }
-    };
-
-    return (
-        <div className="flex h-full bg-gray-100">
-            <aside className="hidden md:flex flex-col w-56 bg-white/80 backdrop-blur-sm border-r p-4">
-                <div className="px-2">
-                    <h1 className="text-xl font-bold text-gray-800">교사 관리자</h1>
-                    <p className="text-sm text-gray-500">{currentUser?.name}</p>
-                </div>
-                <nav className="mt-8 flex flex-col space-y-2">
-                    <DesktopNavButton label="대시보드" Icon={NewDashboardIcon} active={view === 'dashboard'} onClick={() => setView('dashboard')} iconClassName="w-16 h-16" />
-                    <DesktopNavButton label="학생 관리" Icon={NewStudentIcon} active={view === 'students'} onClick={() => setView('students')} iconClassName="w-16 h-16" />
-                    <DesktopNavButton label="1인 1역" Icon={NewBriefcaseIcon} active={view === 'jobs'} onClick={() => setView('jobs')} iconClassName="w-16 h-16" />
-                    <DesktopNavButton label="세금 관리" Icon={NewTaxIcon} active={view === 'taxes'} onClick={() => setView('taxes')} iconClassName="w-16 h-16" />
-                    <DesktopNavButton label="펀드 관리" Icon={NewFundIcon} active={view === 'funds'} onClick={() => setView('funds')} iconClassName="w-16 h-16" />
-                </nav>
-                <div className="mt-auto">
-                    <button onClick={logout} className="w-full flex items-center p-3 text-sm text-gray-600 rounded-lg hover:bg-gray-200/50 transition-colors">
-                        <LogoutIcon className="w-5 h-5 mr-3" />
-                        로그아웃
-                    </button>
-                </div>
-            </aside>
-            
-            <div className="flex-1 flex flex-col h-full">
-                <header className="md:hidden p-4 flex justify-between items-center bg-white border-b sticky top-0 z-10">
-                    <div>
-                        <h1 className="text-xl font-bold text-gray-800">교사 관리자</h1>
-                        <p className="text-sm text-gray-500">{currentUser?.name}</p>
-                    </div>
-                    <button onClick={logout} className="p-2 rounded-full hover:bg-gray-100">
-                        <LogoutIcon className="w-6 h-6 text-gray-600" />
-                    </button>
-                </header>
-
-                <main className="flex-grow overflow-y-auto p-2 sm:p-4 bg-[#d1d3d8]">
-                    {renderView()}
-                </main>
-
-                <nav className="md:hidden grid grid-cols-5 bg-white p-1 border-t sticky bottom-0 z-10">
-                    <NavButton label="대시보드" Icon={NewDashboardIcon} active={view === 'dashboard'} onClick={() => setView('dashboard')} iconClassName="w-12 h-12" />
-                    <NavButton label="학생관리" Icon={NewStudentIcon} active={view === 'students'} onClick={() => setView('students')} iconClassName="w-9 h-9" />
-                    <NavButton label="1인1역" Icon={NewBriefcaseIcon} active={view === 'jobs'} onClick={() => setView('jobs')} iconClassName="w-9 h-9" />
-                    <NavButton label="세금관리" Icon={NewTaxIcon} active={view === 'taxes'} onClick={() => setView('taxes')} iconClassName="w-11 h-11" />
-                    <NavButton label="펀드관리" Icon={NewFundIcon} active={view === 'funds'} onClick={() => setView('funds')} iconClassName="w-11 h-11" />
-                </nav>
-            </div>
-        </div>
-    );
-};
-
-const NavButton: React.FC<{ label: string, Icon: React.FC<any>, active: boolean, onClick: () => void, iconClassName?: string }> = ({ label, Icon, active, onClick, iconClassName }) => (
-    <button onClick={onClick} className={`flex flex-col items-center justify-center w-full py-2 rounded-lg transition-colors ${active ? 'text-[#2B548F]' : 'text-gray-500 hover:bg-blue-50'}`}>
-        <Icon className={`${iconClassName || 'w-6 h-6'} mb-1 object-contain transition-all`} />
-        <span className="text-xs font-medium whitespace-nowrap scale-90">{label}</span>
-    </button>
-);
-
-const DesktopNavButton: React.FC<{ label: string, Icon: React.FC<any>, active: boolean, onClick: () => void, iconClassName?: string }> = ({ label, Icon, active, onClick, iconClassName }) => (
-    <button onClick={onClick} className={`flex items-center w-full p-3 rounded-lg transition-colors text-sm font-semibold ${active ? 'bg-[#2B548F] text-white' : 'text-gray-600 hover:bg-gray-200/50'}`}>
-        <Icon className={`${iconClassName || 'w-5 h-5'} mr-3 object-contain transition-all`} />
-        <span>{label}</span>
-    </button>
-);
-
-const DashboardView: React.FC<{ students: (User & { account: Account | null })[], transactions: Transaction[], loading: boolean }> = ({ students, transactions, loading }) => {
+// --- Dashboard View ---
+const DashboardView: React.FC<{ students: (User & { account: Account | null })[], refresh: () => void }> = ({ students }) => {
     const [teacherAccount, setTeacherAccount] = useState<Account | null>(null);
-    const [showHistoryModal, setShowHistoryModal] = useState(false);
     const [teacherTransactions, setTeacherTransactions] = useState<Transaction[]>([]);
+    const [showHistoryModal, setShowHistoryModal] = useState(false);
 
     useEffect(() => {
         const fetchTeacherData = async () => {
@@ -220,13 +86,11 @@ const DashboardView: React.FC<{ students: (User & { account: Account | null })[]
         fetchTeacherData();
     }, []);
 
-    if (loading) return <div className="p-8 text-center text-gray-500">로딩 중...</div>;
-    
     const totalAssets = students.reduce((acc, s) => acc + (s.account?.balance || 0), 0);
     const avgAssets = students.length > 0 ? Math.round(totalAssets / students.length) : 0;
     
+    // Sort by balance for ranking
     const richList = [...students].sort((a, b) => (b.account?.balance || 0) - (a.account?.balance || 0)).slice(0, 3);
-    const recentTransactions = transactions.slice(0, 5);
 
     return (
         <div className="space-y-6">
@@ -240,7 +104,7 @@ const DashboardView: React.FC<{ students: (User & { account: Account | null })[]
                     <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white/10 rounded-full blur-xl group-hover:scale-110 transition-transform"></div>
                 </div>
                 <div className="bg-white p-6 rounded-xl shadow-sm">
-                    <h3 className="text-gray-500 font-medium text-sm">총 통화량</h3>
+                    <h3 className="text-gray-500 font-medium text-sm">총 통화량 (학생)</h3>
                     <p className="text-3xl font-bold text-indigo-600 mt-2">{totalAssets.toLocaleString()}권</p>
                 </div>
                  <div className="bg-white p-6 rounded-xl shadow-sm">
@@ -249,40 +113,43 @@ const DashboardView: React.FC<{ students: (User & { account: Account | null })[]
                 </div>
                  <div className="bg-white p-6 rounded-xl shadow-sm">
                     <h3 className="text-gray-500 font-medium text-sm">등록 학생</h3>
-                    <p className="text-3xl font-bold text-blue-600 mt-2">{students.length}명</p>
+                    <p className="text-3xl font-bold text-gray-800 mt-2">{students.length}명</p>
                 </div>
              </div>
              
              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                 <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-                     <div className="p-4 border-b">
+                 <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+                     <div className="p-4 border-b bg-gray-50">
                          <h3 className="font-bold text-gray-800">자산 순위 TOP 3</h3>
                      </div>
                      <ul>
                          {richList.map((s, index) => (
                              <li key={s.userId} className="p-4 border-b last:border-b-0 flex items-center justify-between">
                                  <div className="flex items-center">
-                                     <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold mr-3 ${index === 0 ? 'bg-yellow-100 text-yellow-700' : index === 1 ? 'bg-gray-100 text-gray-700' : 'bg-orange-100 text-orange-800'}`}>
+                                     <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold mr-3 ${index === 0 ? 'bg-yellow-100 text-yellow-700' : index === 1 ? 'bg-gray-100 text-gray-700' : 'bg-orange-100 text-orange-800'}`}>
                                          {index + 1}
                                      </span>
-                                     <span className="font-medium">{s.name}</span>
+                                     <div>
+                                         <p className="font-bold text-gray-800">{s.name}</p>
+                                         <p className="text-xs text-gray-500">{s.grade}학년 {s.class}반 {s.number}번</p>
+                                     </div>
                                  </div>
-                                 <span className="font-mono text-gray-600">{(s.account?.balance || 0).toLocaleString()}권</span>
+                                 <span className="font-mono font-bold text-indigo-600">{(s.account?.balance || 0).toLocaleString()}권</span>
                              </li>
                          ))}
                          {richList.length === 0 && <li className="p-4 text-center text-gray-400">데이터 없음</li>}
                      </ul>
                  </div>
                  
-                 <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-                     <div className="p-4 border-b">
-                         <h3 className="font-bold text-gray-800">최근 거래 내역</h3>
+                 <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+                     <div className="p-4 border-b bg-gray-50">
+                         <h3 className="font-bold text-gray-800">국고 최근 거래 내역</h3>
                      </div>
-                     <ul>
-                         {recentTransactions.map(t => (
-                             <li key={t.transactionId} className="p-4 border-b last:border-b-0">
+                     <ul className="max-h-[300px] overflow-y-auto">
+                         {teacherTransactions.slice(0, 5).map(t => (
+                             <li key={t.transactionId} className="p-4 border-b last:border-b-0 hover:bg-gray-50">
                                  <div className="flex justify-between items-start mb-1">
-                                     <span className="font-medium text-sm">{t.description}</span>
+                                     <span className="font-medium text-sm text-gray-800">{t.description}</span>
                                      <span className={`font-bold text-sm ${t.amount > 0 ? 'text-blue-600' : 'text-red-600'}`}>
                                          {t.amount > 0 ? '+' : ''}{t.amount.toLocaleString()}
                                      </span>
@@ -292,7 +159,7 @@ const DashboardView: React.FC<{ students: (User & { account: Account | null })[]
                                  </div>
                              </li>
                          ))}
-                         {recentTransactions.length === 0 && <li className="p-4 text-center text-gray-400">거래 내역 없음</li>}
+                         {teacherTransactions.length === 0 && <li className="p-4 text-center text-gray-400">거래 내역 없음</li>}
                      </ul>
                  </div>
              </div>
@@ -310,7 +177,7 @@ const DashboardView: React.FC<{ students: (User & { account: Account | null })[]
                             {teacherTransactions.length > 0 ? (
                                 <ul className="space-y-2">
                                     {teacherTransactions.map(t => (
-                                        <li key={t.transactionId} className="bg-gray-50 p-3 rounded-lg flex justify-between items-center">
+                                        <li key={t.transactionId} className="bg-gray-50 p-3 rounded-lg flex justify-between items-center border border-gray-100">
                                             <div>
                                                 <p className="font-semibold text-sm">{t.description}</p>
                                                 <p className="text-xs text-gray-500">{new Date(t.date).toLocaleString()}</p>
@@ -332,124 +199,128 @@ const DashboardView: React.FC<{ students: (User & { account: Account | null })[]
     );
 };
 
-// --- Student Manage View ---
-const StudentManageView: React.FC<{ students: (User & { account: Account | null })[], loading: boolean, refresh: () => void }> = ({ students, loading, refresh }) => {
-    const [selectedIds, setSelectedIds] = useState<string[]>([]);
+// --- Student Management View ---
+
+const StudentManagementView: React.FC<{ students: (User & { account: Account | null })[], refresh: () => void }> = ({ students, refresh }) => {
     const [showAddModal, setShowAddModal] = useState(false);
-    const [confirmDelete, setConfirmDelete] = useState(false);
-    const [messageModal, setMessageModal] = useState<{ isOpen: boolean, type: 'success' | 'error', message: string }>({ isOpen: false, type: 'success', message: '' });
-    
-    // New states for functionality
-    const [selectedDetailStudent, setSelectedDetailStudent] = useState<(User & { account: Account | null }) | null>(null);
-    const [selectedQrStudent, setSelectedQrStudent] = useState<(User & { account: Account | null }) | null>(null);
+    const [selectedStudentQr, setSelectedStudentQr] = useState<User & { account: Account | null } | null>(null);
     const [showBatchQr, setShowBatchQr] = useState(false);
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+    const [selectedDetailStudent, setSelectedDetailStudent] = useState<(User & { account: Account | null }) | null>(null);
+    
+    // Modal state for confirmations
+    const [confirmAction, setConfirmAction] = useState<{ type: 'delete' | 'reset', data: any } | null>(null);
+
+    const handleDelete = async () => {
+        if (!confirmAction || confirmAction.type !== 'delete') return;
+        try {
+            const msg = await api.deleteStudents(selectedIds);
+            setMessage({ type: 'success', text: msg });
+            setSelectedIds([]);
+            refresh();
+        } catch (e: any) {
+            setMessage({ type: 'error', text: e.message });
+        } finally {
+            setConfirmAction(null);
+        }
+    };
+
+    const handleResetPassword = async () => {
+        if (!confirmAction || confirmAction.type !== 'reset') return;
+        const userId = confirmAction.data;
+        try {
+            await api.resetPassword(userId);
+            setMessage({ type: 'success', text: '비밀번호가 초기화되었습니다.' });
+        } catch (e: any) {
+            setMessage({ type: 'error', text: e.message });
+        } finally {
+            setConfirmAction(null);
+        }
+    };
 
     const toggleSelect = (id: string) => {
         setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
     };
 
-    const handleDelete = async () => {
-        if (selectedIds.length === 0) return;
-        try {
-            const message = await api.deleteStudents(selectedIds);
-            setMessageModal({ isOpen: true, type: 'success', message });
-            setSelectedIds([]);
-            setConfirmDelete(false);
-            refresh();
-        } catch (error: any) {
-            setMessageModal({ isOpen: true, type: 'error', message: error.message });
-        }
-    };
-
-    const handleResetPassword = async (userId: string) => {
-        if(!window.confirm('비밀번호를 "1234"로 초기화하시겠습니까?')) return;
-        try {
-            await api.resetPassword(userId);
-            setMessageModal({ isOpen: true, type: 'success', message: '비밀번호가 1234로 초기화되었습니다.' });
-        } catch(err: any) {
-            setMessageModal({ isOpen: true, type: 'error', message: err.message });
-        }
-    };
-
     return (
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden h-full flex flex-col">
-            <div className="p-4 border-b flex justify-between items-center bg-gray-50">
+        <div className="h-full flex flex-col">
+            <div className="flex justify-between items-center mb-4 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
                 <h2 className="text-lg font-bold text-gray-800">학생 관리 ({students.length}명)</h2>
                 <div className="flex gap-2">
                     {selectedIds.length > 0 && (
-                        <button onClick={() => setConfirmDelete(true)} className="px-3 py-2 bg-red-100 text-red-700 rounded-lg text-sm font-semibold hover:bg-red-200">
+                        <button onClick={() => setConfirmAction({ type: 'delete', data: null })} className="px-3 py-2 bg-red-100 text-red-600 rounded-lg text-sm font-bold hover:bg-red-200 transition-colors">
                             선택 삭제 ({selectedIds.length})
                         </button>
                     )}
-                    <button onClick={() => setShowBatchQr(true)} className="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-300 flex items-center">
+                    <button onClick={() => setShowBatchQr(true)} className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-bold hover:bg-gray-200 transition-colors flex items-center border border-gray-200">
                         <QrCodeIcon className="w-4 h-4 mr-1"/> QR 일괄 출력
                     </button>
-                    <button onClick={() => setShowAddModal(true)} className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 flex items-center">
-                        <UserAddIcon className="w-4 h-4 mr-1" /> 학생 추가
+                    <button onClick={() => setShowAddModal(true)} className="px-3 py-2 bg-[#2B548F] text-white rounded-lg text-sm font-bold shadow hover:bg-[#234576] transition-colors flex items-center">
+                        <UserAddIcon className="w-4 h-4 mr-1"/> 학생 추가
                     </button>
                 </div>
             </div>
-            
-            <div className="flex-grow overflow-auto">
-                <table className="w-full text-sm text-left">
-                    <thead className="text-xs text-gray-700 uppercase bg-gray-50 sticky top-0">
-                        <tr>
-                            <th className="p-4 w-4">
-                                <input type="checkbox" onChange={(e) => setSelectedIds(e.target.checked ? students.map(s => s.userId) : [])} checked={selectedIds.length === students.length && students.length > 0} />
-                            </th>
-                            <th className="p-4 min-w-[105px]">번호/이름</th>
-                            <th className="p-4">계좌번호</th>
-                            <th className="p-4 text-center">기능</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {students.map(s => (
-                            <tr key={s.userId} className="border-b hover:bg-gray-50">
-                                <td className="p-4">
-                                    <input type="checkbox" checked={selectedIds.includes(s.userId)} onChange={() => toggleSelect(s.userId)} />
-                                </td>
-                                <td className="p-4 font-medium text-gray-900">
-                                    <div 
-                                        className="flex items-center cursor-pointer hover:bg-gray-100 rounded p-1 -m-1"
-                                        onClick={() => setSelectedDetailStudent(s)}
-                                    >
-                                        <div className="h-8 w-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold mr-3 shrink-0">
-                                            {s.number}
-                                        </div>
-                                        <div>
-                                            <div className="font-bold underline decoration-dotted decoration-gray-400 underline-offset-2 whitespace-nowrap">{s.name}</div>
-                                            <div className="text-xs text-gray-500 whitespace-nowrap">{s.grade}학년 {s.class}반</div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td className="p-4 font-mono text-gray-600">
-                                    {s.account ? s.account.accountId : <span className="text-red-500">계좌 없음</span>}
-                                </td>
-                                <td className="p-4">
-                                    <div className="flex justify-center gap-2">
-                                        <button 
-                                            onClick={() => setSelectedQrStudent(s)} 
-                                            className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs hover:bg-gray-200 border border-gray-200"
-                                            title="QR 코드 보기"
-                                        >
-                                            QR
-                                        </button>
-                                        <button 
-                                            onClick={() => handleResetPassword(s.userId)} 
-                                            className="px-2 py-1 bg-red-50 text-red-600 rounded text-xs hover:bg-red-100 border border-red-100 whitespace-nowrap"
-                                            title="비밀번호 초기화"
-                                        >
-                                            초기화
-                                        </button>
-                                    </div>
-                                </td>
+
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex-grow overflow-hidden flex flex-col">
+                <div className="overflow-y-auto flex-grow">
+                    <table className="w-full text-sm text-left">
+                        <thead className="bg-gray-50 text-gray-500 uppercase text-xs sticky top-0 z-10">
+                            <tr>
+                                <th className="p-4 w-4">
+                                    <input type="checkbox" className="rounded text-[#2B548F] focus:ring-[#2B548F]" 
+                                        onChange={(e) => setSelectedIds(e.target.checked ? students.map(s => s.userId) : [])}
+                                        checked={students.length > 0 && selectedIds.length === students.length}
+                                    />
+                                </th>
+                                <th className="p-4 min-w-[120px]">번호/이름</th>
+                                <th className="p-4">계좌번호</th>
+                                <th className="p-4 text-center">기능</th>
                             </tr>
-                        ))}
-                        {students.length === 0 && (
-                            <tr><td colSpan={4} className="p-8 text-center text-gray-500">등록된 학생이 없습니다.</td></tr>
-                        )}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {students.map(s => (
+                                <tr key={s.userId} className="hover:bg-gray-50 transition-colors">
+                                    <td className="p-4">
+                                        <input type="checkbox" className="rounded text-[#2B548F] focus:ring-[#2B548F]" 
+                                            checked={selectedIds.includes(s.userId)} 
+                                            onChange={() => toggleSelect(s.userId)}
+                                        />
+                                    </td>
+                                    <td className="p-4">
+                                        <div className="flex items-center cursor-pointer group" onClick={() => setSelectedDetailStudent(s)}>
+                                            <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold mr-3 group-hover:bg-indigo-200 transition-colors">
+                                                {s.number}
+                                            </div>
+                                            <div>
+                                                <div className="font-bold text-gray-900 group-hover:underline decoration-indigo-500 underline-offset-2">{s.name}</div>
+                                                <div className="text-xs text-gray-500">{s.grade}학년 {s.class}반</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="p-4 font-mono text-gray-600">
+                                        {s.account ? s.account.accountId : <span className="text-red-400 text-xs">계좌 없음</span>}
+                                    </td>
+                                    <td className="p-4 text-center">
+                                        <div className="flex justify-center gap-2">
+                                            <button onClick={() => setSelectedStudentQr(s)} className="px-2 py-1 bg-white border border-gray-300 text-gray-600 rounded text-xs hover:bg-gray-50 font-medium">
+                                                QR
+                                            </button>
+                                            <button onClick={() => setConfirmAction({ type: 'reset', data: s.userId })} className="px-2 py-1 bg-white border border-red-200 text-red-500 rounded text-xs hover:bg-red-50 font-medium">
+                                                초기화
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                            {students.length === 0 && (
+                                <tr>
+                                    <td colSpan={4} className="p-8 text-center text-gray-500">등록된 학생이 없습니다.</td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             {showAddModal && <AddStudentModal onClose={() => setShowAddModal(false)} onComplete={refresh} />}
@@ -462,48 +333,99 @@ const StudentManageView: React.FC<{ students: (User & { account: Account | null 
                 />
             )}
 
-            {/* QR View Modal */}
-            {selectedQrStudent && selectedQrStudent.account && (
-                <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4" onClick={() => setSelectedQrStudent(null)}>
-                    <div className="bg-white p-8 rounded-2xl max-w-sm w-full text-center" onClick={e => e.stopPropagation()}>
-                        <h3 className="text-2xl font-bold mb-2">{selectedQrStudent.name}의 QR 코드</h3>
-                        <p className="text-gray-500 mb-6 text-sm">학생 앱 로그인 또는 송금 시 사용하세요.</p>
-                        <div className="bg-white p-4 inline-block rounded-xl border-4 border-gray-100 mb-6">
-                            <img 
-                                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(generateQrUrl(window.location.origin, selectedQrStudent.account.qrToken || ''))}`} 
-                                alt="QR Code" 
-                                className="w-48 h-48"
-                            />
-                        </div>
-                        <p className="text-xs text-gray-400 break-all mb-6">{generateQrUrl(window.location.origin, selectedQrStudent.account.qrToken || '')}</p>
-                        <button onClick={() => setSelectedQrStudent(null)} className="w-full py-3 bg-gray-800 text-white rounded-xl font-bold">닫기</button>
+            {/* Individual QR Modal */}
+            {selectedStudentQr && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedStudentQr(null)}>
+                    <div className="bg-white p-8 rounded-xl flex flex-col items-center max-w-sm w-full" onClick={e => e.stopPropagation()}>
+                        <h3 className="text-xl font-bold mb-1">{selectedStudentQr.name}</h3>
+                        <p className="text-sm text-gray-500 mb-4">{selectedStudentQr.grade}학년 {selectedStudentQr.class}반 {selectedStudentQr.number}번</p>
+                        {selectedStudentQr.account?.qrToken ? (
+                            <div className="p-4 border-4 border-gray-100 rounded-xl bg-white mb-4">
+                                <QRCodeSVG value={`${getQrBaseUrl()}?token=${selectedStudentQr.account.qrToken}`} size={180} />
+                            </div>
+                        ) : (
+                            <p className="text-red-500 my-4">QR 토큰이 없습니다.</p>
+                        )}
+                        <p className="text-xs text-gray-400 mb-6 text-center break-all w-full">
+                            {getQrBaseUrl()}?token={selectedStudentQr.account?.qrToken?.substring(0,10)}...
+                        </p>
+                        <button onClick={() => setSelectedStudentQr(null)} className="w-full py-3 bg-gray-800 text-white rounded-xl font-bold">닫기</button>
                     </div>
                 </div>
             )}
 
             {/* Batch QR Print Modal */}
             {showBatchQr && (
-                <BatchQrPrintModal 
-                    students={students} 
-                    onClose={() => setShowBatchQr(false)} 
-                />
+                <BatchQrPrintModal students={students} onClose={() => setShowBatchQr(false)} />
             )}
-
+            
             <ConfirmModal 
-                isOpen={confirmDelete} 
-                title="학생 삭제" 
-                message={`선택한 ${selectedIds.length}명의 학생을 삭제하시겠습니까?\n이 작업은 되돌릴 수 없으며, 관련된 계좌와 거래 내역도 모두 삭제됩니다.`} 
-                onConfirm={handleDelete} 
-                onCancel={() => setConfirmDelete(false)}
+                isOpen={!!confirmAction}
+                title={confirmAction?.type === 'delete' ? "학생 삭제" : "비밀번호 초기화"}
+                message={confirmAction?.type === 'delete' ? `${selectedIds.length}명의 학생을 삭제하시겠습니까? 관련 데이터가 모두 삭제됩니다.` : "비밀번호를 '1234'로 초기화하시겠습니까?"}
+                onConfirm={confirmAction?.type === 'delete' ? handleDelete : handleResetPassword}
+                onCancel={() => setConfirmAction(null)}
                 isDangerous={true}
-                confirmText="삭제"
+                confirmText={confirmAction?.type === 'delete' ? "삭제" : "초기화"}
             />
-             <MessageModal 
-                isOpen={messageModal.isOpen} 
-                type={messageModal.type} 
-                message={messageModal.message} 
-                onClose={() => setMessageModal({ ...messageModal, isOpen: false })} 
-            />
+
+            <MessageModal isOpen={!!message} type={message?.type || 'success'} message={message?.text || ''} onClose={() => setMessage(null)} />
+        </div>
+    );
+};
+
+const AddStudentModal: React.FC<{ onClose: () => void, onComplete: () => void }> = ({ onClose, onComplete }) => {
+    const [name, setName] = useState('');
+    const [grade, setGrade] = useState('6');
+    const [cls, setCls] = useState('1');
+    const [number, setNumber] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    
+    const handleSubmit = async () => {
+        if (!name || !grade || !cls || !number) {
+            setError("모든 항목을 입력해주세요.");
+            return;
+        }
+        setLoading(true);
+        setError(null);
+        try {
+            await api.addStudent(name, parseInt(grade), parseInt(cls), parseInt(number));
+            onComplete();
+            onClose();
+        } catch (e: any) {
+            setError(e.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl p-6 w-full max-w-sm">
+                <h3 className="text-xl font-bold mb-4">학생 추가</h3>
+                <div className="space-y-3">
+                    <div className="flex gap-2">
+                        <input type="number" value={grade} onChange={e => setGrade(e.target.value)} placeholder="학년" className="w-full p-2 border rounded text-center"/>
+                        <input type="number" value={cls} onChange={e => setCls(e.target.value)} placeholder="반" className="w-full p-2 border rounded text-center"/>
+                    </div>
+                    <div className="flex gap-2">
+                        <input type="number" value={number} onChange={e => setNumber(e.target.value)} placeholder="번호" className="w-1/3 p-2 border rounded text-center"/>
+                        <input value={name} onChange={e => setName(e.target.value)} placeholder="이름" className="w-2/3 p-2 border rounded"/>
+                    </div>
+                </div>
+                
+                {error && (
+                    <div className="mt-3 p-2 bg-red-50 border border-red-200 rounded text-red-600 text-sm text-center">
+                        {error}
+                    </div>
+                )}
+
+                <button onClick={handleSubmit} disabled={loading} className="w-full mt-6 p-3 bg-[#2B548F] text-white rounded-lg font-bold hover:bg-[#234576] disabled:bg-gray-400">
+                    {loading ? '등록 중...' : '등록하기'}
+                </button>
+                <button onClick={onClose} disabled={loading} className="w-full mt-2 p-2 text-gray-500 hover:text-gray-800 disabled:text-gray-300">취소</button>
+            </div>
         </div>
     );
 };
@@ -522,11 +444,10 @@ const StudentDetailModal: React.FC<{ student: User & { account: Account | null }
                 const trans = await api.getTransactionsByAccountId(student.account.accountId);
                 setTransactions(trans);
 
-                // Fetch stocks
+                // Fetch stocks & savings to calc total assets
                 const stocks = await api.getStudentStocks(student.userId);
                 const stockVal = stocks.reduce((sum, s) => sum + (s.quantity * (s.stock?.currentPrice || 0)), 0);
 
-                // Fetch savings
                 const savings = await api.getStudentSavings(student.userId);
                 const savingsVal = savings.reduce((sum, s) => sum + s.amount, 0);
 
@@ -648,14 +569,12 @@ const BatchQrPrintModal: React.FC<{ students: (User & { account: Account | null 
                 <div className="overflow-y-auto p-8 bg-gray-100" id="print-section">
                     <div className="grid grid-cols-4 gap-6 print:grid-cols-4 print:gap-4">
                         {validStudents.map(s => (
-                            <div key={s.userId} className="bg-white p-4 rounded-lg border border-gray-300 flex flex-col items-center justify-center text-center page-break-inside-avoid shadow-sm">
+                            <div key={s.userId} className="bg-white p-4 rounded-lg border border-gray-300 flex flex-col items-center justify-center text-center page-break-inside-avoid shadow-sm break-inside-avoid">
                                 <p className="font-bold text-lg text-gray-800 mb-1">{s.number}. {s.name}</p>
                                 <p className="text-xs text-gray-500 mb-2">{s.grade}학년 {s.class}반</p>
-                                <img 
-                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(generateQrUrl(window.location.origin, s.account!.qrToken!))}`} 
-                                    alt="QR Code" 
-                                    className="w-32 h-32 mb-2 border p-1"
-                                />
+                                <div className="border p-1 mb-2">
+                                    <QRCodeSVG value={`${getQrBaseUrl()}?token=${s.account!.qrToken}`} size={120} />
+                                </div>
                                 <p className="text-[10px] text-gray-400 break-all leading-tight">{s.account!.qrToken!.substring(0, 8)}...</p>
                             </div>
                         ))}
@@ -670,7 +589,7 @@ const BatchQrPrintModal: React.FC<{ students: (User & { account: Account | null 
                     body * { visibility: hidden; }
                     #print-section, #print-section * { visibility: visible; }
                     #print-section { position: absolute; left: 0; top: 0; width: 100%; height: auto; overflow: visible; background: white; padding: 0; }
-                    .page-break-inside-avoid { break-inside: avoid; }
+                    .break-inside-avoid { break-inside: avoid; }
                     /* Hide scrollbars during print */
                     ::-webkit-scrollbar { display: none; }
                 }
@@ -679,250 +598,227 @@ const BatchQrPrintModal: React.FC<{ students: (User & { account: Account | null 
     );
 };
 
-const AddStudentModal: React.FC<{ onClose: () => void, onComplete: () => void }> = ({ onClose, onComplete }) => {
-    const [formData, setFormData] = useState({ name: '', grade: 6, classNum: 1, startNum: 1, endNum: 1 });
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
-
-    const handleSubmit = async () => {
-        setLoading(true);
-        setError('');
-        try {
-            if (formData.endNum < formData.startNum) {
-                // Single add
-                await api.addStudent(formData.name, formData.grade, formData.classNum, formData.startNum);
-            } else {
-                // Batch add (Logic simplified for UI, assuming API handles one by one or we loop here)
-                // For this demo, let's just support single add properly or loop
-                 if (!formData.name && formData.endNum > formData.startNum) {
-                     // Batch add by number range
-                     for (let i = formData.startNum; i <= formData.endNum; i++) {
-                         await api.addStudent(`학생${i}`, formData.grade, formData.classNum, i);
-                     }
-                 } else {
-                     await api.addStudent(formData.name, formData.grade, formData.classNum, formData.startNum);
-                 }
-            }
-            onComplete();
-            onClose();
-        } catch (err: any) {
-            setError(err.message);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
-                <h3 className="text-xl font-bold mb-4">학생 등록</h3>
-                <div className="space-y-3">
-                    <div className="grid grid-cols-2 gap-2">
-                         <input type="number" value={formData.grade} onChange={e => setFormData({...formData, grade: parseInt(e.target.value)})} placeholder="학년" className="p-2 border rounded"/>
-                         <input type="number" value={formData.classNum} onChange={e => setFormData({...formData, classNum: parseInt(e.target.value)})} placeholder="반" className="p-2 border rounded"/>
-                    </div>
-                    <input type="number" value={formData.startNum} onChange={e => setFormData({...formData, startNum: parseInt(e.target.value)})} placeholder="번호" className="w-full p-2 border rounded"/>
-                    <input type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="이름" className="w-full p-2 border rounded"/>
-                </div>
-                {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
-                <button onClick={handleSubmit} disabled={loading} className="mt-4 w-full p-3 bg-blue-600 text-white font-bold rounded-lg disabled:bg-gray-400">
-                    {loading ? '등록 중...' : '등록하기'}
-                </button>
-                <button onClick={onClose} className="mt-2 w-full p-2 text-gray-500">취소</button>
-            </div>
-        </div>
-    );
-};
-
 // --- Job Management View ---
-const JobManagementView: React.FC<{ allStudents: User[] }> = ({ allStudents }) => {
-    const [jobs, setJobs] = useState<Job[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [showAddModal, setShowAddModal] = useState(false);
-    const [selectedJob, setSelectedJob] = useState<Job | null>(null);
-    const [showAssignModal, setShowAssignModal] = useState(false);
-    const [messageModal, setMessageModal] = useState<{ isOpen: boolean, type: 'success' | 'error', message: string }>({ isOpen: false, type: 'success', message: '' });
 
-    const fetchJobs = useCallback(async () => {
-        setLoading(true);
+const JobManagementView: React.FC<{ refresh: () => void }> = ({ refresh }) => {
+    const [jobs, setJobs] = useState<Job[]>([]);
+    const [students, setStudents] = useState<User[]>([]);
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [assignJob, setAssignJob] = useState<Job | null>(null);
+    const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+    const [confirmAction, setConfirmAction] = useState<{ type: 'pay_all' | 'delete' | 'pay_one', data: any } | null>(null);
+
+    const fetchData = useCallback(async () => {
         try {
-            const data = await api.getJobs();
-            setJobs(data);
-        } catch (error) {
-            console.error("Failed to fetch jobs", error);
-        } finally {
-            setLoading(false);
-        }
+            const [j, s] = await Promise.all([api.getJobs(), api.getUsersByRole(Role.STUDENT)]);
+            setJobs(j);
+            setStudents(s);
+        } catch (e) { console.error(e); }
     }, []);
 
-    useEffect(() => { fetchJobs(); }, [fetchJobs]);
+    useEffect(() => { fetchData(); }, [fetchData]);
 
-    const handlePaySalary = async (jobId: string) => {
+    const handlePaySalaries = async () => {
+        // Batch Pay
         try {
-            const msg = await api.payJobSalary(jobId);
-            setMessageModal({ isOpen: true, type: 'success', message: msg });
-        } catch (err: any) {
-            setMessageModal({ isOpen: true, type: 'error', message: err.message });
+            const msg = await api.payAllSalaries();
+            setMessage({ type: 'success', text: msg });
+        } catch (e: any) {
+            setMessage({ type: 'error', text: e.message });
+        } finally {
+            setConfirmAction(null);
         }
     };
-    
-    const handleDeleteJob = async (jobId: string) => {
-        if (!window.confirm('정말로 이 직업을 삭제하시겠습니까?')) return;
+
+    const handleDeleteJob = async () => {
+        if (!confirmAction || confirmAction.type !== 'delete') return;
+        const jobId = confirmAction.data;
         try {
             const msg = await api.deleteJob(jobId);
-            setMessageModal({ isOpen: true, type: 'success', message: msg });
-            fetchJobs();
-        } catch (err: any) {
-            setMessageModal({ isOpen: true, type: 'error', message: err.message });
+            setMessage({ type: 'success', text: msg });
+            fetchData();
+        } catch (e: any) {
+            setMessage({ type: 'error', text: e.message });
+        } finally {
+            setConfirmAction(null);
+        }
+    };
+
+    const handlePayOneSalary = async () => {
+        if (!confirmAction || confirmAction.type !== 'pay_one') return;
+        const jobId = confirmAction.data;
+        try {
+            const msg = await api.payJobSalary(jobId);
+            setMessage({ type: 'success', text: msg });
+        } catch (e: any) {
+            setMessage({ type: 'error', text: e.message });
+        } finally {
+            setConfirmAction(null);
+        }
+    };
+
+    const handleUpdateIncentive = async (jobId: string, value: string) => {
+        const numValue = parseInt(value) || 0;
+        try {
+            await api.updateJobIncentive(jobId, numValue);
+            // Optimistically update local state to avoid jump
+            setJobs(prev => prev.map(j => j.id === jobId ? { ...j, incentive: numValue } : j));
+        } catch (e) {
+            console.error(e);
         }
     };
 
     return (
         <div className="h-full flex flex-col">
             <div className="flex justify-between items-center mb-4">
-                <h2 className="text-2xl font-bold text-gray-800">1인 1역 관리</h2>
+                <h2 className="text-2xl font-bold text-gray-800">직업 관리</h2>
                 <div className="flex gap-2">
-                     <button onClick={async () => {
-                        if(window.confirm('모든 직업의 월급을 일괄 지급하시겠습니까?')) {
-                            try {
-                                const msg = await api.payAllSalaries();
-                                setMessageModal({ isOpen: true, type: 'success', message: msg });
-                            } catch(e: any) {
-                                setMessageModal({ isOpen: true, type: 'error', message: e.message });
-                            }
-                        }
-                    }} className="px-3 py-2 bg-green-600 text-white rounded-lg text-sm font-bold shadow hover:bg-green-700">
-                        전체 월급 지급
-                    </button>
                     <button onClick={() => setShowAddModal(true)} className="px-3 py-2 bg-[#2B548F] text-white rounded-lg text-sm font-bold shadow hover:bg-[#234576]">
                         + 직업 추가
+                    </button>
+                    <button onClick={() => setConfirmAction({ type: 'pay_all', data: null })} className="px-3 py-2 bg-green-600 text-white rounded-lg text-sm font-bold shadow hover:bg-green-700">
+                        월급 일괄 지급
                     </button>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 overflow-y-auto pb-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 overflow-y-auto">
                 {jobs.map(job => (
-                    <div key={job.id} className="bg-white rounded-xl shadow-sm p-4 border border-gray-100 flex flex-col">
+                    <div key={job.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col">
                         <div className="flex justify-between items-start mb-2">
-                            <h3 className="font-bold text-lg text-gray-800">{job.jobName}</h3>
-                            <button onClick={() => handleDeleteJob(job.id)} className="text-gray-400 hover:text-red-500"><XIcon className="w-5 h-5"/></button>
+                            <h3 className="font-bold text-lg">{job.jobName}</h3>
+                            <button onClick={() => setConfirmAction({ type: 'delete', data: job.id })} className="text-gray-400 hover:text-red-500"><XIcon className="w-5 h-5"/></button>
                         </div>
-                        <p className="text-sm text-gray-500 mb-3 h-10 line-clamp-2">{job.description}</p>
+                        <p className="text-sm text-gray-600 mb-2 flex-grow">{job.description}</p>
                         
-                        <div className="bg-gray-50 p-3 rounded-lg mb-3 text-sm">
-                            <div className="flex justify-between mb-1">
-                                <span className="text-gray-500">기본급</span>
+                        <div className="bg-gray-50 p-3 rounded-lg text-sm mb-3 space-y-2">
+                            <div className="flex justify-between items-center">
+                                <span className="text-gray-500">기본 월급</span>
                                 <span className="font-bold">{job.salary.toLocaleString()}권</span>
                             </div>
-                            <div className="flex justify-between">
+                            <div className="flex justify-between items-center">
                                 <span className="text-gray-500">인센티브</span>
-                                <span className="font-bold text-blue-600">+{job.incentive.toLocaleString()}권</span>
+                                <input 
+                                    type="number" 
+                                    defaultValue={job.incentive} 
+                                    onBlur={(e) => handleUpdateIncentive(job.id, e.target.value)}
+                                    className="w-20 p-1 text-right border rounded text-xs font-bold text-blue-600 bg-white focus:ring-2 focus:ring-blue-200 outline-none"
+                                />
+                            </div>
+                            <div className="border-t pt-2 flex justify-between items-center font-bold text-indigo-600">
+                                <span>총 지급액</span>
+                                <span>{(job.salary + (job.incentive || 0)).toLocaleString()}권</span>
                             </div>
                         </div>
 
-                        <div className="mb-4 flex-grow">
-                            <p className="text-xs text-gray-400 mb-1">담당 학생 ({job.assigned_students?.length || 0}명)</p>
-                            <div className="flex flex-wrap gap-1">
+                        <div className="mt-auto">
+                            <div className="text-xs text-gray-500 mb-1">담당 학생 ({job.assigned_students?.length || 0}명)</div>
+                            <div className="flex flex-wrap gap-1 mb-3 min-h-[1.5rem]">
                                 {job.assigned_students?.map(s => (
-                                    <span key={s.userId} className="px-2 py-1 bg-indigo-50 text-indigo-700 text-xs rounded-full">{s.name}</span>
+                                    <span key={s.userId} className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs">{s.name}</span>
                                 ))}
-                                {(!job.assigned_students || job.assigned_students.length === 0) && <span className="text-xs text-gray-400">-</span>}
+                                {(!job.assigned_students || job.assigned_students.length === 0) && <span className="text-gray-300 text-xs">배정된 학생 없음</span>}
                             </div>
-                        </div>
-
-                        <div className="flex gap-2 mt-auto">
-                            <button onClick={() => { setSelectedJob(job); setShowAssignModal(true); }} className="flex-1 py-2 bg-gray-100 text-gray-700 rounded-lg text-xs font-bold hover:bg-gray-200">
-                                담당 배정
-                            </button>
-                            <button onClick={() => handlePaySalary(job.id)} className="flex-1 py-2 bg-blue-50 text-blue-700 rounded-lg text-xs font-bold hover:bg-blue-100">
-                                월급 지급
-                            </button>
+                            <div className="grid grid-cols-2 gap-2">
+                                <button onClick={() => setAssignJob(job)} className="py-2 border border-blue-200 text-blue-600 rounded-lg text-sm font-bold hover:bg-blue-50 transition-colors">
+                                    학생 배정
+                                </button>
+                                <button onClick={() => setConfirmAction({ type: 'pay_one', data: job.id })} className="py-2 bg-indigo-100 text-indigo-700 rounded-lg text-sm font-bold hover:bg-indigo-200 transition-colors">
+                                    주급 지급
+                                </button>
+                            </div>
                         </div>
                     </div>
                 ))}
             </div>
 
-            {showAddModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
-                        <h3 className="text-xl font-bold mb-4">새 직업 추가</h3>
-                        <form onSubmit={async (e) => {
-                            e.preventDefault();
-                            const form = e.target as any;
-                            try {
-                                await api.addJob(form.name.value, form.desc.value, parseInt(form.salary.value));
-                                setShowAddModal(false);
-                                fetchJobs();
-                            } catch(err: any) { alert(err.message); }
-                        }}>
-                            <input name="name" placeholder="직업명" className="w-full p-2 border rounded mb-2" required />
-                            <input name="desc" placeholder="하는 일" className="w-full p-2 border rounded mb-2" required />
-                            <input name="salary" type="number" placeholder="월급" className="w-full p-2 border rounded mb-4" required />
-                            <button type="submit" className="w-full p-3 bg-blue-600 text-white rounded-lg font-bold">추가</button>
-                            <button type="button" onClick={() => setShowAddModal(false)} className="w-full p-2 mt-2 text-gray-500">취소</button>
-                        </form>
-                    </div>
-                </div>
-            )}
-
-            {showAssignModal && selectedJob && (
-                <AssignStudentModal 
-                    job={selectedJob} 
-                    allStudents={allStudents} 
-                    onClose={() => setShowAssignModal(false)} 
-                    onComplete={() => { fetchJobs(); setShowAssignModal(false); }} 
-                />
-            )}
+            {showAddModal && <AddJobModal onClose={() => setShowAddModal(false)} onComplete={fetchData} />}
+            {assignJob && <AssignJobModal job={assignJob} students={students} onClose={() => setAssignJob(null)} onComplete={fetchData} />}
             
-            <MessageModal 
-                isOpen={messageModal.isOpen} 
-                type={messageModal.type} 
-                message={messageModal.message} 
-                onClose={() => setMessageModal({ ...messageModal, isOpen: false })} 
+            <ConfirmModal 
+                isOpen={!!confirmAction}
+                title={confirmAction?.type === 'delete' ? '직업 삭제' : confirmAction?.type === 'pay_all' ? '월급 일괄 지급' : '주급 지급'}
+                message={
+                    confirmAction?.type === 'delete' ? '정말로 이 직업을 삭제하시겠습니까?' : 
+                    confirmAction?.type === 'pay_all' ? '모든 직업의 월급(인센티브 포함)을 일괄 지급하시겠습니까?' :
+                    '해당 직업의 담당 학생들에게 주급(월급+인센티브)을 지급하시겠습니까?'
+                }
+                onConfirm={() => {
+                    if (confirmAction?.type === 'delete') handleDeleteJob();
+                    else if (confirmAction?.type === 'pay_all') handlePaySalaries();
+                    else if (confirmAction?.type === 'pay_one') handlePayOneSalary();
+                }}
+                onCancel={() => setConfirmAction(null)}
+                isDangerous={confirmAction?.type === 'delete'}
+                confirmText={confirmAction?.type === 'delete' ? '삭제' : '지급'}
             />
+
+            <MessageModal isOpen={!!message} type={message?.type || 'success'} message={message?.text || ''} onClose={() => setMessage(null)} />
         </div>
     );
 };
 
-const AssignStudentModal: React.FC<{ job: Job, allStudents: User[], onClose: () => void, onComplete: () => void }> = ({ job, allStudents, onClose, onComplete }) => {
-    const [assignedIds, setAssignedIds] = useState<string[]>(job.assigned_students?.map(s => s.userId) || []);
+const AddJobModal: React.FC<{ onClose: () => void, onComplete: () => void }> = ({ onClose, onComplete }) => {
+    const [name, setName] = useState('');
+    const [desc, setDesc] = useState('');
+    const [salary, setSalary] = useState('');
     
-    const handleSave = async () => {
+    const handleSubmit = async () => {
         try {
-            await api.manageJobAssignment(job.id, assignedIds);
+            await api.addJob(name, desc, parseInt(salary));
             onComplete();
-        } catch(err: any) {
-            alert(err.message);
-        }
+            onClose();
+        } catch (e: any) { alert(e.message); }
     };
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md max-h-[80vh] flex flex-col">
-                <h3 className="text-xl font-bold mb-2">{job.jobName} 담당 배정</h3>
-                <p className="text-sm text-gray-500 mb-4">담당할 학생들을 선택해주세요.</p>
-                
-                <div className="flex-grow overflow-y-auto grid grid-cols-2 gap-2 mb-4 p-2 border rounded bg-gray-50">
-                    {allStudents.map(s => (
-                        <label key={s.userId} className="flex items-center space-x-2 p-2 bg-white rounded shadow-sm cursor-pointer hover:bg-indigo-50">
+            <div className="bg-white rounded-xl p-6 w-full max-w-sm">
+                <h3 className="text-xl font-bold mb-4">직업 추가</h3>
+                <div className="space-y-3">
+                    <input value={name} onChange={e => setName(e.target.value)} placeholder="직업명" className="w-full p-2 border rounded"/>
+                    <input value={desc} onChange={e => setDesc(e.target.value)} placeholder="설명" className="w-full p-2 border rounded"/>
+                    <input type="number" value={salary} onChange={e => setSalary(e.target.value)} placeholder="월급" className="w-full p-2 border rounded"/>
+                </div>
+                <button onClick={handleSubmit} className="w-full mt-4 p-3 bg-blue-600 text-white rounded-lg font-bold">추가</button>
+                <button onClick={onClose} className="w-full mt-2 p-2 text-gray-500">취소</button>
+            </div>
+        </div>
+    );
+};
+
+const AssignJobModal: React.FC<{ job: Job, students: User[], onClose: () => void, onComplete: () => void }> = ({ job, students, onClose, onComplete }) => {
+    const [selected, setSelected] = useState<string[]>(job.assigned_students?.map(s => s.userId) || []);
+
+    const handleSubmit = async () => {
+        try {
+            await api.manageJobAssignment(job.id, selected);
+            onComplete();
+            onClose();
+        } catch (e: any) { alert(e.message); }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl p-6 w-full max-w-sm max-h-[80vh] flex flex-col">
+                <h3 className="text-xl font-bold mb-4">{job.jobName} 배정</h3>
+                <div className="flex-grow overflow-y-auto border rounded p-2 grid grid-cols-2 gap-2">
+                    {students.map(s => (
+                        <label key={s.userId} className="flex items-center space-x-2 text-sm">
                             <input 
                                 type="checkbox" 
-                                checked={assignedIds.includes(s.userId)} 
-                                onChange={e => {
-                                    if(e.target.checked) setAssignedIds([...assignedIds, s.userId]);
-                                    else setAssignedIds(assignedIds.filter(id => id !== s.userId));
-                                }}
-                                className="rounded text-indigo-600"
+                                checked={selected.includes(s.userId)} 
+                                onChange={(e) => {
+                                    if(e.target.checked) setSelected([...selected, s.userId]);
+                                    else setSelected(selected.filter(id => id !== s.userId));
+                                }} 
                             />
-                            <span className="text-sm">{s.name} ({s.number}번)</span>
+                            <span>{s.name}</span>
                         </label>
                     ))}
                 </div>
-                
-                <div className="flex gap-2">
-                    <button onClick={onClose} className="flex-1 p-3 bg-gray-200 text-gray-700 rounded-lg font-bold">취소</button>
-                    <button onClick={handleSave} className="flex-1 p-3 bg-blue-600 text-white rounded-lg font-bold">저장</button>
-                </div>
+                <button onClick={handleSubmit} className="w-full mt-4 p-3 bg-blue-600 text-white rounded-lg font-bold">저장</button>
+                <button onClick={onClose} className="w-full mt-2 p-2 text-gray-500">취소</button>
             </div>
         </div>
     );
@@ -933,6 +829,11 @@ const TaxView: React.FC<{ students: User[] }> = ({ students }) => {
     const [taxes, setTaxes] = useState<TaxItemWithRecipients[]>([]);
     const [loading, setLoading] = useState(true);
     const [showAddModal, setShowAddModal] = useState(false);
+    
+    // UI State
+    const [expandedTaxId, setExpandedTaxId] = useState<string | null>(null);
+    const [messageModal, setMessageModal] = useState<{isOpen: boolean, type: 'success'|'error', message: string}>({isOpen: false, type: 'success', message: ''});
+    const [confirmAction, setConfirmAction] = useState<{ type: 'delete', data: any } | null>(null);
 
     const fetchTaxes = useCallback(async () => {
         setLoading(true);
@@ -948,10 +849,28 @@ const TaxView: React.FC<{ students: User[] }> = ({ students }) => {
 
     useEffect(() => { fetchTaxes(); }, [fetchTaxes]);
 
-    const handleDelete = async (id: string) => {
-        if(!window.confirm('이 세금 항목을 삭제하시겠습니까?')) return;
-        await api.deleteTax(id);
-        fetchTaxes();
+    const handleDeleteConfirm = async () => {
+        if (!confirmAction || confirmAction.type !== 'delete') return;
+        const taxId = confirmAction.data;
+        try {
+            const msg = await api.deleteTax(taxId);
+            setMessageModal({ isOpen: true, type: 'success', message: msg });
+            fetchTaxes();
+        } catch (e: any) {
+            setMessageModal({ isOpen: true, type: 'error', message: e.message });
+        } finally {
+            setConfirmAction(null);
+        }
+    };
+
+    const toggleExpand = (id: string) => {
+        setExpandedTaxId(prev => prev === id ? null : id);
+    };
+
+    // Helper to get student name
+    const getStudentName = (userId: string) => {
+        const student = students.find(s => s.userId === userId);
+        return student ? `${student.grade ? student.grade + '-' : ''}${student.class ? student.class + ' ' : ''}${student.number}. ${student.name}` : userId;
     };
 
     return (
@@ -963,14 +882,18 @@ const TaxView: React.FC<{ students: User[] }> = ({ students }) => {
                 </button>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto pb-4">
                 {taxes.map(tax => {
-                    const paidCount = tax.recipients.filter(r => r.isPaid).length;
+                    const paidRecipients = tax.recipients.filter(r => r.isPaid);
+                    const unpaidRecipients = tax.recipients.filter(r => !r.isPaid);
+                    
+                    const paidCount = paidRecipients.length;
                     const totalCount = tax.recipients.length;
                     const progress = totalCount > 0 ? (paidCount / totalCount) * 100 : 0;
+                    const isExpanded = expandedTaxId === tax.id;
                     
                     return (
-                        <div key={tax.id} className="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+                        <div key={tax.id} className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 transition-all">
                             <div className="flex justify-between items-start mb-2">
                                 <div>
                                     <h3 className="font-bold text-lg">{tax.name}</h3>
@@ -978,18 +901,51 @@ const TaxView: React.FC<{ students: User[] }> = ({ students }) => {
                                 </div>
                                 <div className="text-right">
                                     <span className="block font-bold text-lg text-red-600">{tax.amount.toLocaleString()}권</span>
-                                    <button onClick={() => handleDelete(tax.id)} className="text-xs text-gray-400 hover:text-red-500 underline mt-1">삭제</button>
+                                    <button onClick={() => setConfirmAction({ type: 'delete', data: tax.id })} className="text-xs text-gray-400 hover:text-red-500 underline mt-1">삭제</button>
                                 </div>
                             </div>
                             
                             <div className="mt-4">
-                                <div className="flex justify-between text-xs mb-1">
-                                    <span className="text-gray-600">납부율</span>
+                                <div 
+                                    className="flex justify-between text-xs mb-1 cursor-pointer hover:bg-gray-50 p-1 rounded transition-colors select-none"
+                                    onClick={() => toggleExpand(tax.id)}
+                                >
+                                    <span className="text-gray-600 flex items-center">
+                                        납부율 
+                                        {isExpanded ? <ArrowUpIcon className="w-3 h-3 ml-1"/> : <ArrowDownIcon className="w-3 h-3 ml-1"/>}
+                                    </span>
                                     <span className="font-bold text-indigo-600">{Math.round(progress)}% ({paidCount}/{totalCount})</span>
                                 </div>
-                                <div className="w-full bg-gray-100 rounded-full h-2.5">
+                                <div className="w-full bg-gray-100 rounded-full h-2.5 mb-2">
                                     <div className="bg-indigo-600 h-2.5 rounded-full transition-all duration-500" style={{ width: `${progress}%` }}></div>
                                 </div>
+
+                                {isExpanded && (
+                                    <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-2 gap-4 animate-fadeIn">
+                                        <div>
+                                            <h4 className="text-xs font-bold text-green-600 mb-2 flex items-center">
+                                                <CheckIcon className="w-3 h-3 mr-1"/> 납부 완료 ({paidCount})
+                                            </h4>
+                                            <ul className="text-xs text-gray-600 space-y-1 max-h-32 overflow-y-auto">
+                                                {paidRecipients.map(r => (
+                                                    <li key={r.id} className="truncate">• {getStudentName(r.studentUserId)}</li>
+                                                ))}
+                                                {paidCount === 0 && <li className="text-gray-400 italic">없음</li>}
+                                            </ul>
+                                        </div>
+                                        <div>
+                                            <h4 className="text-xs font-bold text-red-500 mb-2 flex items-center">
+                                                <XIcon className="w-3 h-3 mr-1"/> 미납 ({unpaidRecipients.length})
+                                            </h4>
+                                            <ul className="text-xs text-gray-600 space-y-1 max-h-32 overflow-y-auto">
+                                                {unpaidRecipients.map(r => (
+                                                    <li key={r.id} className="truncate">• {getStudentName(r.studentUserId)}</li>
+                                                ))}
+                                                {unpaidRecipients.length === 0 && <li className="text-gray-400 italic">없음</li>}
+                                            </ul>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     );
@@ -999,6 +955,23 @@ const TaxView: React.FC<{ students: User[] }> = ({ students }) => {
             {showAddModal && (
                 <AddTaxModal students={students} onClose={() => setShowAddModal(false)} onComplete={fetchTaxes} />
             )}
+
+            <ConfirmModal 
+                isOpen={!!confirmAction}
+                title="세금 항목 삭제"
+                message="정말로 이 세금 항목을 삭제하시겠습니까? 학생들에게 발행된 고지서도 모두 삭제됩니다."
+                onConfirm={handleDeleteConfirm}
+                onCancel={() => setConfirmAction(null)}
+                confirmText="삭제"
+                isDangerous={true}
+            />
+
+            <MessageModal 
+                isOpen={messageModal.isOpen}
+                type={messageModal.type}
+                message={messageModal.message}
+                onClose={() => setMessageModal({ ...messageModal, isOpen: false })}
+            />
         </div>
     );
 };
@@ -1053,15 +1026,12 @@ const AddTaxModal: React.FC<{ students: User[], onClose: () => void, onComplete:
     );
 };
 
-
 // --- Fund Management View ---
 const FundManagementView: React.FC<{ students: (User & { account: Account | null })[] }> = ({ students }) => {
     const [funds, setFunds] = useState<Fund[]>([]);
     const [loading, setLoading] = useState(true);
     const [showAddModal, setShowAddModal] = useState(false);
     const [messageModal, setMessageModal] = useState<{isOpen: boolean, type: 'success'|'error', message: string}>({isOpen: false, type: 'success', message: ''});
-    
-    // Settlement Modal
     const [settleModal, setSettleModal] = useState<{ isOpen: boolean, fund: Fund | null }>({ isOpen: false, fund: null });
 
     const fetchFunds = useCallback(async () => {
@@ -1302,6 +1272,127 @@ const AddFundModal: React.FC<{ students: (User & { account: Account | null })[],
                 <button onClick={handleSubmit} disabled={loading} className="mt-6 w-full p-3 bg-indigo-600 text-white font-bold rounded-lg disabled:bg-gray-300">
                     {loading ? '개설 중...' : '펀드 개설하기'}
                 </button>
+            </div>
+        </div>
+    );
+};
+
+// --- Teacher Dashboard ---
+const TeacherDashboard: React.FC = () => {
+    const { currentUser, logout } = useContext(AuthContext);
+    const [view, setView] = useState<'dashboard' | 'students' | 'jobs' | 'tax' | 'funds'>('dashboard');
+    const [students, setStudents] = useState<(User & { account: Account | null })[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    const fetchData = useCallback(async () => {
+        setLoading(true);
+        try {
+            const users = await api.getUsersByRole(Role.STUDENT);
+            const usersWithAccounts = await Promise.all(
+                users.map(async u => ({ ...u, account: await api.getStudentAccountByUserId(u.userId) }))
+            );
+            usersWithAccounts.sort((a,b) => (a.number || 0) - (b.number || 0));
+            setStudents(usersWithAccounts);
+        } catch (error) {
+            console.error("Failed to fetch students", error);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
+
+    const renderContent = () => {
+        switch (view) {
+            case 'dashboard':
+                return <DashboardView students={students} refresh={fetchData} />;
+            case 'students':
+                return <StudentManagementView students={students} refresh={fetchData} />;
+            case 'jobs':
+                return <JobManagementView refresh={fetchData} />;
+            case 'tax':
+                return <TaxView students={students} />;
+            case 'funds':
+                return <FundManagementView students={students} />;
+            default:
+                return <DashboardView students={students} refresh={fetchData} />;
+        }
+    };
+
+    // Nav Button Component
+    const NavButton = ({ id, label, Icon }: { id: typeof view, label: string, Icon: React.FC<any> }) => (
+        <button 
+            onClick={() => setView(id)}
+            className={`w-full flex items-center p-3 text-sm font-semibold rounded-lg transition-colors ${view === id ? 'bg-[#2B548F] text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}
+        >
+            <Icon className="w-5 h-5 mr-3" />
+            {label}
+        </button>
+    );
+
+    const MobileNavButton = ({ id, label, Icon }: { id: typeof view, label: string, Icon: React.FC<any> }) => (
+        <button 
+            onClick={() => setView(id)}
+            className={`flex flex-col items-center justify-center w-full py-2 ${view === id ? 'text-[#2B548F]' : 'text-gray-400'}`}
+        >
+            <Icon className="w-6 h-6 mb-1" />
+            <span className="text-[10px]">{label}</span>
+        </button>
+    );
+
+    return (
+        <div className="flex h-full bg-gray-100">
+             {/* Desktop Sidebar */}
+            <aside className="hidden md:flex flex-col w-64 bg-white border-r p-4 shadow-sm z-10">
+                <div className="px-2 mb-8">
+                    <h1 className="text-xl font-bold text-gray-800">교사 관리자</h1>
+                    <p className="text-sm text-gray-500">{currentUser?.name}</p>
+                </div>
+                <nav className="flex flex-col space-y-2 flex-grow">
+                    <NavButton id="dashboard" label="대시보드" Icon={NewDashboardIcon} />
+                    <NavButton id="students" label="학생 관리" Icon={NewManageAccountsIcon} />
+                    <NavButton id="jobs" label="직업 관리" Icon={NewBriefcaseIcon} />
+                    <NavButton id="tax" label="세금 관리" Icon={NewTaxIcon} />
+                    <NavButton id="funds" label="펀드 관리" Icon={NewFundIcon} />
+                </nav>
+                <button onClick={logout} className="w-full flex items-center p-3 text-sm text-gray-600 rounded-lg hover:bg-gray-100 transition-colors mt-auto">
+                    <LogoutIcon className="w-5 h-5 mr-3" />
+                    로그아웃
+                </button>
+            </aside>
+
+            {/* Mobile Header */}
+            <div className="flex-1 flex flex-col h-full overflow-hidden">
+                <header className="md:hidden bg-white p-4 border-b flex justify-between items-center shadow-sm z-10">
+                    <div>
+                        <h1 className="text-lg font-bold text-gray-800">교사 관리자</h1>
+                    </div>
+                    <button onClick={logout} className="p-2 text-gray-600">
+                        <LogoutIcon className="w-6 h-6" />
+                    </button>
+                </header>
+
+                {/* Main Content */}
+                <main className="flex-grow p-4 md:p-8 overflow-y-auto bg-[#F3F4F6]">
+                    {loading ? (
+                        <div className="flex items-center justify-center h-full">
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2B548F]"></div>
+                        </div>
+                    ) : (
+                        renderContent()
+                    )}
+                </main>
+
+                {/* Mobile Bottom Nav */}
+                <nav className="md:hidden bg-white border-t grid grid-cols-5 pb-safe">
+                    <MobileNavButton id="dashboard" label="대시보드" Icon={NewDashboardIcon} />
+                    <MobileNavButton id="students" label="학생" Icon={NewManageAccountsIcon} />
+                    <MobileNavButton id="jobs" label="직업" Icon={NewBriefcaseIcon} />
+                    <MobileNavButton id="tax" label="세금" Icon={NewTaxIcon} />
+                    <MobileNavButton id="funds" label="펀드" Icon={NewFundIcon} />
+                </nav>
             </div>
         </div>
     );
