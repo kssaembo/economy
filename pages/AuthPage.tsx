@@ -1,5 +1,4 @@
 
-
 import React, { useState, useContext, useEffect } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
@@ -10,7 +9,18 @@ type AuthMode = 'main' | 'login' | 'student-select' | 'app-login' | 'app-change-
 
 const AuthPage: React.FC = () => {
     const { login } = useContext(AuthContext);
-    const [mode, setMode] = useState<AuthMode>('main');
+    
+    // Initialize mode based on URL parameter to prevent redirection to main screen on logout
+    const [mode, setMode] = useState<AuthMode>(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('mode') === 'app') {
+                return 'app-login';
+            }
+        }
+        return 'main';
+    });
+    
     const [loginTarget, setLoginTarget] = useState<{ role: Role, title: string, userId: string } | null>(null);
     const [password, setPassword] = useState('');
     
@@ -27,12 +37,14 @@ const AuthPage: React.FC = () => {
     const [students, setStudents] = useState<User[]>([]);
 
     // 1. 초기 로드 시 URL만 확인 (Dependency Array 비움 [])
+    // Note: mode state initialization above handles the first mount, 
+    // but we keep this for potential dynamic URL changes if needed.
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
-        if (params.get('mode') === 'app') {
+        if (params.get('mode') === 'app' && mode !== 'app-login' && mode !== 'app-change-password') {
             setMode('app-login');
         }
-    }, []);
+    }, [mode]);
 
     // 2. 모드가 변경될 때 필요한 데이터 로딩 (학생 선택 모드일 때만)
     useEffect(() => {
