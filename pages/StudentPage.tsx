@@ -169,6 +169,13 @@ const StudentPage: React.FC<StudentPageProps> = ({ initialView }) => {
         fetchAccount();
     }, [fetchAccount]);
 
+    const handleLogout = () => {
+        const url = new URL(window.location.href);
+        url.searchParams.set('mode', 'app');
+        window.history.replaceState({}, '', url.toString());
+        logout();
+    };
+
     const renderView = () => {
         if (loading || !currentUser || !account) return <div className="text-center p-8">로딩 중...</div>;
         switch (view) {
@@ -202,7 +209,7 @@ const StudentPage: React.FC<StudentPageProps> = ({ initialView }) => {
                     <DesktopNavButton label="적금" Icon={NewPiggyBankIcon} active={view === 'savings'} onClick={() => setView('savings')} />
                 </nav>
                  <div className="mt-auto">
-                    <button onClick={logout} className="w-full flex items-center p-3 text-sm text-gray-600 rounded-lg hover:bg-gray-200/50 transition-colors">
+                    <button onClick={handleLogout} className="w-full flex items-center p-3 text-sm text-gray-600 rounded-lg hover:bg-gray-200/50 transition-colors">
                         <LogoutIcon className="w-5 h-5 mr-3" />
                         로그아웃
                     </button>
@@ -216,7 +223,7 @@ const StudentPage: React.FC<StudentPageProps> = ({ initialView }) => {
                     <div>
                         <h1 className="text-2xl font-bold text-gray-800">{currentUser?.name}님</h1>
                     </div>
-                     <button onClick={logout} className="p-2 rounded-full hover:bg-gray-100">
+                     <button onClick={handleLogout} className="p-2 rounded-full hover:bg-gray-100">
                         <LogoutIcon className="w-6 h-6 text-gray-600" />
                     </button>
                 </header>

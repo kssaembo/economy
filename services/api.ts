@@ -669,21 +669,41 @@ const payTax = async (userId: string, taxId: string): Promise<string> => {
 const getFunds = async (): Promise<Fund[]> => {
     const { data, error } = await supabase.rpc('get_funds_with_stats');
     handleSupabaseError(error, 'getFunds');
-    return (data || []).map((f: any) => ({
-        ...f,
-        creatorId: f.creatorId || f.creator_student_id,
-        creatorName: f.creatorName || f.creator_name,
-        teacherId: f.teacherId || f.teacher_id,
-        unitPrice: f.unitPrice || f.unit_price,
-        targetAmount: f.targetAmount || f.target_amount,
-        baseReward: f.baseReward || f.base_reward,
-        incentiveReward: f.incentiveReward || f.incentive_reward,
-        recruitmentDeadline: f.recruitmentDeadline || f.recruitment_deadline,
-        maturityDate: f.maturityDate || f.maturity_date,
-        totalInvestedAmount: f.totalInvestedAmount || f.total_invested_amount || 0,
-        investorCount: f.investorCount || f.investor_count || 0,
-        createdAt: f.createdAt || f.created_at
-    }));
+    
+    const now = new Date();
+
+    return (data || []).map((f: any) => {
+        // Normalize fields from DB (snake_case vs camelCase)
+        const recruitmentDeadline = f.recruitmentDeadline || f.recruitment_deadline;
+        const maturityDate = f.maturityDate || f.maturity_date;
+        let status = (f.status || FundStatus.RECRUITING) as FundStatus;
+
+        // Auto-transition RECRUITING -> ONGOING if deadline passed
+        // This ensures the teacher can settle the fund and students see it as ongoing
+        if (status === FundStatus.RECRUITING && recruitmentDeadline) {
+            const deadlineDate = new Date(recruitmentDeadline);
+            if (now > deadlineDate) {
+                status = FundStatus.ONGOING;
+            }
+        }
+
+        return {
+            ...f,
+            creatorId: f.creatorId || f.creator_student_id,
+            creatorName: f.creatorName || f.creator_name,
+            teacherId: f.teacherId || f.teacher_id,
+            unitPrice: f.unitPrice || f.unit_price,
+            targetAmount: f.targetAmount || f.target_amount,
+            baseReward: f.baseReward || f.base_reward,
+            incentiveReward: f.incentiveReward || f.incentive_reward,
+            recruitmentDeadline: recruitmentDeadline,
+            maturityDate: maturityDate,
+            status: status, // Computed status
+            totalInvestedAmount: f.totalInvestedAmount || f.total_invested_amount || 0,
+            investorCount: f.investorCount || f.investor_count || 0,
+            createdAt: f.createdAt || f.created_at
+        };
+    });
 };
 
 const createFund = async (fund: Omit<Fund, 'id' | 'createdAt' | 'status' | 'teacherId' | 'creatorName' | 'totalInvestedAmount' | 'investorCount'>): Promise<string> => {
