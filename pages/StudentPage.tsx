@@ -1,5 +1,3 @@
-
-// ... (imports)
 import React, { useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
@@ -7,7 +5,6 @@ import { Account, Transaction, StockProduct, StudentStock, SavingsProduct, Stude
 import { HomeIcon, TransferIcon, NewStockIcon, NewPiggyBankIcon, BackIcon, XIcon, CheckIcon, ErrorIcon, PlusIcon, MinusIcon, NewJobIcon, NewTaxIcon, LogoutIcon, NewFundIcon, ArrowUpIcon, ArrowDownIcon } from '../components/icons';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
-// ... (types and interfaces)
 type View = 'home' | 'transfer' | 'stocks' | 'savings' | 'funds';
 type NotificationType = { type: 'success' | 'error', text: string };
 
@@ -15,7 +12,6 @@ interface StudentPageProps {
     initialView?: string;
 }
 
-// ... (Modals: ConfirmModal, MessageModal, ChangePasswordModal - Keep them as is)
 const ConfirmModal: React.FC<{
     isOpen: boolean;
     title: string;
@@ -65,7 +61,6 @@ const MessageModal: React.FC<{
 };
 
 const ChangePasswordModal: React.FC<{ isOpen: boolean, onClose: () => void }> = ({ isOpen, onClose }) => {
-    // ... (Keep existing implementation)
     const { currentUser } = useContext(AuthContext);
     const [currentPw, setCurrentPw] = useState('');
     const [newPw, setNewPw] = useState('');
@@ -122,12 +117,9 @@ const ChangePasswordModal: React.FC<{ isOpen: boolean, onClose: () => void }> = 
     );
 };
 
-// ... (StudentPage component - Keep mostly same, only update TransferView)
 const StudentPage: React.FC<StudentPageProps> = ({ initialView }) => {
-    // ... (Keep existing implementation)
     const { currentUser, logout } = useContext(AuthContext);
     
-    // initialView가 유효한 View 타입이면 그것을 사용하고, 아니면 'transfer'(송금)를 기본값으로 사용
     const validViews: View[] = ['home', 'transfer', 'stocks', 'funds', 'savings'];
     const startView: View = (initialView && validViews.includes(initialView as View)) 
         ? (initialView as View) 
@@ -196,7 +188,6 @@ const StudentPage: React.FC<StudentPageProps> = ({ initialView }) => {
     
     return (
         <div className="flex h-full bg-gray-50">
-            {/* Sidebar for Desktop */}
             <aside className="hidden md:flex flex-col w-56 bg-white/80 backdrop-blur-sm border-r p-4">
                 <div className="px-2">
                     <h1 className="text-2xl font-bold text-gray-800">{currentUser?.name}님</h1>
@@ -216,9 +207,7 @@ const StudentPage: React.FC<StudentPageProps> = ({ initialView }) => {
                 </div>
             </aside>
     
-            {/* Main Content Area */}
             <div className="flex-1 flex flex-col h-full">
-                {/* Header for Mobile */}
                 <header className="md:hidden p-4 flex justify-between items-center bg-white border-b sticky top-0 z-10">
                     <div>
                         <h1 className="text-2xl font-bold text-gray-800">{currentUser?.name}님</h1>
@@ -232,7 +221,6 @@ const StudentPage: React.FC<StudentPageProps> = ({ initialView }) => {
                     {renderView()}
                 </main>
     
-                {/* Bottom Nav for Mobile */}
                 <nav className="md:hidden grid grid-cols-5 bg-white p-1 border-t sticky bottom-0 z-10">
                     <NavButton label="홈" Icon={HomeIcon} active={view === 'home'} onClick={() => setView('home')} />
                     <NavButton label="송금" Icon={TransferIcon} active={view === 'transfer'} onClick={() => setView('transfer')} />
@@ -242,7 +230,6 @@ const StudentPage: React.FC<StudentPageProps> = ({ initialView }) => {
                 </nav>
             </div>
 
-            {/* Global Notification Modal */}
             {notification && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-sm text-center">
@@ -262,7 +249,6 @@ const StudentPage: React.FC<StudentPageProps> = ({ initialView }) => {
     );
 };
 
-// ... (Common Components: NavButton, DesktopNavButton - Keep them as is)
 const NavButton: React.FC<{ label: string, Icon: React.FC<any>, active: boolean, onClick: () => void }> = ({ label, Icon, active, onClick }) => (
     <button onClick={onClick} className={`flex flex-col items-center justify-center w-full py-2 rounded-lg transition-colors ${active ? 'text-indigo-600' : 'text-gray-500 hover:bg-indigo-50'}`}>
         <Icon className="w-6 h-6 mb-1" />
@@ -277,16 +263,13 @@ const DesktopNavButton: React.FC<{ label: string, Icon: React.FC<any>, active: b
     </button>
 );
 
-// ... (HomeView - Keep mostly same)
 const HomeView: React.FC<{ account: Account, currentUser: User, refreshAccount: () => void, showNotification: (type: 'success'|'error', text: string) => void }> = ({ account, currentUser, refreshAccount, showNotification }) => {
-    // ... (Keep existing implementation)
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [myStocks, setMyStocks] = useState<StudentStock[]>([]);
     const [mySavings, setMySavings] = useState<StudentSaving[]>([]);
     const [unpaidTaxes, setUnpaidTaxes] = useState<any[]>([]);
-    
-    // NEW STATE: 세금 납부 확인용 상태
     const [taxToPay, setTaxToPay] = useState<{taxId: string, amount: number, name: string} | null>(null);
+    const [visibleCount, setVisibleCount] = useState(5);
 
     useEffect(() => {
         api.getTransactionsByAccountId(account.accountId).then(setTransactions);
@@ -295,14 +278,11 @@ const HomeView: React.FC<{ account: Account, currentUser: User, refreshAccount: 
         api.getMyUnpaidTaxes(currentUser.userId).then(setUnpaidTaxes);
     }, [account.accountId, currentUser.userId]);
 
-    // Calculate totals
     const stockValue = myStocks.reduce((sum, item) => sum + (item.quantity * (item.stock?.currentPrice || 0)), 0);
     const savingsValue = mySavings.reduce((sum, item) => sum + item.amount, 0);
     const totalAssets = account.balance + stockValue + savingsValue;
 
-    // REPLACED handlePayTax with handlePayClick and confirm logic
     const handlePayClick = (taxId: string, amount: number, name: string) => {
-        // 1. Frontend Check: Insufficient Funds
         if (account.balance < amount) {
             showNotification('error', '잔액이 부족하여 세금을 납부할 수 없습니다.');
             return;
@@ -369,7 +349,7 @@ const HomeView: React.FC<{ account: Account, currentUser: User, refreshAccount: 
             <div>
                 <h3 className="text-lg font-bold text-gray-800 mb-3 ml-1">최근 활동</h3>
                 <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-                    {transactions.slice(0, 5).map(t => (
+                    {transactions.slice(0, visibleCount).map(t => (
                         <div key={t.transactionId} className="p-4 border-b last:border-0 flex justify-between items-center">
                             <div>
                                 <div className="font-medium text-gray-800">{t.description}</div>
@@ -380,11 +360,18 @@ const HomeView: React.FC<{ account: Account, currentUser: User, refreshAccount: 
                             </div>
                         </div>
                     ))}
+                    {transactions.length > visibleCount && (
+                        <button 
+                            onClick={() => setVisibleCount(prev => prev + 10)}
+                            className="w-full py-4 text-sm font-bold text-indigo-600 hover:bg-indigo-50 border-t transition-colors bg-white active:bg-indigo-100"
+                        >
+                            활동 더보기 (+10건)
+                        </button>
+                    )}
                     {transactions.length === 0 && <div className="p-6 text-center text-gray-400">거래 내역이 없습니다.</div>}
                 </div>
             </div>
 
-            {/* Custom Confirm Modal for Tax Payment */}
             <ConfirmModal 
                 isOpen={!!taxToPay}
                 title="세금 납부"
@@ -397,10 +384,7 @@ const HomeView: React.FC<{ account: Account, currentUser: User, refreshAccount: 
     );
 };
 
-
-// --- Transfer View ---
 const TransferView: React.FC<{ currentUser: User, account: Account, refreshAccount: () => void, showNotification: (type: 'success' | 'error', text: string) => void }> = ({ currentUser, account, refreshAccount, showNotification }) => {
-    // ... existing TransferView code ...
     const [targetType, setTargetType] = useState<'student' | 'teacher'>('student');
     const [targetAccountId, setTargetAccountId] = useState('');
     const [amount, setAmount] = useState('');
@@ -408,7 +392,6 @@ const TransferView: React.FC<{ currentUser: User, account: Account, refreshAccou
     const [loading, setLoading] = useState(false);
     const [recipientInfo, setRecipientInfo] = useState<{name: string, grade: number, class: number, number: number} | null>(null);
 
-    // Debounce check recipient
     useEffect(() => {
         if(targetType === 'student' && targetAccountId.length >= 3) {
             const timer = setTimeout(async () => {
@@ -440,15 +423,11 @@ const TransferView: React.FC<{ currentUser: User, account: Account, refreshAccou
              if (targetType === 'teacher') {
                 const teacherAcc = await api.getTeacherAccount();
                 if (!teacherAcc) throw new Error("선생님 계좌를 찾을 수 없습니다.");
-                // FIXED: Use teacherAcc.accountId instead of id (uuid)
                 await api.transfer(currentUser.userId, teacherAcc.accountId, parseInt(amount), memo || '선생님께 송금');
              } else {
-                 // For student, we construct the account ID string directly
                  const fullId = `권쌤은행 ${targetAccountId}`;
                  const details = await api.getRecipientDetailsByAccountId(fullId);
                  if(!details) throw new Error("받는 사람 계좌가 존재하지 않습니다.");
-                 
-                 // FIXED: Use details.account.accountId (string) instead of id (uuid)
                  await api.transfer(currentUser.userId, details.account.accountId, parseInt(amount), memo || '송금');
              }
              showNotification('success', '송금이 완료되었습니다.');
@@ -556,9 +535,7 @@ const TransferView: React.FC<{ currentUser: User, account: Account, refreshAccou
     );
 };
 
-// ... (rest of the file remains unchanged)
 const StocksView: React.FC<{ currentUser: User, refreshAccount: () => void, showNotification: (type: 'success' | 'error', text: string) => void }> = ({ currentUser, refreshAccount, showNotification }) => {
-    // ... (StocksView implementation)
     const [stocks, setStocks] = useState<StockProduct[]>([]);
     const [myStocks, setMyStocks] = useState<StudentStock[]>([]);
     const [selectedStock, setSelectedStock] = useState<StockProduct | null>(null);
@@ -673,7 +650,6 @@ const StocksView: React.FC<{ currentUser: User, refreshAccount: () => void, show
                             </div>
                         </div>
 
-                        {/* Modal nested properly here to avoid closing on click */}
                         {(selectedStock as any).mode && (
                             <StockTransactionModal 
                                 mode={(selectedStock as any).mode} 
@@ -695,9 +671,7 @@ const StocksView: React.FC<{ currentUser: User, refreshAccount: () => void, show
     );
 };
 
-// ... (Rest of components: StockTransactionModal, SavingsView, FundView, etc. - keep unchanged)
 const StockTransactionModal: React.FC<{ mode: 'buy'|'sell', stock: StockProduct, userId: string, onClose: ()=>void, onComplete: (msg?: string)=>void }> = ({mode, stock, userId, onClose, onComplete}) => {
-    // ...
     const [quantity, setQuantity] = useState(1);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -753,17 +727,24 @@ const StockTransactionModal: React.FC<{ mode: 'buy'|'sell', stock: StockProduct,
 };
 
 const SavingsView: React.FC<{ currentUser: User, refreshAccount: () => void }> = ({ currentUser, refreshAccount }) => {
-    // ...
     const [products, setProducts] = useState<SavingsProduct[]>([]);
     const [mySavings, setMySavings] = useState<StudentSaving[]>([]);
     const [selectedProduct, setSelectedProduct] = useState<SavingsProduct | null>(null);
     const [cancelTargetId, setCancelTargetId] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
 
     const fetchData = useCallback(async () => {
-        const prodList = await api.getSavingsProducts();
-        setProducts(prodList);
-        const myList = await api.getStudentSavings(currentUser.userId);
-        setMySavings(myList);
+        setLoading(true);
+        try {
+            const prodList = await api.getSavingsProducts();
+            setProducts(prodList);
+            const myList = await api.getStudentSavings(currentUser.userId);
+            setMySavings(myList);
+        } catch (error) {
+            console.error("Failed to fetch savings data", error);
+        } finally {
+            setLoading(false);
+        }
     }, [currentUser.userId]);
 
     useEffect(() => { fetchData(); }, [fetchData]);
@@ -789,42 +770,91 @@ const SavingsView: React.FC<{ currentUser: User, refreshAccount: () => void }> =
     };
 
     const requestCancel = (id: string) => {
-        // FIXED: Replaced window.confirm with ConfirmModal state
         setCancelTargetId(id);
     };
 
     return (
         <div className="space-y-6">
+            {/* 가입한 적금 목록 (가장 상단 배치) */}
             {mySavings.length > 0 && (
                 <div>
-                    <h3 className="text-lg font-bold text-gray-800 mb-3">내 적금</h3>
-                    <div className="space-y-3">
-                        {mySavings.map(s => (
-                            <div key={s.savingId} className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-green-500">
-                                <div className="flex justify-between items-start mb-2">
-                                    <div className="font-bold">{s.product?.name}</div>
-                                    <button onClick={() => requestCancel(s.savingId)} className="text-xs text-gray-400 underline">해지</button>
+                    <h3 className="text-lg font-bold text-gray-800 mb-3 ml-1 flex items-center">
+                        <CheckIcon className="w-5 h-5 mr-1 text-green-600"/> 내 적금 현황
+                    </h3>
+                    <div className="space-y-4">
+                        {mySavings.map(s => {
+                            const rate = s.product?.rate || 0;
+                            const cancelRate = s.product?.cancellationRate || 0;
+                            const maturityInterest = Math.floor(s.amount * rate);
+                            const cancelRefund = Math.floor(s.amount * cancelRate);
+
+                            // 해지 가능일 계산: 가입 기간의 2/3가 지나야 함
+                            const joinTime = new Date(s.joinDate).getTime();
+                            const maturityTime = new Date(s.maturityDate).getTime();
+                            const duration = maturityTime - joinTime;
+                            const possibleTime = joinTime + (duration * 2 / 3);
+                            const canCancel = Date.now() >= possibleTime;
+                            const possibleDateStr = new Date(possibleTime).toLocaleDateString();
+
+                            return (
+                                <div key={s.savingId} className="bg-white p-5 rounded-2xl shadow-sm border-l-8 border-green-500 overflow-hidden relative group">
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div>
+                                            <div className="font-extrabold text-xl text-gray-800 mb-1">{s.product?.name || '가입한 적금'}</div>
+                                            <div className="text-xs text-gray-400">가입일: {new Date(s.joinDate).toLocaleDateString()}</div>
+                                        </div>
+                                        <div className="flex flex-col items-end">
+                                            <button 
+                                                onClick={() => canCancel && requestCancel(s.savingId)} 
+                                                disabled={!canCancel}
+                                                className={`px-3 py-1 text-xs font-bold rounded-full transition-colors ${canCancel ? 'bg-gray-100 text-gray-400 hover:bg-red-50 hover:text-red-500' : 'bg-gray-50 text-gray-200 cursor-not-allowed border border-gray-100'}`}
+                                            >
+                                                해지
+                                            </button>
+                                            {!canCancel && <span className="text-[9px] text-red-400 mt-1 font-bold">기간 미달</span>}
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-2 gap-y-4 gap-x-6">
+                                        <div className="flex flex-col">
+                                            <span className="text-xs text-gray-400 mb-1 font-medium">가입 원금</span>
+                                            <span className="font-bold text-gray-800 text-lg">{s.amount.toLocaleString()}<span className="text-xs font-normal ml-0.5">권</span></span>
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-xs text-gray-400 mb-1 font-medium">만기 예정일</span>
+                                            <span className="font-bold text-blue-600">{new Date(s.maturityDate).toLocaleDateString()}</span>
+                                        </div>
+                                        <div className="flex flex-col p-3 bg-indigo-50 rounded-xl">
+                                            <span className="text-[10px] text-indigo-400 mb-1 font-bold">만기 시 예상 이자 (+{(rate * 100).toFixed(0)}%)</span>
+                                            <span className="font-extrabold text-indigo-600 text-base">+{maturityInterest.toLocaleString()}<span className="text-[10px] font-normal ml-0.5 text-indigo-400">권</span></span>
+                                        </div>
+                                        <div className="flex flex-col p-3 bg-red-50 rounded-xl">
+                                            <span className="text-[10px] text-red-400 mb-1 font-bold">중도 해지 시 환급액 ({(cancelRate * 100).toFixed(0)}%)</span>
+                                            <span className="font-extrabold text-red-600 text-base">{cancelRefund.toLocaleString()}<span className="text-[10px] font-normal ml-0.5 text-red-400">권</span></span>
+                                            <span className={`text-[9px] mt-1 font-bold ${canCancel ? 'text-green-500' : 'text-red-400'}`}>
+                                                {canCancel ? '✓ 현재 해지 가능' : `🔒 해지 가능일: ${possibleDateStr} 이후`}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="mt-4 pt-3 border-t border-gray-50 flex justify-between items-center">
+                                        <span className="text-[10px] text-gray-300 italic">* 가입 기간의 2/3가 지나야 중도 해지가 가능합니다.</span>
+                                    </div>
                                 </div>
-                                <div className="flex justify-between text-sm text-gray-600 mb-1">
-                                    <span>가입금액</span>
-                                    <span className="font-bold">{s.amount.toLocaleString()}권</span>
-                                </div>
-                                <div className="flex justify-between text-sm text-gray-600">
-                                    <span>만기일</span>
-                                    <span className="text-blue-600">{new Date(s.maturityDate).toLocaleDateString()}</span>
-                                </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
             )}
 
+            {loading && <div className="text-center py-4 text-gray-400 text-sm">정보 업데이트 중...</div>}
+
             <div>
-                <h3 className="text-lg font-bold text-gray-800 mb-3">가입 가능한 적금</h3>
+                <h3 className="text-lg font-bold text-gray-800 mb-3 ml-1">가입 가능한 적금 상품</h3>
                 <div className="grid grid-cols-1 gap-3">
                     {products.map(p => (
-                        <div key={p.id} onClick={() => setSelectedProduct(p)} className="bg-white p-5 rounded-xl shadow-sm cursor-pointer hover:bg-green-50 transition-colors">
-                            <div className="font-bold text-lg mb-2">{p.name}</div>
+                        <div key={p.id} onClick={() => setSelectedProduct(p)} className="bg-white p-5 rounded-xl shadow-sm cursor-pointer hover:bg-green-50 transition-colors border border-transparent hover:border-green-200">
+                            <div className="font-bold text-lg mb-2 text-gray-800">{p.name}</div>
                             <div className="flex justify-between text-sm text-gray-600">
                                 <span>이자율</span>
                                 <span className="font-bold text-green-600">{(p.rate * 100).toFixed(0)}%</span>
@@ -834,11 +864,12 @@ const SavingsView: React.FC<{ currentUser: User, refreshAccount: () => void }> =
                                 <span>{p.maturityDays}일</span>
                             </div>
                             <div className="flex justify-between text-sm text-gray-600 mt-1">
-                                <span>최대 금액</span>
+                                <span>최대 가입 가능 금액</span>
                                 <span>{p.maxAmount.toLocaleString()}권</span>
                             </div>
                         </div>
                     ))}
+                    {products.length === 0 && !loading && <div className="text-center py-10 text-gray-400">현재 가입 가능한 적금 상품이 없습니다.</div>}
                 </div>
             </div>
 
@@ -853,7 +884,7 @@ const SavingsView: React.FC<{ currentUser: User, refreshAccount: () => void }> =
             <ConfirmModal 
                 isOpen={!!cancelTargetId}
                 title="적금 해지"
-                message="정말로 적금을 해지하시겠습니까? 중도 해지 시 약정된 이자를 받을 수 없으며 원금의 일부만 돌려받을 수 있습니다."
+                message="정말로 적금을 해지하시겠습니까? 중도 해지 시 약정된 이자를 받을 수 없으며 원금의 일부(해지이율 적용)만 돌려받을 수 있습니다."
                 onConfirm={handleConfirmCancel}
                 onCancel={() => setCancelTargetId(null)}
                 confirmText="해지하기"
@@ -863,7 +894,6 @@ const SavingsView: React.FC<{ currentUser: User, refreshAccount: () => void }> =
 };
 
 const FundView: React.FC<{ currentUser: User, refreshAccount: () => void }> = ({ currentUser, refreshAccount }) => {
-    // ... (FundView impl)
     const [funds, setFunds] = useState<Fund[]>([]);
     const [myInvestments, setMyInvestments] = useState<FundInvestment[]>([]);
     const [loading, setLoading] = useState(true);
@@ -978,7 +1008,6 @@ const JoinFundModal: React.FC<{
     onComplete: () => void;
     userId: string;
 }> = ({ fund, onClose, onComplete, userId }) => {
-    // ...
     const [units, setUnits] = useState(1);
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<{ type: 'success' | 'error', text: string } | null>(null);
@@ -1007,7 +1036,7 @@ const JoinFundModal: React.FC<{
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={onClose}>
-            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
+            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-sm" onClick={e => e.stopPropagation()}>
                 <h3 className="text-xl font-bold mb-2">{fund.name}</h3>
                 <div className="mb-4 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg max-h-32 overflow-y-auto">
                     {fund.description}
@@ -1053,7 +1082,6 @@ const JoinFundModal: React.FC<{
 };
 
 const JoinSavingsModal: React.FC<{ product: SavingsProduct, onClose: ()=>void, onJoin: (amount: number)=>void }> = ({product, onClose, onJoin}) => {
-    // ...
     const [amount, setAmount] = useState('');
     
     return (

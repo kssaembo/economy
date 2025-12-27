@@ -480,9 +480,11 @@ const getSavingsProducts = async (): Promise<SavingsProduct[]> => {
 };
 
 const getStudentSavings = async (userId: string): Promise<StudentSaving[]> => {
+    // FIX: Explicitly specifying the foreign key to resolve ambiguity (PGRST201 error)
+    // Alias the joined data as 'product' for consistency with our types
     const { data, error } = await supabase
         .from('student_savings')
-        .select('*, savings_products(*)')
+        .select('*, product:savings_products!student_savings_productId_fkey(*)')
         .eq('userId', userId);
     
     handleSupabaseError(error, 'getStudentSavings');
@@ -490,8 +492,9 @@ const getStudentSavings = async (userId: string): Promise<StudentSaving[]> => {
     if (!data) return [];
     
     return data.map(ss => {
-        const product = ss.savings_products as SavingsProduct;
-        delete (ss as any).savings_products;
+        // Map the aliased 'product' correctly
+        const product = ss.product as SavingsProduct;
+        delete (ss as any).product;
         return { ...ss, product } as StudentSaving;
     });
 };

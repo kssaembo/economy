@@ -1,4 +1,3 @@
-
 import React, { useState, useContext, useEffect, useCallback, useMemo } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
@@ -167,7 +166,7 @@ const TransactionModal: React.FC<{ student: User & { account: Account | null }, 
                 </div>
                  <p className="mb-4">현재 잔액: <span className="font-bold">{student.account?.balance.toLocaleString() ?? 0}권</span></p>
                 <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="금액" className="w-full p-3 border rounded-lg"/>
-                <button onClick={handleSubmit} disabled={loading} className="mt-6 w-full p-3 bg-indigo-600 text-white font-bold rounded-lg disabled:bg-gray-300">
+                <button onClick={handleSubmit} disabled={loading} className="mt-6 w-full p-3 bg-indigo-600 text-white font-bold rounded-lg disabled:bg-gray-400">
                     {loading ? '처리 중...' : '실행'}
                 </button>
                  {result && (
@@ -704,25 +703,42 @@ const SavingEnrolleesModal: React.FC<{ product: SavingsProduct, onClose: () => v
     
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={onClose}>
-            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
+            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg" onClick={e => e.stopPropagation()}>
                 <h3 className="text-xl font-bold mb-4">{product.name} 가입자 명단</h3>
                 <div className="max-h-60 overflow-y-auto">
                     {enrollees.length > 0 ? (
                         <table className="w-full text-sm">
-                            <thead><tr className="border-b"><th className="p-2 text-left">학생명</th><th className="p-2 text-right">가입 금액</th><th className="p-2 text-right">만기 날짜</th></tr></thead>
+                            <thead>
+                                <tr className="border-b">
+                                    <th className="p-2 text-left">학생명</th>
+                                    <th className="p-2 text-right">가입 금액</th>
+                                    <th className="p-2 text-right">해지 가능일</th>
+                                    <th className="p-2 text-right">만기 날짜</th>
+                                </tr>
+                            </thead>
                             <tbody>
-                                {enrollees.map(e => (
-                                    <tr key={e.studentName} className="border-b">
-                                        <td className="p-2">{e.studentName}</td>
-                                        <td className="p-2 text-right font-mono">{e.amount.toLocaleString()}권</td>
-                                        <td className="p-2 text-right font-mono">{new Date(e.maturityDate).toLocaleDateString()}</td>
-                                    </tr>
-                                ))}
+                                {enrollees.map(e => {
+                                    const maturityTime = new Date(e.maturityDate).getTime();
+                                    // joinTime = maturityTime - duration
+                                    const possibleTime = maturityTime - (product.maturityDays * 24 * 60 * 60 * 1000 / 3);
+                                    
+                                    return (
+                                        <tr key={e.studentName} className="border-b">
+                                            <td className="p-2">{e.studentName}</td>
+                                            <td className="p-2 text-right font-mono">{e.amount.toLocaleString()}권</td>
+                                            <td className="p-2 text-right font-mono text-red-500 text-xs">{new Date(possibleTime).toLocaleDateString()}</td>
+                                            <td className="p-2 text-right font-mono">{new Date(e.maturityDate).toLocaleDateString()}</td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     ) : (
                         <p className="text-center text-gray-500 py-4">아직 가입한 학생이 없습니다.</p>
                     )}
+                </div>
+                <div className="mt-4 p-3 bg-gray-50 rounded-lg text-[10px] text-gray-500">
+                    * 해지 가능일: 가입 기간의 2/3가 경과한 시점으로, 학생 페이지에서 직접 해지가 가능해지는 날짜입니다.
                 </div>
                 <button onClick={onClose} className="mt-4 w-full p-2 bg-gray-200 font-bold rounded-lg">닫기</button>
             </div>
