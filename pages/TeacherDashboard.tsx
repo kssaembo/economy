@@ -3,7 +3,7 @@ import React, { useState, useContext, useEffect, useCallback, useMemo } from 're
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
 import { User, Role, Account, Transaction, Job, AssignedStudent, TransactionType, TaxItemWithRecipients, Fund, FundStatus } from '../types';
-import { LogoutIcon, QrCodeIcon, UserAddIcon, XIcon, CheckIcon, ErrorIcon, BackIcon, NewDashboardIcon, NewBriefcaseIcon, NewManageAccountsIcon, ManageIcon, NewTaxIcon, NewFundIcon, NewStudentIcon, PencilIcon, ArrowDownIcon, ArrowUpIcon, PlusIcon } from '../components/icons';
+import { LogoutIcon, QrCodeIcon, UserAddIcon, XIcon, CheckIcon, ErrorIcon, BackIcon, NewDashboardIcon, NewBriefcaseIcon, NewManageAccountsIcon, ManageIcon, NewTaxIcon, NewFundIcon, NewStudentIcon, PencilIcon, ArrowDownIcon, ArrowUpIcon, PlusIcon, BellIcon } from '../components/icons';
 import { QRCodeSVG } from 'qrcode.react';
 
 // --- Helpers ---
@@ -12,6 +12,24 @@ const getQrBaseUrl = () => {
     // 실제 배포된 서비스 주소로 고정합니다.
     return 'https://economy-rho.vercel.app';
 };
+
+const getDDay = (targetDateStr: string) => {
+    const target = new Date(targetDateStr);
+    target.setHours(0,0,0,0);
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const diff = target.getTime() - today.getTime();
+    return Math.floor(diff / (1000 * 60 * 60 * 24));
+};
+
+// --- Alarms Logic Helper ---
+interface AlarmItem {
+    id: string;
+    type: 'danger' | 'warning' | 'info';
+    category: string;
+    message: string;
+    date: Date;
+}
 
 // --- Modals ---
 
@@ -69,6 +87,16 @@ const DashboardView: React.FC<{ students: (User & { account: Account | null })[]
     const [teacherAccount, setTeacherAccount] = useState<Account | null>(null);
     const [teacherTransactions, setTeacherTransactions] = useState<Transaction[]>([]);
     const [showHistoryModal, setShowHistoryModal] = useState(false);
+    
+    // 신규 상태: 더보기 및 탭 관리
+    const [visibleTeacherTxns, setVisibleTeacherTxns] = useState(5);
+    const [activeTab, setActiveTab] = useState<'assets' | 'activity_up' | 'activity_down'>('assets');
+    const [visibleRankingCount, setVisibleRankingCount] = useState(3);
+    const [studentActivities, setStudentActivities] = useState<Record<string, number>>({});
+    
+    // 알림 시스템 상태
+    const [alarms, setAlarms] = useState<AlarmItem[]>([]);
+    const [isAlarmsLoading, setIsAlarmsLoading] = useState(false);
 
     useEffect(() => {
         const fetchTeacherData = async () => {
@@ -86,11 +114,141 @@ const DashboardView: React.FC<{ students: (User & { account: Account | null })[]
         fetchTeacherData();
     }, []);
 
+    // 학생별 활동량(거래 횟수) 데이터 가져오기 및 알림 데이터 수집
+    useEffect(() => {
+        const fetchData = async () => {
+            setIsAlarmsLoading(true);
+            const activityMap: Record<string, number> = {};
+            const newAlarms: AlarmItem[] = [];
+            const todayStr = new Date().toLocaleDateString();
+
+            try {
+                // 1. 공통 데이터 (세금, 펀드)
+                const [taxes, funds] = await Promise.all([api.getTaxes(), api.getFunds()]);
+                
+                taxes.forEach(tax => {
+                    const dDay = getDDay(tax.dueDate);
+                    if (dDay >= 0 && dDay <= 3) {
+                        newAlarms.push({
+                            id: `tax-${tax.id}-${dDay}`,
+                            type: dDay === 0 ? 'danger' : 'warning',
+                            category: '세금',
+                            message: `'${tax.name}' 세금 납부 마감 ${dDay === 0 ? '당일' : 'D-' + dDay}입니다.`,
+                            date: new Date()
+                        });
+                    }
+                });
+
+                funds.forEach(fund => {
+                    if (fund.status === FundStatus.ONGOING || fund.status === FundStatus.RECRUITING) {
+                        const dDay = getDDay(fund.maturityDate);
+                        if (dDay >= 0 && dDay <= 3) {
+                             newAlarms.push({
+                                id: `fund-${fund.id}-${dDay}`,
+                                type: dDay === 0 ? 'danger' : 'warning',
+                                category: '펀드',
+                                message: `'${fund.name}' 펀드 만기 ${dDay === 0 ? '당일' : 'D-' + dDay}입니다.`,
+                                date: new Date()
+                            });
+                        }
+                    }
+                });
+
+                // 2. 학생별 데이터 (적금, 거래내역)
+                await Promise.all(students.map(async (s) => {
+                    if (s.account) {
+                        const txns = await api.getTransactionsByAccountId(s.account.accountId);
+                        activityMap[s.userId] = txns.length;
+
+                        // 거래내역 기반 알림 (오늘 발생한 건들)
+                        txns.forEach(t => {
+                            const tDate = new Date(t.date).toLocaleDateString();
+                            if (tDate === todayStr) {
+                                if (Math.abs(t.amount) >= 100) {
+                                    newAlarms.push({
+                                        id: `large-tx-${t.transactionId}`,
+                                        type: 'info',
+                                        category: '고액거래',
+                                        message: `${s.name} 학생: ${Math.abs(t.amount).toLocaleString()}권 고액 거래 발생 (${t.description})`,
+                                        date: new Date(t.date)
+                                    });
+                                }
+                                if (t.type === 'StockBuy' || t.type === 'StockSell') {
+                                    newAlarms.push({
+                                        id: `stock-${t.transactionId}`,
+                                        type: 'info',
+                                        category: '주식',
+                                        message: `${s.name} 학생이 주식을 ${t.type === 'StockBuy' ? '구입' : '판매'}했습니다.`,
+                                        date: new Date(t.date)
+                                    });
+                                }
+                                if (t.type === 'SavingsJoin') {
+                                    newAlarms.push({
+                                        id: `saving-join-${t.transactionId}`,
+                                        type: 'info',
+                                        category: '적금',
+                                        message: `${s.name} 학생이 신규 적금에 가입했습니다.`,
+                                        date: new Date(t.date)
+                                    });
+                                }
+                                if (t.type === 'FundJoin') {
+                                    newAlarms.push({
+                                        id: `fund-join-${t.transactionId}`,
+                                        type: 'info',
+                                        category: '펀드',
+                                        message: `${s.name} 학생이 펀드에 투자했습니다.`,
+                                        date: new Date(t.date)
+                                    });
+                                }
+                            }
+                        });
+
+                        // 적금 만기 체크
+                        const studentSavings = await api.getStudentSavings(s.userId);
+                        studentSavings.forEach(ss => {
+                            const dDay = getDDay(ss.maturityDate);
+                            if (dDay === 0 || dDay === 1) {
+                                newAlarms.push({
+                                    id: `saving-mat-${ss.savingId}-${dDay}`,
+                                    type: dDay === 0 ? 'danger' : 'warning',
+                                    category: '적금',
+                                    message: `${s.name} 학생의 '${ss.product?.name}' 적금이 ${dDay === 0 ? '오늘' : '내일'} 만기입니다.`,
+                                    date: new Date()
+                                });
+                            }
+                        });
+
+                    } else {
+                        activityMap[s.userId] = 0;
+                    }
+                }));
+
+                setStudentActivities(activityMap);
+                setAlarms(newAlarms.sort((a,b) => b.date.getTime() - a.date.getTime()));
+            } catch (err) {
+                console.error("Failed to gather activity data", err);
+            } finally {
+                setIsAlarmsLoading(false);
+            }
+        };
+        if (students.length > 0) fetchData();
+    }, [students]);
+
     const totalAssets = students.reduce((acc, s) => acc + (s.account?.balance || 0), 0);
     const avgAssets = students.length > 0 ? Math.round(totalAssets / students.length) : 0;
     
-    // Sort by balance for ranking
-    const richList = [...students].sort((a, b) => (b.account?.balance || 0) - (a.account?.balance || 0)).slice(0, 3);
+    // 탭에 따른 랭킹 리스트 정렬
+    const sortedRankingList = useMemo(() => {
+        let list = [...students];
+        if (activeTab === 'assets') {
+            list.sort((a, b) => (b.account?.balance || 0) - (a.account?.balance || 0));
+        } else if (activeTab === 'activity_up') {
+            list.sort((a, b) => (studentActivities[b.userId] || 0) - (studentActivities[a.userId] || 0));
+        } else if (activeTab === 'activity_down') {
+            list.sort((a, b) => (studentActivities[a.userId] || 0) - (studentActivities[b.userId] || 0));
+        }
+        return list;
+    }, [students, activeTab, studentActivities]);
 
     return (
         <div className="space-y-6">
@@ -116,17 +274,67 @@ const DashboardView: React.FC<{ students: (User & { account: Account | null })[]
                     <p className="text-3xl font-bold text-gray-800 mt-2">{students.length}명</p>
                 </div>
              </div>
+
+             {/* 알람 영역 (중앙 섹션 상단) */}
+             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="p-4 border-b bg-gray-50 flex items-center justify-between">
+                    <h3 className="font-bold text-gray-800 flex items-center">
+                        <BellIcon className="w-5 h-5 mr-2 text-red-500 animate-bounce" /> 학급 경제 주요 알림
+                    </h3>
+                    <span className="text-xs text-gray-400">실시간 집계</span>
+                </div>
+                <div className="max-h-48 overflow-y-auto divide-y divide-gray-50">
+                    {isAlarmsLoading ? (
+                        <div className="p-8 text-center text-gray-400 text-sm">데이터 분석 중...</div>
+                    ) : alarms.length > 0 ? (
+                        alarms.map(alarm => (
+                            <div key={alarm.id} className="p-3 flex items-start gap-3 hover:bg-gray-50 transition-colors">
+                                <div className={`mt-1 w-2 h-2 rounded-full shrink-0 ${alarm.type === 'danger' ? 'bg-red-500' : alarm.type === 'warning' ? 'bg-orange-400' : 'bg-blue-400'}`}></div>
+                                <div className="flex-grow">
+                                    <div className="flex items-center gap-2 mb-0.5">
+                                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${alarm.type === 'danger' ? 'bg-red-50 text-red-600' : alarm.type === 'warning' ? 'bg-orange-50 text-orange-600' : 'bg-blue-50 text-blue-600'}`}>
+                                            {alarm.category}
+                                        </span>
+                                        <span className="text-[10px] text-gray-400">{new Date(alarm.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                    </div>
+                                    <p className="text-xs text-gray-700 font-medium">{alarm.message}</p>
+                                </div>
+                            </div>
+                        ))
+                    ) : (
+                        <div className="p-10 text-center text-gray-400 text-sm">현재 중요한 알림이 없습니다.</div>
+                    )}
+                </div>
+             </div>
              
              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                 <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-                     <div className="p-4 border-b bg-gray-50">
-                         <h3 className="font-bold text-gray-800">자산 순위 TOP 3</h3>
+                 {/* 자산 순위 / 활동량 탭 영역 */}
+                 <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 flex flex-col">
+                     <div className="p-1 border-b bg-gray-50 flex">
+                         <button 
+                            onClick={() => { setActiveTab('assets'); setVisibleRankingCount(3); }}
+                            className={`flex-1 py-3 text-sm font-bold transition-colors rounded-t-lg ${activeTab === 'assets' ? 'bg-white text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-400 hover:text-gray-600'}`}
+                         >
+                             자산 순위
+                         </button>
+                         <button 
+                            onClick={() => { setActiveTab('activity_up'); setVisibleRankingCount(3); }}
+                            className={`flex-1 py-3 text-sm font-bold transition-colors rounded-t-lg ${activeTab === 'activity_up' ? 'bg-white text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-400 hover:text-gray-600'}`}
+                         >
+                             활동량 ↑
+                         </button>
+                         <button 
+                            onClick={() => { setActiveTab('activity_down'); setVisibleRankingCount(3); }}
+                            className={`flex-1 py-3 text-sm font-bold transition-colors rounded-t-lg ${activeTab === 'activity_down' ? 'bg-white text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-400 hover:text-gray-600'}`}
+                         >
+                             활동량 ↓
+                         </button>
                      </div>
-                     <ul>
-                         {richList.map((s, index) => (
-                             <li key={s.userId} className="p-4 border-b last:border-b-0 flex items-center justify-between">
+                     <ul className="flex-grow">
+                         {sortedRankingList.slice(0, visibleRankingCount).map((s, index) => (
+                             <li key={s.userId} className="p-4 border-b last:border-b-0 flex items-center justify-between hover:bg-gray-50 transition-colors">
                                  <div className="flex items-center">
-                                     <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold mr-3 ${index === 0 ? 'bg-yellow-100 text-yellow-700' : index === 1 ? 'bg-gray-100 text-gray-700' : 'bg-orange-100 text-orange-800'}`}>
+                                     <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold mr-3 ${index === 0 ? 'bg-yellow-100 text-yellow-700' : index === 1 ? 'bg-gray-100 text-gray-700' : index === 2 ? 'bg-orange-100 text-orange-800' : 'bg-gray-50 text-gray-400'}`}>
                                          {index + 1}
                                      </span>
                                      <div>
@@ -134,20 +342,32 @@ const DashboardView: React.FC<{ students: (User & { account: Account | null })[]
                                          <p className="text-xs text-gray-500">{s.grade}학년 {s.class}반 {s.number}번</p>
                                      </div>
                                  </div>
-                                 <span className="font-mono font-bold text-indigo-600">{(s.account?.balance || 0).toLocaleString()}권</span>
+                                 <div className="text-right">
+                                    <span className="block font-mono font-bold text-indigo-600">{(s.account?.balance || 0).toLocaleString()}권</span>
+                                    <span className="text-[10px] text-gray-400">활동 {studentActivities[s.userId] || 0}회</span>
+                                 </div>
                              </li>
                          ))}
-                         {richList.length === 0 && <li className="p-4 text-center text-gray-400">데이터 없음</li>}
+                         {sortedRankingList.length === 0 && <li className="p-8 text-center text-gray-400">데이터가 없습니다.</li>}
                      </ul>
+                     {sortedRankingList.length > visibleRankingCount && (
+                         <button 
+                            onClick={() => setVisibleRankingCount(prev => prev + 5)}
+                            className="w-full py-4 text-sm font-bold text-indigo-600 hover:bg-indigo-50 border-t transition-colors bg-white active:bg-indigo-100"
+                         >
+                            순위 더보기 (+5명)
+                         </button>
+                     )}
                  </div>
                  
-                 <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+                 {/* 국고 최근 거래 내역 영역 */}
+                 <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 flex flex-col">
                      <div className="p-4 border-b bg-gray-50">
                          <h3 className="font-bold text-gray-800">국고 최근 거래 내역</h3>
                      </div>
-                     <ul className="max-h-[300px] overflow-y-auto">
-                         {teacherTransactions.slice(0, 5).map(t => (
-                             <li key={t.transactionId} className="p-4 border-b last:border-b-0 hover:bg-gray-50">
+                     <ul className="flex-grow max-h-[460px] overflow-y-auto">
+                         {teacherTransactions.slice(0, visibleTeacherTxns).map(t => (
+                             <li key={t.transactionId} className="p-4 border-b last:border-b-0 hover:bg-gray-50 transition-colors">
                                  <div className="flex justify-between items-start mb-1">
                                      <span className="font-medium text-sm text-gray-800">{t.description}</span>
                                      <span className={`font-bold text-sm ${t.amount > 0 ? 'text-blue-600' : 'text-red-600'}`}>
@@ -159,8 +379,16 @@ const DashboardView: React.FC<{ students: (User & { account: Account | null })[]
                                  </div>
                              </li>
                          ))}
-                         {teacherTransactions.length === 0 && <li className="p-4 text-center text-gray-400">거래 내역 없음</li>}
+                         {teacherTransactions.length === 0 && <li className="p-8 text-center text-gray-400">거래 내역이 없습니다.</li>}
                      </ul>
+                     {teacherTransactions.length > visibleTeacherTxns && (
+                         <button 
+                            onClick={() => setVisibleTeacherTxns(prev => prev + 10)}
+                            className="w-full py-4 text-sm font-bold text-[#2B548F] hover:bg-blue-50 border-t transition-colors bg-white active:bg-blue-100"
+                         >
+                            거래 내역 더보기 (+10건)
+                         </button>
+                     )}
                  </div>
              </div>
 
@@ -253,10 +481,10 @@ const StudentManagementView: React.FC<{ students: (User & { account: Account | n
                             선택 삭제 ({selectedIds.length})
                         </button>
                     )}
-                    <button onClick={() => setShowBatchQr(true)} className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-bold hover:bg-gray-200 transition-colors flex items-center border border-gray-200">
+                    <button onClick={setShowBatchQr.bind(null, true)} className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-bold hover:bg-gray-200 transition-colors flex items-center border border-gray-200">
                         <QrCodeIcon className="w-4 h-4 mr-1"/> QR 일괄 출력
                     </button>
-                    <button onClick={() => setShowAddModal(true)} className="px-3 py-2 bg-[#2B548F] text-white rounded-lg text-sm font-bold shadow hover:bg-[#234576] transition-colors flex items-center">
+                    <button onClick={setShowAddModal.bind(null, true)} className="px-3 py-2 bg-[#2B548F] text-white rounded-lg text-sm font-bold shadow hover:bg-[#234576] transition-colors flex items-center">
                         <UserAddIcon className="w-4 h-4 mr-1"/> 학생 추가
                     </button>
                 </div>
