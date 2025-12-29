@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
 import { Account, Transaction, StockProduct, StudentStock, SavingsProduct, StudentSaving, User, Job, StockHistory, Fund, FundInvestment, FundStatus } from '../types';
-import { HomeIcon, TransferIcon, NewStockIcon, NewPiggyBankIcon, BackIcon, XIcon, CheckIcon, ErrorIcon, PlusIcon, MinusIcon, NewJobIcon, NewTaxIcon, LogoutIcon, NewFundIcon, ArrowUpIcon, ArrowDownIcon } from '../components/icons';
+import { HomeIcon, TransferIcon, NewStockIcon, NewPiggyBankIcon, BackIcon, XIcon, CheckIcon, ErrorIcon, PlusIcon, MinusIcon, NewJobIcon, NewTaxIcon, LogoutIcon, NewFundIcon, ArrowUpIcon, ArrowDownIcon, NewspaperIcon } from '../components/icons';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 type View = 'home' | 'transfer' | 'stocks' | 'savings' | 'funds';
@@ -168,6 +169,17 @@ const StudentPage: React.FC<StudentPageProps> = ({ initialView }) => {
         logout();
     };
 
+    // 경제뉴스 자동 로그인 URL 생성
+    const newsUrl = useMemo(() => {
+        if (!currentUser) return 'https://kidseconews.vercel.app/';
+        const params = new URLSearchParams();
+        params.append('name', currentUser.name);
+        params.append('grade', String(currentUser.grade || ''));
+        params.append('class', String(currentUser.class || ''));
+        params.append('number', String(currentUser.number || ''));
+        return `https://kidseconews.vercel.app/?${params.toString()}`;
+    }, [currentUser]);
+
     const renderView = () => {
         if (loading || !currentUser || !account) return <div className="text-center p-8">로딩 중...</div>;
         switch (view) {
@@ -199,7 +211,16 @@ const StudentPage: React.FC<StudentPageProps> = ({ initialView }) => {
                     <DesktopNavButton label="펀드" Icon={NewFundIcon} active={view === 'funds'} onClick={() => setView('funds')} />
                     <DesktopNavButton label="적금" Icon={NewPiggyBankIcon} active={view === 'savings'} onClick={() => setView('savings')} />
                 </nav>
-                 <div className="mt-auto">
+                 <div className="mt-auto space-y-2">
+                    <a 
+                        href={newsUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="w-full flex items-center p-3 text-sm font-semibold text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors"
+                    >
+                        <NewspaperIcon className="w-5 h-5 mr-3" />
+                        경제뉴스
+                    </a>
                     <button onClick={handleLogout} className="w-full flex items-center p-3 text-sm text-gray-600 rounded-lg hover:bg-gray-200/50 transition-colors">
                         <LogoutIcon className="w-5 h-5 mr-3" />
                         로그아웃
@@ -209,8 +230,17 @@ const StudentPage: React.FC<StudentPageProps> = ({ initialView }) => {
     
             <div className="flex-1 flex flex-col h-full">
                 <header className="md:hidden p-4 flex justify-between items-center bg-white border-b sticky top-0 z-10">
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-800">{currentUser?.name}님</h1>
+                    <div className="flex items-center">
+                        <h1 className="text-2xl font-bold text-gray-800 mr-3">{currentUser?.name}님</h1>
+                        <a 
+                            href={newsUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="p-2 bg-indigo-50 text-indigo-600 rounded-full hover:bg-indigo-100 transition-colors"
+                            title="경제뉴스 서비스"
+                        >
+                            <NewspaperIcon className="w-6 h-6" />
+                        </a>
                     </div>
                      <button onClick={handleLogout} className="p-2 rounded-full hover:bg-gray-100">
                         <LogoutIcon className="w-6 h-6 text-gray-600" />
@@ -232,7 +262,7 @@ const StudentPage: React.FC<StudentPageProps> = ({ initialView }) => {
 
             {notification && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-sm text-center">
+                    <div className="bg-white rounded-xl shadow-2xl p-8 w-full max-sm text-center">
                         {notification.type === 'success' ? (
                             <CheckIcon className="w-16 h-16 text-green-500 mx-auto mb-4" />
                         ) : (
