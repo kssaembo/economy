@@ -190,9 +190,9 @@ const StudentPage: React.FC<StudentPageProps> = ({ initialView }) => {
             case 'stocks':
                 return <StocksView currentUser={currentUser} refreshAccount={fetchAccount} showNotification={showNotification} />;
             case 'funds':
-                return <FundView currentUser={currentUser} refreshAccount={fetchAccount} />;
+                return <FundView currentUser={currentUser} refreshAccount={fetchAccount} showNotification={showNotification} />;
             case 'savings':
-                return <SavingsView currentUser={currentUser} refreshAccount={fetchAccount} />;
+                return <SavingsView currentUser={currentUser} refreshAccount={fetchAccount} showNotification={showNotification} />;
             default:
                 return <TransferView currentUser={currentUser} account={account} refreshAccount={fetchAccount} showNotification={showNotification} />;
         }
@@ -756,7 +756,7 @@ const StockTransactionModal: React.FC<{ mode: 'buy'|'sell', stock: StockProduct,
     );
 };
 
-const SavingsView: React.FC<{ currentUser: User, refreshAccount: () => void }> = ({ currentUser, refreshAccount }) => {
+const SavingsView: React.FC<{ currentUser: User, refreshAccount: () => void, showNotification: (type: 'success' | 'error', text: string) => void }> = ({ currentUser, refreshAccount, showNotification }) => {
     const [products, setProducts] = useState<SavingsProduct[]>([]);
     const [mySavings, setMySavings] = useState<StudentSaving[]>([]);
     const [selectedProduct, setSelectedProduct] = useState<SavingsProduct | null>(null);
@@ -783,19 +783,25 @@ const SavingsView: React.FC<{ currentUser: User, refreshAccount: () => void }> =
         if(!selectedProduct) return;
         try {
             await api.joinSavings(currentUser.userId, selectedProduct.id, amount);
+            showNotification('success', '적금에 성공적으로 가입했습니다.');
             setSelectedProduct(null);
             fetchData();
             refreshAccount();
-        } catch(e: any) { alert(e.message); }
+        } catch(e: any) { 
+            showNotification('error', e.message); 
+        }
     };
 
     const handleConfirmCancel = async () => {
         if(!cancelTargetId) return;
         try {
-            await api.cancelSavings(currentUser.userId, cancelTargetId);
+            const message = await api.cancelSavings(currentUser.userId, cancelTargetId);
+            showNotification('success', message);
             fetchData();
             refreshAccount();
-        } catch(e: any) { alert(e.message); }
+        } catch(e: any) { 
+            showNotification('error', e.message); 
+        }
         finally { setCancelTargetId(null); }
     };
 
@@ -923,7 +929,7 @@ const SavingsView: React.FC<{ currentUser: User, refreshAccount: () => void }> =
     );
 };
 
-const FundView: React.FC<{ currentUser: User, refreshAccount: () => void }> = ({ currentUser, refreshAccount }) => {
+const FundView: React.FC<{ currentUser: User, refreshAccount: () => void, showNotification: (type: 'success' | 'error', text: string) => void }> = ({ currentUser, refreshAccount, showNotification }) => {
     const [funds, setFunds] = useState<Fund[]>([]);
     const [myInvestments, setMyInvestments] = useState<FundInvestment[]>([]);
     const [loading, setLoading] = useState(true);

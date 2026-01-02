@@ -1,4 +1,43 @@
 
+/* 
+  [Supabase SQL 가이드] 
+  학생 삭제 기능을 위해 아래 쿼리를 Supabase SQL Editor에서 실행해주세요.
+  이 함수는 학생 유저와 관련된 모든 데이터(계좌, 거래내역, 주식, 적금, 세금 등)를 안전하게 삭제합니다.
+
+  CREATE OR REPLACE FUNCTION public.delete_student(p_user_id uuid)
+  RETURNS void
+  LANGUAGE plpgsql
+  SECURITY DEFINER
+  AS $function$
+  BEGIN
+      -- 1. 적금 삭제
+      DELETE FROM public.student_savings WHERE "userId" = p_user_id;
+      
+      -- 2. 주식 삭제
+      DELETE FROM public.student_stocks WHERE "userId" = p_user_id;
+      
+      -- 3. 세금 납부 권한/내역 삭제
+      DELETE FROM public.tax_recipients WHERE student_user_id = p_user_id;
+      
+      -- 4. 펀드 투자 내역 삭제
+      DELETE FROM public.fund_investments WHERE student_user_id = p_user_id;
+      
+      -- 5. 직업 배정 삭제
+      DELETE FROM public.job_assignments WHERE user_id = p_user_id;
+      
+      -- 6. 거래 내역 삭제 (계좌 ID 참조)
+      DELETE FROM public.transactions 
+      WHERE "accountId" IN (SELECT "accountId" FROM public.accounts WHERE "userId" = p_user_id);
+      
+      -- 7. 계좌 삭제
+      DELETE FROM public.accounts WHERE "userId" = p_user_id;
+      
+      -- 8. 최종 유저(학생) 삭제
+      DELETE FROM public.users WHERE "userId" = p_user_id;
+  END;
+  $function$;
+*/
+
 import React, { useState, useContext, useEffect, useCallback, useMemo } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
@@ -8,8 +47,6 @@ import { QRCodeSVG } from 'qrcode.react';
 
 // --- Helpers ---
 const getQrBaseUrl = () => {
-    // 개발/프리뷰 환경 등에서의 URL 오류를 방지하기 위해 
-    // 실제 배포된 서비스 주소로 고정합니다.
     return 'https://economy-rho.vercel.app';
 };
 
@@ -87,14 +124,10 @@ const DashboardView: React.FC<{ students: (User & { account: Account | null })[]
     const [teacherAccount, setTeacherAccount] = useState<Account | null>(null);
     const [teacherTransactions, setTeacherTransactions] = useState<Transaction[]>([]);
     const [showHistoryModal, setShowHistoryModal] = useState(false);
-    
-    // 신규 상태: 더보기 및 탭 관리
     const [visibleTeacherTxns, setVisibleTeacherTxns] = useState(5);
     const [activeTab, setActiveTab] = useState<'assets' | 'activity_up' | 'activity_down'>('assets');
     const [visibleRankingCount, setVisibleRankingCount] = useState(3);
     const [studentActivities, setStudentActivities] = useState<Record<string, number>>({});
-    
-    // 알림 시스템 상태
     const [alarms, setAlarms] = useState<AlarmItem[]>([]);
     const [isAlarmsLoading, setIsAlarmsLoading] = useState(false);
 
@@ -114,7 +147,6 @@ const DashboardView: React.FC<{ students: (User & { account: Account | null })[]
         fetchTeacherData();
     }, []);
 
-    // 학생별 활동량(거래 횟수) 데이터 가져오기 및 알림 데이터 수집
     useEffect(() => {
         const fetchData = async () => {
             setIsAlarmsLoading(true);
@@ -123,7 +155,6 @@ const DashboardView: React.FC<{ students: (User & { account: Account | null })[]
             const todayStr = new Date().toLocaleDateString();
 
             try {
-                // 1. 공통 데이터 (세금, 펀드)
                 const [taxes, funds] = await Promise.all([api.getTaxes(), api.getFunds()]);
                 
                 taxes.forEach(tax => {
@@ -154,13 +185,11 @@ const DashboardView: React.FC<{ students: (User & { account: Account | null })[]
                     }
                 });
 
-                // 2. 학생별 데이터 (적금, 거래내역)
                 await Promise.all(students.map(async (s) => {
                     if (s.account) {
                         const txns = await api.getTransactionsByAccountId(s.account.accountId);
                         activityMap[s.userId] = txns.length;
 
-                        // 거래내역 기반 알림 (오늘 발생한 건들)
                         txns.forEach(t => {
                             const tDate = new Date(t.date).toLocaleDateString();
                             if (tDate === todayStr) {
@@ -203,7 +232,6 @@ const DashboardView: React.FC<{ students: (User & { account: Account | null })[]
                             }
                         });
 
-                        // 적금 만기 체크
                         const studentSavings = await api.getStudentSavings(s.userId);
                         studentSavings.forEach(ss => {
                             const dDay = getDDay(ss.maturityDate);
@@ -237,7 +265,6 @@ const DashboardView: React.FC<{ students: (User & { account: Account | null })[]
     const totalAssets = students.reduce((acc, s) => acc + (s.account?.balance || 0), 0);
     const avgAssets = students.length > 0 ? Math.round(totalAssets / students.length) : 0;
     
-    // 탭에 따른 랭킹 리스트 정렬
     const sortedRankingList = useMemo(() => {
         let list = [...students];
         if (activeTab === 'assets') {
@@ -275,7 +302,6 @@ const DashboardView: React.FC<{ students: (User & { account: Account | null })[]
                 </div>
              </div>
 
-             {/* 알람 영역 (중앙 섹션 상단) */}
              <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="p-4 border-b bg-gray-50 flex items-center justify-between">
                     <h3 className="font-bold text-gray-800 flex items-center">
@@ -308,7 +334,6 @@ const DashboardView: React.FC<{ students: (User & { account: Account | null })[]
              </div>
              
              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                 {/* 자산 순위 / 활동량 탭 영역 */}
                  <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 flex flex-col">
                      <div className="p-1 border-b bg-gray-50 flex">
                          <button 
@@ -360,7 +385,6 @@ const DashboardView: React.FC<{ students: (User & { account: Account | null })[]
                      )}
                  </div>
                  
-                 {/* 국고 최근 거래 내역 영역 */}
                  <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 flex flex-col">
                      <div className="p-4 border-b bg-gray-50">
                          <h3 className="font-bold text-gray-800">국고 최근 거래 내역</h3>
@@ -436,8 +460,6 @@ const StudentManagementView: React.FC<{ students: (User & { account: Account | n
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
     const [selectedDetailStudent, setSelectedDetailStudent] = useState<(User & { account: Account | null }) | null>(null);
-    
-    // Modal state for confirmations
     const [confirmAction, setConfirmAction] = useState<{ type: 'delete' | 'reset', data: any } | null>(null);
 
     const handleDelete = async () => {
@@ -476,11 +498,14 @@ const StudentManagementView: React.FC<{ students: (User & { account: Account | n
             <div className="flex justify-between items-center mb-4 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
                 <h2 className="text-lg font-bold text-gray-800">학생 관리 ({students.length}명)</h2>
                 <div className="flex gap-2">
-                    {selectedIds.length > 0 && (
-                        <button onClick={() => setConfirmAction({ type: 'delete', data: null })} className="px-3 py-2 bg-red-100 text-red-600 rounded-lg text-sm font-bold hover:bg-red-200 transition-colors">
-                            선택 삭제 ({selectedIds.length})
-                        </button>
-                    )}
+                    {/* 학생 삭제 버튼 - 상시 노출, 미선택 시 비활성화 */}
+                    <button 
+                        onClick={() => setConfirmAction({ type: 'delete', data: null })} 
+                        disabled={selectedIds.length === 0}
+                        className={`px-3 py-2 text-white rounded-lg text-sm font-bold shadow transition-colors flex items-center ${selectedIds.length > 0 ? 'bg-red-600 hover:bg-red-700' : 'bg-red-300 cursor-not-allowed'}`}
+                    >
+                        <XIcon className="w-4 h-4 mr-1"/> 삭제 {selectedIds.length > 0 ? `(${selectedIds.length})` : ''}
+                    </button>
                     <button onClick={setShowBatchQr.bind(null, true)} className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-bold hover:bg-gray-200 transition-colors flex items-center border border-gray-200">
                         <QrCodeIcon className="w-4 h-4 mr-1"/> QR 일괄 출력
                     </button>
@@ -552,16 +577,12 @@ const StudentManagementView: React.FC<{ students: (User & { account: Account | n
             </div>
 
             {showAddModal && <AddStudentModal onClose={() => setShowAddModal(false)} onComplete={refresh} />}
-            
-            {/* Student Detail Modal */}
             {selectedDetailStudent && (
                 <StudentDetailModal 
                     student={selectedDetailStudent} 
                     onClose={() => setSelectedDetailStudent(null)} 
                 />
             )}
-
-            {/* Individual QR Modal */}
             {selectedStudentQr && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedStudentQr(null)}>
                     <div className="bg-white p-8 rounded-xl flex flex-col items-center max-w-sm w-full" onClick={e => e.stopPropagation()}>
@@ -581,12 +602,9 @@ const StudentManagementView: React.FC<{ students: (User & { account: Account | n
                     </div>
                 </div>
             )}
-
-            {/* Batch QR Print Modal */}
             {showBatchQr && (
                 <BatchQrPrintModal students={students} onClose={() => setShowBatchQr(false)} />
             )}
-            
             <ConfirmModal 
                 isOpen={!!confirmAction}
                 title={confirmAction?.type === 'delete' ? "학생 삭제" : "비밀번호 초기화"}
@@ -596,7 +614,6 @@ const StudentManagementView: React.FC<{ students: (User & { account: Account | n
                 isDangerous={true}
                 confirmText={confirmAction?.type === 'delete' ? "삭제" : "초기화"}
             />
-
             <MessageModal isOpen={!!message} type={message?.type || 'success'} message={message?.text || ''} onClose={() => setMessage(null)} />
         </div>
     );
@@ -642,13 +659,11 @@ const AddStudentModal: React.FC<{ onClose: () => void, onComplete: () => void }>
                         <input value={name} onChange={e => setName(e.target.value)} placeholder="이름" className="w-2/3 p-2 border rounded"/>
                     </div>
                 </div>
-                
                 {error && (
                     <div className="mt-3 p-2 bg-red-50 border border-red-200 rounded text-red-600 text-sm text-center">
                         {error}
                     </div>
                 )}
-
                 <button onClick={handleSubmit} disabled={loading} className="w-full mt-6 p-3 bg-[#2B548F] text-white rounded-lg font-bold hover:bg-[#234576] disabled:bg-gray-400">
                     {loading ? '등록 중...' : '등록하기'}
                 </button>
@@ -668,17 +683,12 @@ const StudentDetailModal: React.FC<{ student: User & { account: Account | null }
             if (!student.account) return;
             setLoading(true);
             try {
-                // Fetch transactions
                 const trans = await api.getTransactionsByAccountId(student.account.accountId);
                 setTransactions(trans);
-
-                // Fetch stocks & savings to calc total assets
                 const stocks = await api.getStudentStocks(student.userId);
                 const stockVal = stocks.reduce((sum, s) => sum + (s.quantity * (s.stock?.currentPrice || 0)), 0);
-
                 const savings = await api.getStudentSavings(student.userId);
                 const savingsVal = savings.reduce((sum, s) => sum + s.amount, 0);
-
                 setAssets({
                     cash: student.account.balance,
                     stock: stockVal,
@@ -711,7 +721,6 @@ const StudentDetailModal: React.FC<{ student: User & { account: Account | null }
                         <XIcon className="w-6 h-6 text-gray-500" />
                     </button>
                 </div>
-                
                 <div className="p-6 overflow-y-auto">
                     {loading ? (
                         <div className="text-center py-10 text-gray-500">데이터 로딩 중...</div>
@@ -735,7 +744,6 @@ const StudentDetailModal: React.FC<{ student: User & { account: Account | null }
                                     <p className="font-bold text-lg text-gray-800">{assets.savings.toLocaleString()}</p>
                                 </div>
                             </div>
-
                             <h4 className="font-bold text-gray-800 mb-3 border-b pb-2">최근 거래 내역</h4>
                             <div className="bg-white rounded-lg border border-gray-100">
                                 {transactions.length > 0 ? (
@@ -759,7 +767,6 @@ const StudentDetailModal: React.FC<{ student: User & { account: Account | null }
                         </>
                     )}
                 </div>
-                
                 <div className="p-4 border-t bg-gray-50 rounded-b-xl flex justify-end">
                     <button onClick={onClose} className="px-6 py-2 bg-white border border-gray-300 text-gray-700 font-bold rounded-lg hover:bg-gray-50 shadow-sm">
                         닫기
@@ -771,12 +778,9 @@ const StudentDetailModal: React.FC<{ student: User & { account: Account | null }
 };
 
 const BatchQrPrintModal: React.FC<{ students: (User & { account: Account | null })[], onClose: () => void }> = ({ students, onClose }) => {
-    // Filter only students with accounts
     const validStudents = students.filter(s => s.account && s.account.qrToken);
-
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-             {/* The modal content container */}
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
                 <div className="p-4 border-b flex justify-between items-center">
                     <h3 className="text-xl font-bold">QR 코드 일괄 출력</h3>
@@ -793,7 +797,6 @@ const BatchQrPrintModal: React.FC<{ students: (User & { account: Account | null 
                         <button onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-bold hover:bg-gray-300">닫기</button>
                     </div>
                 </div>
-
                 <div className="overflow-y-auto p-8 bg-gray-100" id="print-section">
                     <div className="grid grid-cols-4 gap-6 print:grid-cols-4 print:gap-4">
                         {validStudents.map(s => (
@@ -810,7 +813,6 @@ const BatchQrPrintModal: React.FC<{ students: (User & { account: Account | null 
                      {validStudents.length === 0 && <p className="text-center text-gray-500">출력할 QR 코드가 없습니다.</p>}
                 </div>
             </div>
-            {/* Print Styles Injection */}
              <style>{`
                 @media print {
                     @page { margin: 1cm; size: A4; }
@@ -818,7 +820,6 @@ const BatchQrPrintModal: React.FC<{ students: (User & { account: Account | null 
                     #print-section, #print-section * { visibility: visible; }
                     #print-section { position: absolute; left: 0; top: 0; width: 100%; height: auto; overflow: visible; background: white; padding: 0; }
                     .break-inside-avoid { break-inside: avoid; }
-                    /* Hide scrollbars during print */
                     ::-webkit-scrollbar { display: none; }
                 }
             `}</style>
@@ -847,7 +848,6 @@ const JobManagementView: React.FC<{ refresh: () => void }> = ({ refresh }) => {
     useEffect(() => { fetchData(); }, [fetchData]);
 
     const handlePaySalaries = async () => {
-        // Batch Pay
         try {
             const msg = await api.payAllSalaries();
             setMessage({ type: 'success', text: msg });
@@ -889,7 +889,6 @@ const JobManagementView: React.FC<{ refresh: () => void }> = ({ refresh }) => {
         const numValue = parseInt(value) || 0;
         try {
             await api.updateJobIncentive(jobId, numValue);
-            // Optimistically update local state to avoid jump
             setJobs(prev => prev.map(j => j.id === jobId ? { ...j, incentive: numValue } : j));
         } catch (e) {
             console.error(e);
@@ -909,7 +908,6 @@ const JobManagementView: React.FC<{ refresh: () => void }> = ({ refresh }) => {
                     </button>
                 </div>
             </div>
-
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 overflow-y-auto">
                 {jobs.map(job => (
                     <div key={job.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col">
@@ -918,7 +916,6 @@ const JobManagementView: React.FC<{ refresh: () => void }> = ({ refresh }) => {
                             <button onClick={() => setConfirmAction({ type: 'delete', data: job.id })} className="text-gray-400 hover:text-red-500"><XIcon className="w-5 h-5"/></button>
                         </div>
                         <p className="text-sm text-gray-600 mb-2 flex-grow">{job.description}</p>
-                        
                         <div className="bg-gray-50 p-3 rounded-lg text-sm mb-3 space-y-2">
                             <div className="flex justify-between items-center">
                                 <span className="text-gray-500">기본 월급</span>
@@ -938,7 +935,6 @@ const JobManagementView: React.FC<{ refresh: () => void }> = ({ refresh }) => {
                                 <span>{(job.salary + (job.incentive || 0)).toLocaleString()}권</span>
                             </div>
                         </div>
-
                         <div className="mt-auto">
                             <div className="text-xs text-gray-500 mb-1">담당 학생 ({job.assigned_students?.length || 0}명)</div>
                             <div className="flex flex-wrap gap-1 mb-3 min-h-[1.5rem]">
@@ -959,10 +955,8 @@ const JobManagementView: React.FC<{ refresh: () => void }> = ({ refresh }) => {
                     </div>
                 ))}
             </div>
-
             {showAddModal && <AddJobModal onClose={() => setShowAddModal(false)} onComplete={fetchData} />}
             {assignJob && <AssignJobModal job={assignJob} students={students} onClose={() => setAssignJob(null)} onComplete={fetchData} />}
-            
             <ConfirmModal 
                 isOpen={!!confirmAction}
                 title={confirmAction?.type === 'delete' ? '직업 삭제' : confirmAction?.type === 'pay_all' ? '월급 일괄 지급' : '주급 지급'}
@@ -980,7 +974,6 @@ const JobManagementView: React.FC<{ refresh: () => void }> = ({ refresh }) => {
                 isDangerous={confirmAction?.type === 'delete'}
                 confirmText={confirmAction?.type === 'delete' ? '삭제' : '지급'}
             />
-
             <MessageModal isOpen={!!message} type={message?.type || 'success'} message={message?.text || ''} onClose={() => setMessage(null)} />
         </div>
     );
@@ -990,7 +983,6 @@ const AddJobModal: React.FC<{ onClose: () => void, onComplete: () => void }> = (
     const [name, setName] = useState('');
     const [desc, setDesc] = useState('');
     const [salary, setSalary] = useState('');
-    
     const handleSubmit = async () => {
         try {
             await api.addJob(name, desc, parseInt(salary));
@@ -998,7 +990,6 @@ const AddJobModal: React.FC<{ onClose: () => void, onComplete: () => void }> = (
             onClose();
         } catch (e: any) { alert(e.message); }
     };
-
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-xl p-6 w-full max-w-sm">
@@ -1017,7 +1008,6 @@ const AddJobModal: React.FC<{ onClose: () => void, onComplete: () => void }> = (
 
 const AssignJobModal: React.FC<{ job: Job, students: User[], onClose: () => void, onComplete: () => void }> = ({ job, students, onClose, onComplete }) => {
     const [selected, setSelected] = useState<string[]>(job.assigned_students?.map(s => s.userId) || []);
-
     const handleSubmit = async () => {
         try {
             await api.manageJobAssignment(job.id, selected);
@@ -1025,7 +1015,6 @@ const AssignJobModal: React.FC<{ job: Job, students: User[], onClose: () => void
             onClose();
         } catch (e: any) { alert(e.message); }
     };
-
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-xl p-6 w-full max-w-sm max-h-[80vh] flex flex-col">
@@ -1057,8 +1046,6 @@ const TaxView: React.FC<{ students: User[] }> = ({ students }) => {
     const [taxes, setTaxes] = useState<TaxItemWithRecipients[]>([]);
     const [loading, setLoading] = useState(true);
     const [showAddModal, setShowAddModal] = useState(false);
-    
-    // UI State
     const [expandedTaxId, setExpandedTaxId] = useState<string | null>(null);
     const [messageModal, setMessageModal] = useState<{isOpen: boolean, type: 'success'|'error', message: string}>({isOpen: false, type: 'success', message: ''});
     const [confirmAction, setConfirmAction] = useState<{ type: 'delete', data: any } | null>(null);
@@ -1068,11 +1055,8 @@ const TaxView: React.FC<{ students: User[] }> = ({ students }) => {
         try {
             const data = await api.getTaxes();
             setTaxes(data);
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setLoading(false);
-        }
+        } catch (e) { console.error(e); }
+        finally { setLoading(false); }
     }, []);
 
     useEffect(() => { fetchTaxes(); }, [fetchTaxes]);
@@ -1095,7 +1079,6 @@ const TaxView: React.FC<{ students: User[] }> = ({ students }) => {
         setExpandedTaxId(prev => prev === id ? null : id);
     };
 
-    // Helper to get student name
     const getStudentName = (userId: string) => {
         const student = students.find(s => s.userId === userId);
         return student ? `${student.grade ? student.grade + '-' : ''}${student.class ? student.class + ' ' : ''}${student.number}. ${student.name}` : userId;
@@ -1109,17 +1092,14 @@ const TaxView: React.FC<{ students: User[] }> = ({ students }) => {
                     + 세금 고지
                 </button>
             </div>
-            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto pb-4">
                 {taxes.map(tax => {
                     const paidRecipients = tax.recipients.filter(r => r.isPaid);
                     const unpaidRecipients = tax.recipients.filter(r => !r.isPaid);
-                    
                     const paidCount = paidRecipients.length;
                     const totalCount = tax.recipients.length;
                     const progress = totalCount > 0 ? (paidCount / totalCount) * 100 : 0;
                     const isExpanded = expandedTaxId === tax.id;
-                    
                     return (
                         <div key={tax.id} className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 transition-all">
                             <div className="flex justify-between items-start mb-2">
@@ -1132,7 +1112,6 @@ const TaxView: React.FC<{ students: User[] }> = ({ students }) => {
                                     <button onClick={() => setConfirmAction({ type: 'delete', data: tax.id })} className="text-xs text-gray-400 hover:text-red-500 underline mt-1">삭제</button>
                                 </div>
                             </div>
-                            
                             <div className="mt-4">
                                 <div 
                                     className="flex justify-between text-xs mb-1 cursor-pointer hover:bg-gray-50 p-1 rounded transition-colors select-none"
@@ -1147,7 +1126,6 @@ const TaxView: React.FC<{ students: User[] }> = ({ students }) => {
                                 <div className="w-full bg-gray-100 rounded-full h-2.5 mb-2">
                                     <div className="bg-indigo-600 h-2.5 rounded-full transition-all duration-500" style={{ width: `${progress}%` }}></div>
                                 </div>
-
                                 {isExpanded && (
                                     <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-2 gap-4 animate-fadeIn">
                                         <div>
@@ -1179,11 +1157,9 @@ const TaxView: React.FC<{ students: User[] }> = ({ students }) => {
                     );
                 })}
             </div>
-
             {showAddModal && (
                 <AddTaxModal students={students} onClose={() => setShowAddModal(false)} onComplete={fetchTaxes} />
             )}
-
             <ConfirmModal 
                 isOpen={!!confirmAction}
                 title="세금 항목 삭제"
@@ -1193,7 +1169,6 @@ const TaxView: React.FC<{ students: User[] }> = ({ students }) => {
                 confirmText="삭제"
                 isDangerous={true}
             />
-
             <MessageModal 
                 isOpen={messageModal.isOpen}
                 type={messageModal.type}
@@ -1208,28 +1183,23 @@ const AddTaxModal: React.FC<{ students: User[], onClose: () => void, onComplete:
     const [name, setName] = useState('');
     const [amount, setAmount] = useState('');
     const [dueDate, setDueDate] = useState('');
-    const [selectedIds, setSelectedIds] = useState<string[]>(students.map(s => s.userId)); // Default all
-    
+    const [selectedIds, setSelectedIds] = useState<string[]>(students.map(s => s.userId));
     const handleSubmit = async () => {
         try {
             await api.createTax(name, parseInt(amount), dueDate, selectedIds);
             onComplete();
             onClose();
-        } catch (e: any) {
-            alert(e.message);
-        }
+        } catch (e: any) { alert(e.message); }
     };
-
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-md max-h-[90vh] overflow-y-auto">
                 <h3 className="text-xl font-bold mb-4">새 세금 고지</h3>
                 <div className="space-y-3 mb-4">
-                    <input value={name} onChange={e => setName(e.target.value)} placeholder="세금 항목명 (예: 소득세)" className="w-full p-2 border rounded"/>
+                    <input value={name} onChange={e => setName(e.target.value)} placeholder="세금 항목명" className="w-full p-2 border rounded"/>
                     <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="금액" className="w-full p-2 border rounded"/>
                     <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="w-full p-2 border rounded"/>
                 </div>
-                
                 <p className="font-bold text-sm mb-2">납부 대상 선택 ({selectedIds.length}명)</p>
                 <div className="h-40 overflow-y-auto border rounded p-2 bg-gray-50 mb-4 grid grid-cols-2 gap-2">
                     <label className="flex items-center space-x-2 col-span-2 border-b pb-2 mb-2">
@@ -1246,7 +1216,6 @@ const AddTaxModal: React.FC<{ students: User[], onClose: () => void, onComplete:
                         </label>
                     ))}
                 </div>
-
                 <button onClick={handleSubmit} className="w-full p-3 bg-blue-600 text-white font-bold rounded-lg">고지하기</button>
                 <button onClick={onClose} className="w-full p-2 mt-2 text-gray-500">취소</button>
             </div>
@@ -1267,16 +1236,11 @@ const FundManagementView: React.FC<{ students: (User & { account: Account | null
         try {
             const data = await api.getFunds();
             setFunds(data);
-        } catch (error) {
-            console.error("Failed to fetch funds", error);
-        } finally {
-            setLoading(false);
-        }
+        } catch (error) { console.error(error); }
+        finally { setLoading(false); }
     }, []);
 
-    useEffect(() => {
-        fetchFunds();
-    }, [fetchFunds]);
+    useEffect(() => { fetchFunds(); }, [fetchFunds]);
 
     const handleSettle = async (status: FundStatus) => {
         if (!settleModal.fund) return;
@@ -1295,7 +1259,7 @@ const FundManagementView: React.FC<{ students: (User & { account: Account | null
     const getStatusBadge = (status: FundStatus) => {
         switch (status) {
             case FundStatus.RECRUITING: return <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-bold">모집중</span>;
-            case FundStatus.ONGOING: return <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-bold">운용중(평가대기)</span>;
+            case FundStatus.ONGOING: return <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-bold">운용중</span>;
             case FundStatus.SUCCESS: return <span className="px-2 py-1 bg-indigo-100 text-indigo-800 rounded-full text-xs font-bold">달성 완료</span>;
             case FundStatus.EXCEED: return <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-bold">초과 달성</span>;
             case FundStatus.FAIL: return <span className="px-2 py-1 bg-gray-200 text-gray-600 rounded-full text-xs font-bold">실패</span>;
@@ -1311,7 +1275,6 @@ const FundManagementView: React.FC<{ students: (User & { account: Account | null
                     펀드 개설
                 </button>
             </div>
-
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {funds.map(fund => (
                     <div key={fund.id} className="bg-white rounded-xl shadow-sm overflow-hidden flex flex-col h-full border hover:border-blue-200 transition-colors">
@@ -1344,8 +1307,6 @@ const FundManagementView: React.FC<{ students: (User & { account: Account | null
                                 <p>초과 달성 시: {(fund.baseReward + fund.incentiveReward).toLocaleString()}권 추가 지급</p>
                             </div>
                         </div>
-                        
-                        {/* Action Buttons for Ongoing Funds */}
                         {fund.status === FundStatus.ONGOING && (
                             <div className="p-3 bg-gray-50 border-t flex gap-2">
                                 <button onClick={() => setSettleModal({ isOpen: true, fund })} className="w-full py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 text-sm">
@@ -1355,44 +1316,23 @@ const FundManagementView: React.FC<{ students: (User & { account: Account | null
                         )}
                     </div>
                 ))}
-                {funds.length === 0 && <div className="col-span-full text-center py-10 text-gray-500">개설된 펀드가 없습니다.</div>}
             </div>
-
             {showAddModal && <AddFundModal students={students} onClose={() => setShowAddModal(false)} onComplete={fetchFunds} />}
-            
             {settleModal.isOpen && settleModal.fund && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
                         <h3 className="text-xl font-bold mb-2">펀드 결과 입력</h3>
-                        <p className="text-gray-600 mb-6 text-sm">
-                            '{settleModal.fund.name}' 펀드의 결과를 선택하세요.<br/>
-                            선택 즉시 학생들에게 정산금이 지급됩니다.
-                        </p>
+                        <p className="text-gray-600 mb-6 text-sm">결과 선택 시 자동 정산됩니다.</p>
                         <div className="flex flex-col gap-3">
-                            <button onClick={() => handleSettle(FundStatus.SUCCESS)} className="w-full p-3 bg-blue-100 text-blue-800 font-bold rounded-lg hover:bg-blue-200 text-left px-4">
-                                <span className="block text-lg">🎯 달성 (성공)</span>
-                                <span className="text-xs font-normal">원금 + 기본 보상 지급</span>
-                            </button>
-                            <button onClick={() => handleSettle(FundStatus.EXCEED)} className="w-full p-3 bg-purple-100 text-purple-800 font-bold rounded-lg hover:bg-purple-200 text-left px-4">
-                                <span className="block text-lg">🚀 초과 달성</span>
-                                <span className="text-xs font-normal">원금 + 기본 + 인센티브 지급</span>
-                            </button>
-                             <button onClick={() => handleSettle(FundStatus.FAIL)} className="w-full p-3 bg-gray-100 text-gray-700 font-bold rounded-lg hover:bg-gray-200 text-left px-4">
-                                <span className="block text-lg">😢 실패</span>
-                                <span className="text-xs font-normal">원금 - 기본 보상 차감 지급</span>
-                            </button>
+                            <button onClick={() => handleSettle(FundStatus.SUCCESS)} className="w-full p-3 bg-blue-100 text-blue-800 font-bold rounded-lg hover:bg-blue-200 text-left px-4">🎯 달성</button>
+                            <button onClick={() => handleSettle(FundStatus.EXCEED)} className="w-full p-3 bg-purple-100 text-purple-800 font-bold rounded-lg hover:bg-purple-200 text-left px-4">🚀 초과 달성</button>
+                             <button onClick={() => handleSettle(FundStatus.FAIL)} className="w-full p-3 bg-gray-100 text-gray-700 font-bold rounded-lg hover:bg-gray-200 text-left px-4">😢 실패</button>
                         </div>
                         <button onClick={() => setSettleModal({ isOpen: false, fund: null })} className="mt-4 w-full p-2 text-gray-500 hover:text-gray-800">취소</button>
                     </div>
                 </div>
             )}
-
-            <MessageModal 
-                isOpen={messageModal.isOpen}
-                type={messageModal.type}
-                message={messageModal.message}
-                onClose={() => setMessageModal({ ...messageModal, isOpen: false })}
-            />
+            <MessageModal isOpen={!!messageModal.isOpen} type={messageModal.type} message={messageModal.message} onClose={() => setMessageModal({ ...messageModal, isOpen: false })} />
         </div>
     );
 };
@@ -1407,98 +1347,99 @@ const AddFundModal: React.FC<{ students: (User & { account: Account | null })[],
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: ['unitPrice', 'targetAmount', 'baseReward', 'incentiveReward'].includes(name) ? parseInt(value) || 0 : value
-        }));
+        setFormData(prev => ({ ...prev, [name]: ['unitPrice', 'targetAmount', 'baseReward', 'incentiveReward'].includes(name) ? parseInt(value) || 0 : value }));
     };
 
     const handleSubmit = async () => {
-        if (Object.values(formData).some(v => v === '' || v === 0)) {
-            setError('모든 항목을 입력해주세요.');
-            return;
+        if (Object.values(formData).some(v => v === '' || (typeof v === 'number' && v < 0))) { 
+            setError('모든 항목을 올바르게 입력해주세요.'); 
+            return; 
         }
-        if (formData.baseReward > formData.unitPrice) {
-            setError('기본 보상금액은 투자 단위 금액보다 클 수 없습니다. (원금 손실 방지)');
-            return;
-        }
-        
         setLoading(true);
         setError('');
-        try {
-            await api.createFund(formData);
-            onComplete();
-            onClose();
-        } catch (err: any) {
-            setError(err.message);
-        } finally {
-            setLoading(false);
+        try { 
+            await api.createFund(formData); 
+            onComplete(); 
+            onClose(); 
         }
+        catch (err: any) { setError(err.message); }
+        finally { setLoading(false); }
     };
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg max-h-[95vh] overflow-y-auto">
                 <div className="flex justify-between items-center mb-4">
                     <h3 className="text-xl font-bold">새 펀드 개설</h3>
                     <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200"><XIcon className="w-6 h-6 text-gray-600" /></button>
                 </div>
-                
-                <div className="space-y-3 text-sm">
+                <div className="space-y-4 text-sm">
                     <div>
-                        <label className="block font-medium text-gray-700">펀드명</label>
-                        <input type="text" name="name" value={formData.name} onChange={handleChange} className="w-full p-2 border rounded mt-1" placeholder="예: 6학년 1반 환경미화 펀드"/>
+                        <label className="block font-semibold mb-1">펀드명</label>
+                        <input type="text" name="name" value={formData.name} onChange={handleChange} className="w-full p-2 border rounded" placeholder="예: 학급 간식 펀드"/>
                     </div>
                     <div>
-                        <label className="block font-medium text-gray-700">목표 및 상세 내용</label>
-                        <textarea name="description" value={formData.description} onChange={handleChange} className="w-full p-2 border rounded mt-1 h-20" placeholder="목표와 계획을 자세히 적어주세요."/>
+                        <label className="block font-semibold mb-1">펀드 설명</label>
+                        <textarea name="description" value={formData.description} onChange={handleChange} className="w-full p-2 border rounded h-20" placeholder="펀드 목적과 운용 계획을 입력하세요."/>
                     </div>
                     <div>
-                        <label className="block font-medium text-gray-700">제안 학생 (성공 시 보너스 지급 대상)</label>
-                        <select name="creatorId" value={formData.creatorId} onChange={handleChange} className="w-full p-2 border rounded mt-1 bg-white">
-                            <option value="">학생 선택</option>
+                        <label className="block font-semibold mb-1">제안 학생</label>
+                        <select name="creatorId" value={formData.creatorId} onChange={handleChange} className="w-full p-2 border rounded bg-white">
+                            <option value="">학생을 선택하세요</option>
                             {students.map(s => <option key={s.userId} value={s.userId}>{s.name} ({s.number}번)</option>)}
                         </select>
                     </div>
-                    
+
                     <div className="grid grid-cols-2 gap-3">
-                         <div>
-                            <label className="block font-medium text-gray-700">투자 단위 금액 (1좌)</label>
-                            <input type="number" name="unitPrice" value={formData.unitPrice} onChange={handleChange} className="w-full p-2 border rounded mt-1"/>
+                        <div>
+                            <label className="block font-semibold mb-1">1좌당 투자금액</label>
+                            <div className="relative">
+                                <input type="number" name="unitPrice" value={formData.unitPrice} onChange={handleChange} className="w-full p-2 border rounded pr-6" placeholder="1000"/>
+                                <span className="absolute right-2 top-2 text-gray-400">권</span>
+                            </div>
                         </div>
-                         <div>
-                            <label className="block font-medium text-gray-700">목표 모금액 (참고용)</label>
-                            <input type="number" name="targetAmount" value={formData.targetAmount} onChange={handleChange} className="w-full p-2 border rounded mt-1"/>
+                        <div>
+                            <label className="block font-semibold mb-1">목표 모집금액</label>
+                            <div className="relative">
+                                <input type="number" name="targetAmount" value={formData.targetAmount} onChange={handleChange} className="w-full p-2 border rounded pr-6" placeholder="100000"/>
+                                <span className="absolute right-2 top-2 text-gray-400">권</span>
+                            </div>
                         </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
-                         <div>
-                            <label className="block font-medium text-gray-700 text-blue-600">성공 시 기본 보상</label>
-                            <input type="number" name="baseReward" value={formData.baseReward} onChange={handleChange} className="w-full p-2 border rounded mt-1"/>
+                        <div>
+                            <label className="block font-semibold mb-1">기본 성공 보상 (좌당)</label>
+                            <div className="relative">
+                                <input type="number" name="baseReward" value={formData.baseReward} onChange={handleChange} className="w-full p-2 border rounded pr-6 text-blue-600 font-bold" placeholder="100"/>
+                                <span className="absolute right-2 top-2 text-gray-400">권</span>
+                            </div>
                         </div>
-                         <div>
-                            <label className="block font-medium text-gray-700 text-purple-600">초과 달성 시 인센티브</label>
-                            <input type="number" name="incentiveReward" value={formData.incentiveReward} onChange={handleChange} className="w-full p-2 border rounded mt-1"/>
+                        <div>
+                            <label className="block font-semibold mb-1">초과 달성 보상 (좌당)</label>
+                            <div className="relative">
+                                <input type="number" name="incentiveReward" value={formData.incentiveReward} onChange={handleChange} className="w-full p-2 border rounded pr-6 text-purple-600 font-bold" placeholder="200"/>
+                                <span className="absolute right-2 top-2 text-gray-400">권</span>
+                            </div>
                         </div>
                     </div>
-                    
+
                     <div className="grid grid-cols-2 gap-3">
-                         <div>
-                            <label className="block font-medium text-gray-700">모집 마감일</label>
-                            <input type="date" name="recruitmentDeadline" value={formData.recruitmentDeadline} onChange={handleChange} className="w-full p-2 border rounded mt-1"/>
+                        <div>
+                            <label className="block font-semibold mb-1">모집 마감일</label>
+                            <input type="date" name="recruitmentDeadline" value={formData.recruitmentDeadline} onChange={handleChange} className="w-full p-2 border rounded"/>
                         </div>
-                         <div>
-                            <label className="block font-medium text-gray-700">평가(종료)일</label>
-                            <input type="date" name="maturityDate" value={formData.maturityDate} onChange={handleChange} className="w-full p-2 border rounded mt-1"/>
+                        <div>
+                            <label className="block font-semibold mb-1">평가(종료)일</label>
+                            <input type="date" name="maturityDate" value={formData.maturityDate} onChange={handleChange} className="w-full p-2 border rounded"/>
                         </div>
                     </div>
                 </div>
 
-                {error && <p className="text-red-500 text-sm mt-4 text-center">{error}</p>}
+                {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg text-xs mt-4 border border-red-100">{error}</div>}
                 
-                <button onClick={handleSubmit} disabled={loading} className="mt-6 w-full p-3 bg-indigo-600 text-white font-bold rounded-lg disabled:bg-gray-300">
-                    {loading ? '개설 중...' : '펀드 개설하기'}
+                <button onClick={handleSubmit} disabled={loading} className="mt-6 w-full p-3 bg-indigo-600 text-white font-bold rounded-lg shadow-md hover:bg-indigo-700 transition-colors disabled:bg-gray-300">
+                    {loading ? '처리 중...' : '펀드 개설하기'}
                 </button>
             </div>
         </div>
@@ -1521,58 +1462,37 @@ const TeacherDashboard: React.FC = () => {
             );
             usersWithAccounts.sort((a,b) => (a.number || 0) - (b.number || 0));
             setStudents(usersWithAccounts);
-        } catch (error) {
-            console.error("Failed to fetch students", error);
-        } finally {
-            setLoading(false);
-        }
+        } catch (error) { console.error(error); }
+        finally { setLoading(false); }
     }, []);
 
-    useEffect(() => {
-        fetchData();
-    }, [fetchData]);
+    useEffect(() => { fetchData(); }, [fetchData]);
 
     const renderContent = () => {
         switch (view) {
-            case 'dashboard':
-                return <DashboardView students={students} refresh={fetchData} />;
-            case 'students':
-                return <StudentManagementView students={students} refresh={fetchData} />;
-            case 'jobs':
-                return <JobManagementView refresh={fetchData} />;
-            case 'tax':
-                return <TaxView students={students} />;
-            case 'funds':
-                return <FundManagementView students={students} />;
-            default:
-                return <DashboardView students={students} refresh={fetchData} />;
+            case 'dashboard': return <DashboardView students={students} refresh={fetchData} />;
+            case 'students': return <StudentManagementView students={students} refresh={fetchData} />;
+            case 'jobs': return <JobManagementView refresh={fetchData} />;
+            case 'tax': return <TaxView students={students} />;
+            case 'funds': return <FundManagementView students={students} />;
+            default: return <DashboardView students={students} refresh={fetchData} />;
         }
     };
 
-    // Nav Button Component
     const NavButton = ({ id, label, Icon }: { id: typeof view, label: string, Icon: React.FC<any> }) => (
-        <button 
-            onClick={() => setView(id)}
-            className={`w-full flex items-center p-3 text-sm font-semibold rounded-lg transition-colors ${view === id ? 'bg-[#2B548F] text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}
-        >
-            <Icon className="w-5 h-5 mr-3" />
-            {label}
+        <button onClick={() => setView(id)} className={`w-full flex items-center p-3 text-sm font-semibold rounded-lg transition-colors ${view === id ? 'bg-[#2B548F] text-white' : 'text-gray-600 hover:bg-gray-100'}`}>
+            <Icon className="w-5 h-5 mr-3" /> {label}
         </button>
     );
 
     const MobileNavButton = ({ id, label, Icon }: { id: typeof view, label: string, Icon: React.FC<any> }) => (
-        <button 
-            onClick={() => setView(id)}
-            className={`flex flex-col items-center justify-center w-full py-2 ${view === id ? 'text-[#2B548F]' : 'text-gray-400'}`}
-        >
-            <Icon className="w-6 h-6 mb-1" />
-            <span className="text-[10px]">{label}</span>
+        <button onClick={() => setView(id)} className={`flex flex-col items-center justify-center w-full py-2 ${view === id ? 'text-[#2B548F]' : 'text-gray-400'}`}>
+            <Icon className="w-6 h-6 mb-1" /> <span className="text-[10px]">{label}</span>
         </button>
     );
 
     return (
         <div className="flex h-full bg-gray-100">
-             {/* Desktop Sidebar */}
             <aside className="hidden md:flex flex-col w-64 bg-white border-r p-4 shadow-sm z-10">
                 <div className="px-2 mb-8">
                     <h1 className="text-xl font-bold text-gray-800">교사 관리자</h1>
@@ -1585,35 +1505,18 @@ const TeacherDashboard: React.FC = () => {
                     <NavButton id="tax" label="세금 관리" Icon={NewTaxIcon} />
                     <NavButton id="funds" label="펀드 관리" Icon={NewFundIcon} />
                 </nav>
-                <button onClick={logout} className="w-full flex items-center p-3 text-sm text-gray-600 rounded-lg hover:bg-gray-100 transition-colors mt-auto">
-                    <LogoutIcon className="w-5 h-5 mr-3" />
-                    로그아웃
+                <button onClick={logout} className="w-full flex items-center p-3 text-sm text-gray-600 rounded-lg hover:bg-gray-100 mt-auto">
+                    <LogoutIcon className="w-5 h-5 mr-3" /> 로그아웃
                 </button>
             </aside>
-
-            {/* Mobile Header */}
             <div className="flex-1 flex flex-col h-full overflow-hidden">
                 <header className="md:hidden bg-white p-4 border-b flex justify-between items-center shadow-sm z-10">
-                    <div>
-                        <h1 className="text-lg font-bold text-gray-800">교사 관리자</h1>
-                    </div>
-                    <button onClick={logout} className="p-2 text-gray-600">
-                        <LogoutIcon className="w-6 h-6" />
-                    </button>
+                    <h1 className="text-lg font-bold text-gray-800">교사 관리자</h1>
+                    <button onClick={logout} className="p-2 text-gray-600"><LogoutIcon className="w-6 h-6" /></button>
                 </header>
-
-                {/* Main Content */}
                 <main className="flex-grow p-4 md:p-8 overflow-y-auto bg-[#F3F4F6]">
-                    {loading ? (
-                        <div className="flex items-center justify-center h-full">
-                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2B548F]"></div>
-                        </div>
-                    ) : (
-                        renderContent()
-                    )}
+                    {loading ? <div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2B548F]"></div></div> : renderContent()}
                 </main>
-
-                {/* Mobile Bottom Nav */}
                 <nav className="md:hidden bg-white border-t grid grid-cols-5 pb-safe">
                     <MobileNavButton id="dashboard" label="대시보드" Icon={NewDashboardIcon} />
                     <MobileNavButton id="students" label="학생" Icon={NewManageAccountsIcon} />

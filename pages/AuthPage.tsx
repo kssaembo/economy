@@ -55,11 +55,21 @@ const AuthPage: React.FC = () => {
 
     const handleAdminLogin = async () => {
         if (!loginTarget) return;
-        if (password !== '1234') {
-            setError('비밀번호가 일치하지 않습니다.');
-            return;
+        setLoading(true);
+        setError('');
+        try {
+            // 하드코딩된 '1234' 대신 서버 측 검증 함수 호출
+            const isValid = await api.verifyAdminPassword(loginTarget.userId, password);
+            if (isValid) {
+                await handleLogin(loginTarget.userId);
+            } else {
+                setError('비밀번호가 일치하지 않습니다.');
+            }
+        } catch (err: any) {
+            setError(err.message || '로그인 중 오류가 발생했습니다.');
+        } finally {
+            setLoading(false);
         }
-        await handleLogin(loginTarget.userId);
     };
     
     const handleLogin = async (userId: string) => {

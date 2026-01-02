@@ -1,3 +1,4 @@
+
 import { supabase } from './supabaseClient';
 import { Role, User, Account, StockProduct, StockProductWithDetails, StudentStock, SavingsProduct, StudentSaving, Job, TaxItemWithRecipients, StockHistory, Fund, FundInvestment, FundStatus } from '../types';
 
@@ -89,6 +90,16 @@ const loginWithPassword = async (grade: number, classNum: number, number: number
     if (!data.success) throw new Error(data.message);
     
     return data.user as User;
+};
+
+// 관리자 비밀번호 검증용 RPC 호출 함수 추가
+const verifyAdminPassword = async (userId: string, password: string): Promise<boolean> => {
+    const { data, error } = await supabase.rpc('verify_admin_password', {
+        p_user_id: userId,
+        p_password: password
+    });
+    handleSupabaseError(error, 'verifyAdminPassword');
+    return !!data;
 };
 
 const changePassword = async (userId: string, current: string, newPw: string): Promise<string> => {
@@ -766,6 +777,7 @@ const getMyFundInvestments = async (userId: string): Promise<FundInvestment[]> =
 export const api = {
     login,
     loginWithPassword,
+    verifyAdminPassword, // 추가된 부분
     changePassword,
     resetPassword,
     loginWithQrToken,
