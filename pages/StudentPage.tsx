@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
@@ -24,12 +23,12 @@ const ConfirmModal: React.FC<{
     if (!isOpen) return null;
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
+            <div className="bg-white rounded-xl shadow-2xl p-6 max-w-sm">
                 <h3 className="text-xl font-bold mb-2 text-gray-900">{title}</h3>
                 <p className="text-gray-600 mb-6 whitespace-pre-wrap">{message}</p>
                 <div className="flex gap-3">
                     <button onClick={onCancel} className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg font-medium hover:bg-gray-300">취소</button>
-                    <button onClick={onConfirm} className="flex-1 px-4 py-2 bg-[#2B548F] text-white rounded-lg font-medium hover:bg-[#234576]">
+                    <button onClick={onConfirm} className={`flex-1 px-4 py-2 bg-[#2B548F] text-white rounded-lg font-medium hover:bg-[#234576]`}>
                         {confirmText}
                     </button>
                 </div>
@@ -47,7 +46,7 @@ const MessageModal: React.FC<{
     if (!isOpen) return null;
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm flex flex-col items-center text-center">
+            <div className="bg-white rounded-xl shadow-2xl p-6 max-w-sm flex flex-col items-center text-center">
                 {type === 'success' ? <CheckIcon className="w-12 h-12 text-green-500 mb-4" /> : <ErrorIcon className="w-12 h-12 text-red-500 mb-4" />}
                 <h3 className={`text-xl font-bold mb-2 ${type === 'success' ? 'text-gray-900' : 'text-red-600'}`}>
                     {type === 'success' ? '성공' : '오류'}
@@ -97,7 +96,7 @@ const ChangePasswordModal: React.FC<{ isOpen: boolean, onClose: () => void }> = 
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
+            <div className="bg-white rounded-xl shadow-2xl p-6 max-w-sm">
                 <h3 className="text-xl font-bold mb-4 text-center">비밀번호 변경</h3>
                 <div className="space-y-3">
                     <input type="password" value={currentPw} onChange={e => setCurrentPw(e.target.value)} placeholder="현재 비밀번호" className="w-full p-3 border rounded-lg" />
@@ -262,7 +261,7 @@ const StudentPage: React.FC<StudentPageProps> = ({ initialView }) => {
 
             {notification && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl shadow-2xl p-8 w-full max-sm text-center">
+                    <div className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-lg text-center">
                         {notification.type === 'success' ? (
                             <CheckIcon className="w-16 h-16 text-green-500 mx-auto mb-4" />
                         ) : (
@@ -642,7 +641,7 @@ const StocksView: React.FC<{ currentUser: User, refreshAccount: () => void, show
 
             {selectedStock && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedStock(null)}>
-                    <div className="bg-white w-full max-w-md rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh] relative" onClick={e => e.stopPropagation()}>
+                    <div className="bg-white w-full max-w-4xl rounded-2xl overflow-hidden shadow-2xl flex flex-col h-[98dvh] md:h-auto md:max-h-[95vh] relative" onClick={e => e.stopPropagation()}>
                         <div className="p-4 border-b flex justify-between items-center bg-gray-50">
                             <h3 className="font-bold text-lg">{selectedStock.name}</h3>
                             <button onClick={() => setSelectedStock(null)}><XIcon className="w-6 h-6 text-gray-400"/></button>
@@ -705,6 +704,32 @@ const StockTransactionModal: React.FC<{ mode: 'buy'|'sell', stock: StockProduct,
     const [quantity, setQuantity] = useState(1);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [showConfirm, setShowConfirm] = useState(false);
+
+    // 수수료 실시간 계산 로직
+    const calcFee = useMemo(() => {
+        if (mode === 'buy') return { rate: 0, amount: 0, final: stock.currentPrice * quantity };
+
+        const volatility = stock.volatility || 0.01;
+        const oldPrice = stock.currentPrice;
+        const newPrice = Math.floor(oldPrice * Math.exp(-volatility * quantity));
+        const execPrice = (oldPrice + newPrice) / 2;
+        const totalSellVal = execPrice * quantity;
+        
+        const priceImpactPct = ((oldPrice - newPrice) / oldPrice) * 100;
+        let feeRate = (priceImpactPct * 1.05) + 2.0;
+        if (feeRate < 2.0) feeRate = 2.0;
+        if (feeRate > 33.5) feeRate = 33.5;
+
+        const feeAmount = Math.floor(totalSellVal * (feeRate / 100));
+        const finalAmount = totalSellVal - feeAmount;
+
+        return {
+            rate: parseFloat(feeRate.toFixed(1)),
+            amount: feeAmount,
+            final: finalAmount
+        };
+    }, [mode, stock, quantity]);
     
     const handleTrade = async () => {
         setLoading(true);
@@ -719,37 +744,109 @@ const StockTransactionModal: React.FC<{ mode: 'buy'|'sell', stock: StockProduct,
             onComplete(message);
         } catch(e: any) { 
             setError(e.message); 
+            setShowConfirm(false);
         }
         finally { setLoading(false); }
     };
 
+    if (showConfirm) {
+        return (
+            <div className="absolute inset-0 bg-white z-20 flex flex-col p-6 animate-fadeIn overflow-y-auto">
+                <div className="flex-grow flex flex-col justify-center">
+                    <h3 className="text-2xl font-bold mb-6 text-center">주식 {mode === 'buy' ? '매수' : '매도'} 확인</h3>
+                    <div className="bg-gray-50 p-6 rounded-2xl space-y-4 shadow-inner">
+                        <div className="flex justify-between">
+                            <span className="text-gray-500">종목</span>
+                            <span className="font-bold">{stock.name}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-gray-500">수량</span>
+                            <span className="font-bold">{quantity}주</span>
+                        </div>
+                        <div className="border-t pt-4 flex justify-between">
+                            <span className="text-gray-500">총 {mode === 'buy' ? '매수' : '매도'}액</span>
+                            <span className="font-bold">{(mode === 'buy' ? stock.currentPrice * quantity : calcFee.final + calcFee.amount).toLocaleString()}권</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-gray-500">수수료율</span>
+                            <span className={`font-bold ${calcFee.rate > 5 ? 'text-red-600' : 'text-indigo-600'}`}>{calcFee.rate}%</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-gray-500">수수료 금액</span>
+                            <span className="font-bold text-red-500">-{calcFee.amount.toLocaleString()}권</span>
+                        </div>
+                        <div className="border-t border-gray-200 pt-4 flex justify-between items-center">
+                            <span className="text-gray-800 font-bold">최종 {mode === 'buy' ? '결제' : '입금'} 예정액</span>
+                            <span className="text-2xl font-extrabold text-blue-600">{calcFee.final.toLocaleString()}권</span>
+                        </div>
+                    </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3 mt-8">
+                    <button onClick={() => setShowConfirm(false)} className="py-4 bg-gray-200 font-bold rounded-2xl text-gray-700">취소</button>
+                    <button onClick={handleTrade} disabled={loading} className={`py-4 text-white font-bold rounded-2xl ${mode === 'buy' ? 'bg-red-500' : 'bg-blue-600'} shadow-lg active:scale-95`}>
+                        {loading ? '처리 중...' : '확인'}
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
     return (
-        <div className="absolute inset-0 bg-white z-10 flex flex-col p-6">
+        <div className="absolute inset-0 bg-white z-10 flex flex-col p-6 overflow-y-auto">
             <h3 className="text-xl font-bold mb-6 text-center">{mode === 'buy' ? '매수하기' : '매도하기'}</h3>
             <div className="flex-grow flex flex-col justify-center items-center">
                 <div className="text-gray-500 mb-2">{stock.name}</div>
                 <div className="text-3xl font-bold mb-8">{stock.currentPrice.toLocaleString()}권</div>
                 
                 <div className="flex items-center gap-6 mb-8">
-                    <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="p-3 rounded-full bg-gray-100"><MinusIcon className="w-6 h-6"/></button>
+                    <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="p-3 rounded-full bg-gray-100 active:bg-gray-200"><MinusIcon className="w-6 h-6"/></button>
                     <span className="text-4xl font-mono font-bold w-20 text-center">{quantity}</span>
-                    <button onClick={() => setQuantity(quantity + 1)} className="p-3 rounded-full bg-gray-100"><PlusIcon className="w-6 h-6"/></button>
+                    <button onClick={() => setQuantity(quantity + 1)} className="p-3 rounded-full bg-gray-100 active:bg-gray-200"><PlusIcon className="w-6 h-6"/></button>
                 </div>
 
-                <div className="text-lg text-gray-600 mb-4">
-                    총 {mode === 'buy' ? '구매' : '판매'} 금액: <span className="font-bold text-black">{(stock.currentPrice * quantity).toLocaleString()}권</span>
+                <div className="w-full max-w-xs space-y-4">
+                    {mode === 'buy' ? (
+                        <div className="text-center p-4 bg-gray-50 rounded-xl">
+                            <div className="text-sm text-gray-500 mb-1">총 구매 예정 금액</div>
+                            <div className="text-2xl font-bold">{(stock.currentPrice * quantity).toLocaleString()}권</div>
+                            <div className="text-[10px] text-green-600 mt-1">매수 수수료: 0%</div>
+                        </div>
+                    ) : (
+                        <div className="p-4 bg-gray-50 rounded-xl space-y-2">
+                             <div className="flex justify-between text-sm">
+                                <span className="text-gray-500">예상 수수료율</span>
+                                <span className={`font-bold ${calcFee.rate > 5 ? 'text-red-500' : 'text-gray-800'}`}>{calcFee.rate}%</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                                <span className="text-gray-500">예상 수수료 금액</span>
+                                <span className="font-bold text-red-500">{calcFee.amount.toLocaleString()}권</span>
+                            </div>
+                             <div className="flex justify-between pt-2 border-t border-gray-200">
+                                <span className="font-bold text-gray-800">최종 입금 예정액</span>
+                                <span className="font-bold text-blue-600">{calcFee.final.toLocaleString()}권</span>
+                            </div>
+                            {calcFee.rate > 5 && (
+                                <p className="text-[10px] text-red-600 font-medium text-center mt-2">
+                                    ⚠️ 대량 매도 시 시장 가격 영향으로 수수료가 상승합니다.
+                                </p>
+                            )}
+                            <p className="text-[9px] text-gray-400 text-center">
+                                수수료 정책: (가격 변동률 * 1.05) + 기본 2%
+                            </p>
+                        </div>
+                    )}
                 </div>
 
                 {error && (
-                    <div className="w-full p-3 bg-red-50 text-red-600 rounded-lg text-sm text-center border border-red-100">
+                    <div className="w-full mt-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm text-center border border-red-100">
                         {error}
                     </div>
                 )}
             </div>
-            <div className="grid grid-cols-2 gap-3 mt-auto">
-                <button onClick={onClose} className="py-3 bg-gray-200 font-bold rounded-xl text-gray-700">취소</button>
-                <button onClick={handleTrade} disabled={loading} className={`py-3 text-white font-bold rounded-xl ${mode === 'buy' ? 'bg-red-500' : 'bg-blue-500'}`}>
-                    {loading ? '처리 중...' : '확인'}
+            <div className="grid grid-cols-2 gap-3 mt-auto pt-6">
+                <button onClick={onClose} className="py-4 bg-gray-200 font-bold rounded-xl text-gray-700">취소</button>
+                <button onClick={() => setShowConfirm(true)} className={`py-4 text-white font-bold rounded-xl ${mode === 'buy' ? 'bg-red-500' : 'bg-blue-500'}`}>
+                    다음
                 </button>
             </div>
         </div>
@@ -1072,7 +1169,7 @@ const JoinFundModal: React.FC<{
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={onClose}>
-            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-sm" onClick={e => e.stopPropagation()}>
+            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg" onClick={e => e.stopPropagation()}>
                 <h3 className="text-xl font-bold mb-2">{fund.name}</h3>
                 <div className="mb-4 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg max-h-32 overflow-y-auto">
                     {fund.description}
@@ -1122,7 +1219,7 @@ const JoinSavingsModal: React.FC<{ product: SavingsProduct, onClose: ()=>void, o
     
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white p-6 rounded-2xl w-full max-w-sm">
+            <div className="bg-white p-6 rounded-2xl w-full max-w-lg">
                 <h3 className="text-xl font-bold mb-2">{product.name} 가입</h3>
                 <p className="text-sm text-gray-500 mb-4">
                     {product.maturityDays}일 뒤에 이자 {(product.rate * 100).toFixed(0)}%가 추가되어 지급됩니다.<br/>

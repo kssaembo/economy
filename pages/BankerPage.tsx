@@ -159,7 +159,7 @@ const TransactionModal: React.FC<{ student: User & { account: Account | null }, 
     
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
+            <div className="bg-white rounded-xl shadow-2xl p-6 max-w-sm">
                  <div className="flex justify-between items-center mb-4">
                     <h3 className="text-xl font-bold">{student.name} 학생 {mode === 'deposit' ? '입금' : '출금'}</h3>
                     <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200"><XIcon className="w-6 h-6 text-gray-600" /></button>
@@ -348,7 +348,7 @@ const AddStockModal: React.FC<{onClose: ()=>void, onComplete: ()=>void}> = ({onC
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
+            <div className="bg-white rounded-xl shadow-2xl p-6 max-w-sm">
                 <h3 className="text-xl font-bold mb-4">새 주식 종목 추가</h3>
                 <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="종목명" className="w-full p-3 border rounded-lg mb-2"/>
                 <input type="number" value={price} onChange={e => setPrice(e.target.value)} placeholder="초기 가격" className="w-full p-3 border rounded-lg"/>
@@ -377,7 +377,7 @@ const UpdatePriceModal: React.FC<{stock: StockProduct, onClose: ()=>void, onComp
     
     return (
          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
+            <div className="bg-white rounded-xl shadow-2xl p-6 max-w-sm">
                 <h3 className="text-xl font-bold mb-4">{stock.name} 가격 변경</h3>
                 <input type="number" value={price} onChange={e => setPrice(e.target.value)} placeholder="새로운 가격" className="w-full p-3 border rounded-lg"/>
                 <button onClick={handleSubmit} disabled={loading} className="mt-4 w-full p-3 bg-indigo-600 text-white font-bold rounded-lg">변경하기</button>
@@ -404,7 +404,7 @@ const DeleteStockModal: React.FC<{stockIds: string[], onClose: ()=>void, onCompl
 
     return (
          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
+            <div className="bg-white rounded-xl shadow-2xl p-6 max-w-sm text-center">
                 <h3 className="text-xl font-bold mb-4">정말로 삭제하시겠습니까?</h3>
                 <p className="text-sm text-gray-600 mb-4">{stockIds.length}개의 주식 종목이 영구적으로 삭제됩니다. 이 작업은 되돌릴 수 없습니다.</p>
                 {result && <p className={`mb-2 text-sm ${result.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>{result.text}</p>}
@@ -426,7 +426,7 @@ const StockHoldersModal: React.FC<{ stock: StockProductWithDetails, onClose: () 
     
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={onClose}>
-            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
+            <div className="bg-white rounded-xl shadow-2xl p-6 max-w-sm" onClick={e => e.stopPropagation()}>
                 <h3 className="text-xl font-bold mb-4">{stock.name} 주주 명부</h3>
                 <div className="max-h-60 overflow-y-auto">
                     <table className="w-full text-sm">
@@ -483,7 +483,7 @@ const VolatilityModal: React.FC<{ stocks: StockProduct[], onClose: () => void, o
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={onClose}>
-            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
+            <div className="bg-white rounded-xl shadow-2xl p-6 max-w-sm" onClick={e => e.stopPropagation()}>
                 <h3 className="text-xl font-bold mb-2">가격 변동 민감도 설정</h3>
                 <p className="text-xs text-gray-500 mb-4">
                     민감도에 따라 학생들의 매도 수수료가 자동으로 설정됩니다.<br/>
@@ -634,7 +634,7 @@ const AddSavingModal: React.FC<{onClose: ()=>void, onComplete: ()=>void}> = ({on
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md">
+            <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md">
                 <h3 className="text-xl font-bold mb-4">새 적금 상품 추가</h3>
                 <div className="space-y-2 text-sm">
                     <label className="block font-medium text-gray-700">적금명
@@ -659,7 +659,7 @@ const AddSavingModal: React.FC<{onClose: ()=>void, onComplete: ()=>void}> = ({on
                 </div>
                 <button onClick={handleSubmit} disabled={loading} className="mt-4 w-full p-3 bg-indigo-600 text-white font-bold rounded-lg">추가하기</button>
                 {result && <p className={`mt-2 text-sm text-center ${result.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>{result.text}</p>}
-                <button onClick={onClose} className="mt-2 w-full p-2 text-gray-600">닫기</button>
+                <button onClick={onClose} className="mt-2 w-full p-2 text-gray-500">닫기</button>
             </div>
         </div>
     )
@@ -681,7 +681,7 @@ const DeleteSavingModal: React.FC<{productIds: string[], onClose: ()=>void, onCo
 
     return (
          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
+            <div className="bg-white rounded-xl shadow-2xl p-6 max-w-sm text-center">
                 <h3 className="text-xl font-bold mb-4">정말로 삭제하시겠습니까?</h3>
                 <p className="text-sm text-gray-600 mb-4">{productIds.length}개의 적금 상품이 영구적으로 삭제됩니다.</p>
                 {result && <p className={`mb-2 text-sm ${result.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>{result.text}</p>}
@@ -703,7 +703,7 @@ const SavingEnrolleesModal: React.FC<{ product: SavingsProduct, onClose: () => v
     
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={onClose}>
-            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg" onClick={e => e.stopPropagation()}>
+            <div className="bg-white rounded-xl shadow-2xl p-6 max-w-lg" onClick={e => e.stopPropagation()}>
                 <h3 className="text-xl font-bold mb-4">{product.name} 가입자 명단</h3>
                 <div className="max-h-60 overflow-y-auto">
                     {enrollees.length > 0 ? (

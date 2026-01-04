@@ -1,4 +1,3 @@
-
 /* 
   [Supabase SQL 가이드] 
   학생 삭제 기능을 위해 아래 쿼리를 Supabase SQL Editor에서 실행해주세요.
@@ -38,9 +37,9 @@
   $function$;
 */
 
+import { api } from '../services/api';
 import React, { useState, useContext, useEffect, useCallback, useMemo } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
-import { api } from '../services/api';
 import { User, Role, Account, Transaction, Job, AssignedStudent, TransactionType, TaxItemWithRecipients, Fund, FundStatus } from '../types';
 import { LogoutIcon, QrCodeIcon, UserAddIcon, XIcon, CheckIcon, ErrorIcon, BackIcon, NewDashboardIcon, NewBriefcaseIcon, NewManageAccountsIcon, ManageIcon, NewTaxIcon, NewFundIcon, NewStudentIcon, PencilIcon, ArrowDownIcon, ArrowUpIcon, PlusIcon, BellIcon } from '../components/icons';
 import { QRCodeSVG } from 'qrcode.react';
@@ -82,7 +81,7 @@ const ConfirmModal: React.FC<{
     if (!isOpen) return null;
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
+            <div className="bg-white rounded-xl shadow-2xl p-6 max-w-sm">
                 <h3 className="text-xl font-bold mb-2 text-gray-900">{title}</h3>
                 <p className="text-gray-600 mb-6 whitespace-pre-wrap">{message}</p>
                 <div className="flex gap-3">
@@ -105,7 +104,7 @@ const MessageModal: React.FC<{
     if (!isOpen) return null;
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm flex flex-col items-center text-center">
+            <div className="bg-white rounded-xl shadow-2xl p-6 max-w-sm flex flex-col items-center text-center">
                 {type === 'success' ? <CheckIcon className="w-12 h-12 text-green-500 mb-4" /> : <ErrorIcon className="w-12 h-12 text-red-500 mb-4" />}
                 <h3 className={`text-xl font-bold mb-2 ${type === 'success' ? 'text-gray-900' : 'text-red-600'}`}>
                     {type === 'success' ? '성공' : '오류'}
@@ -418,7 +417,7 @@ const DashboardView: React.FC<{ students: (User & { account: Account | null })[]
 
              {showHistoryModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowHistoryModal(false)}>
-                    <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                    <div className="bg-white rounded-xl shadow-2xl p-6 max-w-lg max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="text-xl font-bold">권쌤 지갑 내역 (국고)</h3>
                             <button onClick={() => setShowHistoryModal(false)} className="p-1 rounded-full hover:bg-gray-200">
@@ -585,7 +584,7 @@ const StudentManagementView: React.FC<{ students: (User & { account: Account | n
             )}
             {selectedStudentQr && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedStudentQr(null)}>
-                    <div className="bg-white p-8 rounded-xl flex flex-col items-center max-w-sm w-full" onClick={e => e.stopPropagation()}>
+                    <div className="bg-white p-8 rounded-xl flex flex-col items-center max-w-sm" onClick={e => e.stopPropagation()}>
                         <h3 className="text-xl font-bold mb-1">{selectedStudentQr.name}</h3>
                         <p className="text-sm text-gray-500 mb-4">{selectedStudentQr.grade}학년 {selectedStudentQr.class}반 {selectedStudentQr.number}번</p>
                         {selectedStudentQr.account?.qrToken ? (
@@ -647,7 +646,7 @@ const AddStudentModal: React.FC<{ onClose: () => void, onComplete: () => void }>
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl p-6 w-full max-w-sm">
+            <div className="bg-white rounded-xl p-6 max-sm">
                 <h3 className="text-xl font-bold mb-4">학생 추가</h3>
                 <div className="space-y-3">
                     <div className="flex gap-2">
@@ -706,7 +705,7 @@ const StudentDetailModal: React.FC<{ student: User & { account: Account | null }
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={onClose}>
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="bg-white rounded-xl shadow-2xl max-w-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
                 <div className="p-6 border-b flex justify-between items-center bg-gray-50 rounded-t-xl">
                     <div>
                         <h3 className="text-2xl font-bold text-gray-800 flex items-center">
@@ -781,7 +780,7 @@ const BatchQrPrintModal: React.FC<{ students: (User & { account: Account | null 
     const validStudents = students.filter(s => s.account && s.account.qrToken);
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+            <div className="bg-white rounded-xl shadow-2xl max-w-4xl max-h-[90vh] flex flex-col">
                 <div className="p-4 border-b flex justify-between items-center">
                     <h3 className="text-xl font-bold">QR 코드 일괄 출력</h3>
                     <div className="flex gap-2">
@@ -992,12 +991,12 @@ const AddJobModal: React.FC<{ onClose: () => void, onComplete: () => void }> = (
     };
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl p-6 w-full max-w-sm">
+            <div className="bg-white rounded-xl p-6 max-w-sm">
                 <h3 className="text-xl font-bold mb-4">직업 추가</h3>
                 <div className="space-y-3">
-                    <input value={name} onChange={e => setName(e.target.value)} placeholder="직업명" className="w-full p-2 border rounded"/>
-                    <input value={desc} onChange={e => setDesc(e.target.value)} placeholder="설명" className="w-full p-2 border rounded"/>
-                    <input type="number" value={salary} onChange={e => setSalary(e.target.value)} placeholder="월급" className="w-full p-2 border rounded"/>
+                    <input value={name} onChange={setName.bind(null, (e: any) => e.target.value)} placeholder="직업명" className="w-full p-2 border rounded"/>
+                    <input value={desc} onChange={setDesc.bind(null, (e: any) => e.target.value)} placeholder="설명" className="w-full p-2 border rounded"/>
+                    <input type="number" value={salary} onChange={setSalary.bind(null, (e: any) => e.target.value)} placeholder="월급" className="w-full p-2 border rounded"/>
                 </div>
                 <button onClick={handleSubmit} className="w-full mt-4 p-3 bg-blue-600 text-white rounded-lg font-bold">추가</button>
                 <button onClick={onClose} className="w-full mt-2 p-2 text-gray-500">취소</button>
@@ -1017,7 +1016,7 @@ const AssignJobModal: React.FC<{ job: Job, students: User[], onClose: () => void
     };
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl p-6 w-full max-w-sm max-h-[80vh] flex flex-col">
+            <div className="bg-white rounded-xl p-6 max-w-sm max-h-[80vh] flex flex-col">
                 <h3 className="text-xl font-bold mb-4">{job.jobName} 배정</h3>
                 <div className="flex-grow overflow-y-auto border rounded p-2 grid grid-cols-2 gap-2">
                     {students.map(s => (
@@ -1193,12 +1192,12 @@ const AddTaxModal: React.FC<{ students: User[], onClose: () => void, onComplete:
     };
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-md max-h-[90vh] overflow-y-auto">
+            <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md max-h-[90vh] overflow-y-auto">
                 <h3 className="text-xl font-bold mb-4">새 세금 고지</h3>
                 <div className="space-y-3 mb-4">
-                    <input value={name} onChange={e => setName(e.target.value)} placeholder="세금 항목명" className="w-full p-2 border rounded"/>
-                    <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="금액" className="w-full p-2 border rounded"/>
-                    <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="w-full p-2 border rounded"/>
+                    <input value={name} onChange={setName.bind(null, (e: any) => e.target.value)} placeholder="세금 항목명" className="w-full p-2 border rounded"/>
+                    <input type="number" value={amount} onChange={setAmount.bind(null, (e: any) => e.target.value)} placeholder="금액" className="w-full p-2 border rounded"/>
+                    <input type="date" value={dueDate} onChange={setDueDate.bind(null, (e: any) => e.target.value)} className="w-full p-2 border rounded"/>
                 </div>
                 <p className="font-bold text-sm mb-2">납부 대상 선택 ({selectedIds.length}명)</p>
                 <div className="h-40 overflow-y-auto border rounded p-2 bg-gray-50 mb-4 grid grid-cols-2 gap-2">
@@ -1230,6 +1229,7 @@ const FundManagementView: React.FC<{ students: (User & { account: Account | null
     const [showAddModal, setShowAddModal] = useState(false);
     const [messageModal, setMessageModal] = useState<{isOpen: boolean, type: 'success'|'error', message: string}>({isOpen: false, type: 'success', message: ''});
     const [settleModal, setSettleModal] = useState<{ isOpen: boolean, fund: Fund | null }>({ isOpen: false, fund: null });
+    const [confirmAction, setConfirmAction] = useState<{ type: 'delete_fund', data: Fund } | null>(null);
 
     const fetchFunds = useCallback(async () => {
         setLoading(true);
@@ -1251,6 +1251,20 @@ const FundManagementView: React.FC<{ students: (User & { account: Account | null
             fetchFunds();
         } catch (error: any) {
             setMessageModal({ isOpen: true, type: 'error', message: error.message });
+        }
+    };
+
+    const handleDeleteFund = async () => {
+        if (!confirmAction || confirmAction.type !== 'delete_fund') return;
+        const fund = confirmAction.data;
+        try {
+            const msg = await api.deleteFund(fund.id);
+            setMessageModal({ isOpen: true, type: 'success', message: msg });
+            fetchFunds();
+        } catch (e: any) {
+            setMessageModal({ isOpen: true, type: 'error', message: e.message });
+        } finally {
+            setConfirmAction(null);
         }
     };
     
@@ -1277,13 +1291,22 @@ const FundManagementView: React.FC<{ students: (User & { account: Account | null
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {funds.map(fund => (
-                    <div key={fund.id} className="bg-white rounded-xl shadow-sm overflow-hidden flex flex-col h-full border hover:border-blue-200 transition-colors">
+                    <div key={fund.id} className="bg-white rounded-xl shadow-sm overflow-hidden flex flex-col h-full border hover:border-blue-200 transition-colors relative">
                         <div className="p-4 flex justify-between items-start border-b">
                             <div>
                                 <h3 className="font-bold text-lg text-gray-800">{fund.name}</h3>
                                 <p className="text-xs text-gray-500 mt-1">제안: {fund.creatorName} 학생</p>
                             </div>
-                            {getStatusBadge(fund.status)}
+                            <div className="flex items-center gap-2">
+                                {getStatusBadge(fund.status)}
+                                <button 
+                                    onClick={() => setConfirmAction({ type: 'delete_fund', data: fund })}
+                                    className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                                    title="펀드 삭제"
+                                >
+                                    <XIcon className="w-5 h-5" />
+                                </button>
+                            </div>
                         </div>
                         <div className="p-4 flex-grow space-y-2 text-sm">
                              <div className="flex justify-between">
@@ -1318,9 +1341,10 @@ const FundManagementView: React.FC<{ students: (User & { account: Account | null
                 ))}
             </div>
             {showAddModal && <AddFundModal students={students} onClose={() => setShowAddModal(false)} onComplete={fetchFunds} />}
+            
             {settleModal.isOpen && settleModal.fund && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
+                    <div className="bg-white rounded-xl shadow-2xl p-6 max-w-sm">
                         <h3 className="text-xl font-bold mb-2">펀드 결과 입력</h3>
                         <p className="text-gray-600 mb-6 text-sm">결과 선택 시 자동 정산됩니다.</p>
                         <div className="flex flex-col gap-3">
@@ -1332,6 +1356,19 @@ const FundManagementView: React.FC<{ students: (User & { account: Account | null
                     </div>
                 </div>
             )}
+
+            <ConfirmModal 
+                isOpen={!!confirmAction}
+                title="펀드 삭제 확인"
+                message={`정말로 '${confirmAction?.data?.name}' 펀드를 삭제하시겠습니까? 
+                
+모집 중이거나 운용 중인 펀드일 경우, 가입한 모든 학생들에게 투자 원금이 전액 환불 처리됩니다.`}
+                onConfirm={handleDeleteFund}
+                onCancel={() => setConfirmAction(null)}
+                confirmText="삭제하기"
+                isDangerous={true}
+            />
+
             <MessageModal isOpen={!!messageModal.isOpen} type={messageModal.type} message={messageModal.message} onClose={() => setMessageModal({ ...messageModal, isOpen: false })} />
         </div>
     );
@@ -1368,7 +1405,7 @@ const AddFundModal: React.FC<{ students: (User & { account: Account | null })[],
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg max-h-[95vh] overflow-y-auto">
+            <div className="bg-white rounded-xl shadow-2xl p-6 max-w-lg max-h-[95vh] overflow-y-auto">
                 <div className="flex justify-between items-center mb-4">
                     <h3 className="text-xl font-bold">새 펀드 개설</h3>
                     <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200"><XIcon className="w-6 h-6 text-gray-600" /></button>

@@ -1,4 +1,3 @@
-
 import { supabase } from './supabaseClient';
 import { Role, User, Account, StockProduct, StockProductWithDetails, StudentStock, SavingsProduct, StudentSaving, Job, TaxItemWithRecipients, StockHistory, Fund, FundInvestment, FundStatus } from '../types';
 
@@ -413,6 +412,7 @@ const getStockHistory = async (stockId: string): Promise<StockHistory[]> => {
 };
 
 const buyStock = async (userId: string, stockId: string, quantity: number): Promise<string> => {
+    // SQL 함수가 p_user_id text, p_stock_id text로 정의되어 있으므로 문자열 그대로 전달
     const { error } = await supabase.rpc('buy_stock', {
         p_user_id: userId,
         p_stock_id: stockId,
@@ -423,7 +423,8 @@ const buyStock = async (userId: string, stockId: string, quantity: number): Prom
 };
 
 const sellStock = async (userId: string, stockId: string, quantity: number): Promise<string> => {
-     const { data, error } = await supabase.rpc('sell_stock', {
+    // SQL 함수가 p_user_id text, p_stock_id text로 정의되어 있으므로 문자열 그대로 전달
+    const { data, error } = await supabase.rpc('sell_stock', {
         p_user_id: userId,
         p_stock_id: stockId,
         p_quantity: quantity
@@ -646,12 +647,14 @@ const getTaxes = async (): Promise<TaxItemWithRecipients[]> => {
 };
 
 const createTax = async (name: string, amount: number, dueDate: string, studentIds: string[]): Promise<string> => {
+    // FIX: Using correctly named parameter 'amount' instead of 'p_amount' which was missing in current scope
     const { data, error } = await supabase.rpc('create_tax', { p_name: name, p_amount: amount, p_due_date: dueDate, p_student_ids: studentIds });
     handleSupabaseError(error, 'createTax');
     return data;
 };
 
 const deleteTax = async (taxId: string): Promise<string> => {
+    // FIX: Correct parameter name from p_tax_id to taxId
     const { error } = await supabase.rpc('delete_tax', { p_tax_id: taxId });
     handleSupabaseError(error, 'deleteTax');
     return '세금 항목이 삭제되었습니다.';
@@ -720,6 +723,7 @@ const getFunds = async (): Promise<Fund[]> => {
     });
 };
 
+// Fix property name from fund.incentive_reward to fund.incentiveReward to match the Omit<Fund, ...> type.
 const createFund = async (fund: Omit<Fund, 'id' | 'createdAt' | 'status' | 'teacherId' | 'creatorName' | 'totalInvestedAmount' | 'investorCount'>): Promise<string> => {
     const { data, error } = await supabase.rpc('create_fund', {
         p_name: fund.name,
@@ -733,6 +737,12 @@ const createFund = async (fund: Omit<Fund, 'id' | 'createdAt' | 'status' | 'teac
         p_maturity_date: fund.maturityDate
     });
     handleSupabaseError(error, 'createFund');
+    return data.message;
+};
+
+const deleteFund = async (fundId: string): Promise<string> => {
+    const { data, error } = await supabase.rpc('delete_fund', { p_fund_id: fundId });
+    handleSupabaseError(error, 'deleteFund');
     return data.message;
 };
 
@@ -826,6 +836,7 @@ export const api = {
     payTax,
     getFunds,
     createFund,
+    deleteFund,
     joinFund,
     settleFund,
     getMyFundInvestments,

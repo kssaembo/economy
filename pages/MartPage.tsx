@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useContext } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
@@ -17,7 +16,7 @@ const MessageModal: React.FC<{
     if (!isOpen) return null;
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm flex flex-col items-center text-center">
+            <div className="bg-white rounded-xl shadow-2xl p-6 max-w-sm flex flex-col items-center text-center">
                 {type === 'success' ? <CheckIcon className="w-12 h-12 text-green-500 mb-4" /> : <ErrorIcon className="w-12 h-12 text-red-500 mb-4" />}
                 <h3 className={`text-xl font-bold mb-2 ${type === 'success' ? 'text-gray-900' : 'text-red-600'}`}>
                     {type === 'success' ? '성공' : '오류'}
