@@ -994,9 +994,9 @@ const AddJobModal: React.FC<{ onClose: () => void, onComplete: () => void }> = (
             <div className="bg-white rounded-xl p-6 max-w-sm">
                 <h3 className="text-xl font-bold mb-4">직업 추가</h3>
                 <div className="space-y-3">
-                    <input value={name} onChange={setName.bind(null, (e: any) => e.target.value)} placeholder="직업명" className="w-full p-2 border rounded"/>
-                    <input value={desc} onChange={setDesc.bind(null, (e: any) => e.target.value)} placeholder="설명" className="w-full p-2 border rounded"/>
-                    <input type="number" value={salary} onChange={setSalary.bind(null, (e: any) => e.target.value)} placeholder="월급" className="w-full p-2 border rounded"/>
+                    <input value={name} onChange={(e) => setName(e.target.value)} placeholder="직업명" className="w-full p-2 border rounded"/>
+                    <input value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="설명" className="w-full p-2 border rounded"/>
+                    <input type="number" value={salary} onChange={(e) => setSalary(e.target.value)} placeholder="월급" className="w-full p-2 border rounded"/>
                 </div>
                 <button onClick={handleSubmit} className="w-full mt-4 p-3 bg-blue-600 text-white rounded-lg font-bold">추가</button>
                 <button onClick={onClose} className="w-full mt-2 p-2 text-gray-500">취소</button>
@@ -1195,9 +1195,9 @@ const AddTaxModal: React.FC<{ students: User[], onClose: () => void, onComplete:
             <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md max-h-[90vh] overflow-y-auto">
                 <h3 className="text-xl font-bold mb-4">새 세금 고지</h3>
                 <div className="space-y-3 mb-4">
-                    <input value={name} onChange={setName.bind(null, (e: any) => e.target.value)} placeholder="세금 항목명" className="w-full p-2 border rounded"/>
-                    <input type="number" value={amount} onChange={setAmount.bind(null, (e: any) => e.target.value)} placeholder="금액" className="w-full p-2 border rounded"/>
-                    <input type="date" value={dueDate} onChange={setDueDate.bind(null, (e: any) => e.target.value)} className="w-full p-2 border rounded"/>
+                    <input value={name} onChange={(e) => setName(e.target.value)} placeholder="세금 항목명" className="w-full p-2 border rounded"/>
+                    <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="금액" className="w-full p-2 border rounded"/>
+                    <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="w-full p-2 border rounded"/>
                 </div>
                 <p className="font-bold text-sm mb-2">납부 대상 선택 ({selectedIds.length}명)</p>
                 <div className="h-40 overflow-y-auto border rounded p-2 bg-gray-50 mb-4 grid grid-cols-2 gap-2">
