@@ -443,18 +443,15 @@ const addStockProduct = async (name: string, price: number): Promise<string> => 
 };
 
 const updateStockPrice = async (stockId: string, newPrice: number): Promise<string> => {
-    const { error: updateError } = await supabase
-        .from('stock_products')
-        .update({ currentPrice: newPrice })
-        .eq('id', stockId);
+    // 1. stock_products 테이블의 id가 TEXT 타입이므로, TEXT 타입 매개변수를 받는 RPC 호출
+    // 2. currentPrice가 NUMERIC 타입이므로, NUMERIC(float)으로 전달
+    // 3. 충돌 방지를 위해 최종 명명된 v3_update_stock_price 함수 사용
+    const { error } = await supabase.rpc('v3_update_stock_price', {
+        p_stock_id: stockId, // string (text)
+        p_new_price: newPrice // number (numeric)
+    });
     
-    if (updateError) handleSupabaseError(updateError, 'updateStockPrice (Table)');
-
-    const { error: historyError } = await supabase
-        .from('stock_price_history')
-        .insert({ stockId: stockId, price: newPrice });
-    
-    if (historyError) console.error("History insert failed", historyError);
+    handleSupabaseError(error, 'updateStockPrice');
 
     return '가격이 변경되었습니다.';
 };

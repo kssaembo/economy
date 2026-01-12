@@ -35,6 +35,22 @@
       DELETE FROM public.users WHERE "userId" = p_user_id;
   END;
   $function$;
+
+  -- 주식 가격 업데이트 및 이력 기록 (최종 v3 버전: text id와 numeric price 사용)
+  CREATE OR REPLACE FUNCTION public.v3_update_stock_price(p_stock_id text, p_new_price numeric)
+  RETURNS void
+  LANGUAGE plpgsql
+  SECURITY DEFINER
+  AS $$
+  BEGIN
+      UPDATE public.stock_products
+      SET "currentPrice" = p_new_price
+      WHERE id = p_stock_id;
+
+      INSERT INTO public.stock_price_history ("stockId", price)
+      VALUES (p_stock_id, p_new_price);
+  END;
+  $$;
 */
 
 import { api } from '../services/api';
