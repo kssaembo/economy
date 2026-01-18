@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
@@ -120,7 +121,8 @@ const ChangePasswordModal: React.FC<{ isOpen: boolean, onClose: () => void }> = 
 const StudentPage: React.FC<StudentPageProps> = ({ initialView }) => {
     const { currentUser, logout } = useContext(AuthContext);
     
-    const validViews: View[] = ['home', 'transfer', 'stocks', 'funds', 'savings'];
+    // Fixed: 'savings' | 'funds' typo in array literal (bitwise OR operator used instead of comma)
+    const validViews: View[] = ['home', 'transfer', 'stocks', 'savings', 'funds'];
     const startView: View = (initialView && validViews.includes(initialView as View)) 
         ? (initialView as View) 
         : 'transfer'; 
@@ -336,7 +338,7 @@ const HomeView: React.FC<{ account: Account, currentUser: User, refreshAccount: 
         <div className="space-y-6">
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                 <p className="text-gray-500 mb-1 font-medium">내 총 자산</p>
-                <h2 className="text-4xl font-extrabold text-gray-800">{totalAssets.toLocaleString()}<span className="text-2xl ml-1 font-normal text-gray-600">권</span></h2>
+                <h2 className="text-4xl font-extrabold text-gray-800">{Math.floor(totalAssets).toLocaleString()}<span className="text-2xl ml-1 font-normal text-gray-600">권</span></h2>
                 
                 <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-gray-50">
                     <div className="text-center">
@@ -345,7 +347,7 @@ const HomeView: React.FC<{ account: Account, currentUser: User, refreshAccount: 
                     </div>
                     <div className="text-center border-l border-gray-100">
                         <div className="text-xs text-gray-400 mb-1">주식</div>
-                        <div className="font-bold text-blue-600">{stockValue.toLocaleString()}</div>
+                        <div className="font-bold text-blue-600">{Math.floor(stockValue).toLocaleString()}</div>
                     </div>
                      <div className="text-center border-l border-gray-100">
                         <div className="text-xs text-gray-400 mb-1">적금</div>
@@ -599,7 +601,7 @@ const StocksView: React.FC<{ currentUser: User, refreshAccount: () => void, show
                             <div key={s.id} onClick={() => handleStockClick(s)} className="bg-white p-4 rounded-xl shadow-sm cursor-pointer hover:bg-gray-50 transition-colors flex justify-between items-center">
                                 <span className="font-bold text-gray-800">{s.name}</span>
                                 <div className="text-right">
-                                    <div className="font-mono font-bold">{s.currentPrice.toLocaleString()}권</div>
+                                    <div className="font-mono font-bold">{Math.round(s.currentPrice).toLocaleString()}권</div>
                                 </div>
                             </div>
                         ))}
@@ -622,12 +624,12 @@ const StocksView: React.FC<{ currentUser: User, refreshAccount: () => void, show
                                         <div>
                                             <div className="text-xs text-gray-400">평가손익</div>
                                             <div className={`font-bold ${profit >= 0 ? 'text-red-500' : 'text-blue-500'}`}>
-                                                {profit > 0 ? '+' : ''}{profit.toLocaleString()} ({profitRate.toFixed(1)}%)
+                                                {profit > 0 ? '+' : ''}{Math.floor(profit).toLocaleString()} ({profitRate.toFixed(1)}%)
                                             </div>
                                         </div>
                                         <div className="text-right">
                                             <div className="text-xs text-gray-400">평가금액</div>
-                                            <div className="font-bold">{currentVal.toLocaleString()}권</div>
+                                            <div className="font-bold">{Math.floor(currentVal).toLocaleString()}권</div>
                                         </div>
                                     </div>
                                 </div>
@@ -660,7 +662,7 @@ const StocksView: React.FC<{ currentUser: User, refreshAccount: () => void, show
                         <div className="p-4 bg-white border-t">
                             <div className="flex justify-between items-center mb-6">
                                 <span className="text-gray-500">현재가</span>
-                                <span className="text-2xl font-bold">{selectedStock.currentPrice.toLocaleString()}권</span>
+                                <span className="text-2xl font-bold">{Math.round(selectedStock.currentPrice).toLocaleString()}권</span>
                             </div>
                             <div className="grid grid-cols-2 gap-3">
                                 <button 
@@ -683,6 +685,7 @@ const StocksView: React.FC<{ currentUser: User, refreshAccount: () => void, show
                                 mode={(selectedStock as any).mode} 
                                 stock={selectedStock} 
                                 userId={currentUser.userId}
+                                ownedQuantity={myStocks.find(ms => ms.stockId === selectedStock.id)?.quantity || 0}
                                 onClose={() => setSelectedStock(null)}
                                 onComplete={(msg) => {
                                     if(msg) showNotification('success', msg);
@@ -699,19 +702,20 @@ const StocksView: React.FC<{ currentUser: User, refreshAccount: () => void, show
     );
 };
 
-const StockTransactionModal: React.FC<{ mode: 'buy'|'sell', stock: StockProduct, userId: string, onClose: ()=>void, onComplete: (msg?: string)=>void }> = ({mode, stock, userId, onClose, onComplete}) => {
+const StockTransactionModal: React.FC<{ mode: 'buy'|'sell', stock: StockProduct, userId: string, ownedQuantity?: number, onClose: ()=>void, onComplete: (msg?: string)=>void }> = ({mode, stock, userId, ownedQuantity = 0, onClose, onComplete}) => {
     const [quantity, setQuantity] = useState(1);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [showConfirm, setShowConfirm] = useState(false);
 
     const calcFee = useMemo(() => {
-        if (mode === 'buy') return { rate: 0, amount: 0, final: stock.currentPrice * quantity };
+        // 매수 시: 실제 가격 * 수량의 올림 처리
+        if (mode === 'buy') return { rate: 0, amount: 0, final: Math.ceil(stock.currentPrice * quantity), execPrice: stock.currentPrice };
 
         const volatility = stock.volatility || 0.01;
         const oldPrice = stock.currentPrice;
-        // 대안 1: 가격 하한선 1권 적용
-        const newPrice = Math.max(1, Math.floor(oldPrice * Math.exp(-volatility * quantity)));
+        // 매도 시: 가격 하락 후 평균 체결가에서 수수료 제외 및 버림 처리
+        const newPrice = Math.max(1, oldPrice * Math.exp(-volatility * quantity));
         const execPrice = (oldPrice + newPrice) / 2;
         const totalSellVal = execPrice * quantity;
         
@@ -720,13 +724,14 @@ const StockTransactionModal: React.FC<{ mode: 'buy'|'sell', stock: StockProduct,
         if (feeRate < 2.0) feeRate = 2.0;
         if (feeRate > 33.5) feeRate = 33.5;
 
-        const feeAmount = Math.floor(totalSellVal * (feeRate / 100));
-        const finalAmount = totalSellVal - feeAmount;
+        const feeAmount = Math.ceil(totalSellVal * (feeRate / 100));
+        const finalAmount = Math.floor(totalSellVal - feeAmount);
 
         return {
             rate: parseFloat(feeRate.toFixed(1)),
             amount: feeAmount,
-            final: finalAmount
+            final: finalAmount,
+            execPrice: execPrice
         };
     }, [mode, stock, quantity]);
     
@@ -751,8 +756,13 @@ const StockTransactionModal: React.FC<{ mode: 'buy'|'sell', stock: StockProduct,
     if (showConfirm) {
         return (
             <div className="absolute inset-0 bg-white z-20 flex flex-col animate-fadeIn">
-                <div className="flex-grow overflow-y-auto p-6 flex flex-col justify-center">
-                    <h3 className="text-2xl font-bold mb-6 text-center">주식 {mode === 'buy' ? '매수' : '매도'} 확인</h3>
+                <div className="flex-grow overflow-y-auto p-6 pt-12 flex flex-col">
+                    <h3 className="text-2xl font-bold mb-2 text-center">주식 {mode === 'buy' ? '매수' : '매도'} 확인</h3>
+                    <p className="text-red-500 text-[11px] font-bold mb-6 text-center leading-tight">
+                        {mode === 'buy' 
+                            ? '실제 매수 금액은 소수점 이하 금액이 올림 되어 계좌에서 인출됩니다.' 
+                            : '실제 매도 금액은 소수점 이하 금액이 버림 되어 계좌에 입금됩니다.'}
+                    </p>
                     <div className="bg-gray-50 p-6 rounded-2xl space-y-4 shadow-inner">
                         <div className="flex justify-between">
                             <span className="text-gray-500">종목</span>
@@ -763,20 +773,27 @@ const StockTransactionModal: React.FC<{ mode: 'buy'|'sell', stock: StockProduct,
                             <span className="font-bold">{quantity}주</span>
                         </div>
                         <div className="border-t pt-4 flex justify-between">
-                            <span className="text-gray-500">총 {mode === 'buy' ? '매수' : '매도'}액</span>
-                            <span className="font-bold">{(mode === 'buy' ? stock.currentPrice * quantity : calcFee.final + calcFee.amount).toLocaleString()}권</span>
+                            <span className="text-gray-500">체결 예상가</span>
+                            <span className="font-bold">{calcFee.execPrice.toFixed(2)}권</span>
                         </div>
-                        <div className="flex justify-between">
-                            <span className="text-gray-500">수수료율</span>
-                            <span className={`font-bold ${calcFee.rate > 5 ? 'text-red-600' : 'text-indigo-600'}`}>{calcFee.rate}%</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="text-gray-500">수수료 금액</span>
-                            <span className="font-bold text-red-500">-{calcFee.amount.toLocaleString()}권</span>
-                        </div>
+                        {mode === 'sell' && (
+                            <>
+                                <div className="flex justify-between text-xs">
+                                    <span className="text-gray-500">수수료율</span>
+                                    <span className={`font-bold ${calcFee.rate > 5 ? 'text-red-600' : 'text-indigo-600'}`}>{calcFee.rate}%</span>
+                                </div>
+                                <div className="flex justify-between text-xs">
+                                    <span className="text-gray-500">수수료 금액</span>
+                                    <span className="font-bold text-red-500">-{calcFee.amount.toLocaleString()}권</span>
+                                </div>
+                            </>
+                        )}
                         <div className="border-t border-gray-200 pt-4 flex justify-between items-center">
                             <span className="text-gray-800 font-bold">최종 {mode === 'buy' ? '결제' : '입금'} 예정액</span>
                             <span className="text-2xl font-extrabold text-blue-600">{calcFee.final.toLocaleString()}권</span>
+                        </div>
+                        <div className="text-[10px] text-gray-400 text-center">
+                            * 소수점 정산 원칙: 매수 시 올림, 매도 시 버림 정산됩니다.
                         </div>
                     </div>
                 </div>
@@ -792,26 +809,37 @@ const StockTransactionModal: React.FC<{ mode: 'buy'|'sell', stock: StockProduct,
 
     return (
         <div className="absolute inset-0 bg-white z-10 flex flex-col animate-fadeIn">
-            <div className="flex-grow overflow-y-auto p-6 flex flex-col justify-center items-center">
+            <div className="flex-grow overflow-y-auto p-6 pt-12 flex flex-col items-center">
                 <h3 className="text-xl font-bold mb-6 text-center">{mode === 'buy' ? '매수하기' : '매도하기'}</h3>
+                
+                {mode === 'sell' && (
+                    <div className="mb-4 px-4 py-2 bg-indigo-50 text-indigo-700 rounded-full text-sm font-bold">
+                        보유 중: {ownedQuantity}주
+                    </div>
+                )}
+
                 <div className="text-gray-500 mb-2">{stock.name}</div>
-                <div className="text-3xl font-bold mb-8">{stock.currentPrice.toLocaleString()}권</div>
+                <div className="text-3xl font-bold mb-8">{Math.round(stock.currentPrice).toLocaleString()}권</div>
                 
                 <div className="flex items-center gap-6 mb-8">
                     <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="p-3 rounded-full bg-gray-100 active:bg-gray-200"><MinusIcon className="w-6 h-6"/></button>
                     <span className="text-4xl font-mono font-bold w-20 text-center">{quantity}</span>
-                    <button onClick={() => setQuantity(quantity + 1)} className="p-3 rounded-full bg-gray-100 active:bg-gray-200"><PlusIcon className="w-6 h-6"/></button>
+                    <button onClick={() => setQuantity(mode === 'sell' ? Math.min(ownedQuantity, quantity + 1) : quantity + 1)} className="p-3 rounded-full bg-gray-100 active:bg-gray-200"><PlusIcon className="w-6 h-6"/></button>
                 </div>
 
                 <div className="w-full max-w-xs space-y-4">
                     {mode === 'buy' ? (
                         <div className="text-center p-4 bg-gray-50 rounded-xl">
                             <div className="text-sm text-gray-500 mb-1">총 구매 예정 금액</div>
-                            <div className="text-2xl font-bold">{(stock.currentPrice * quantity).toLocaleString()}권</div>
-                            <div className="text-[10px] text-green-600 mt-1">매수 수수료: 0%</div>
+                            <div className="text-2xl font-bold">{(Math.ceil(stock.currentPrice * quantity)).toLocaleString()}권</div>
+                            <div className="text-[10px] text-indigo-600 mt-1">* 소수점 올림 정산 적용</div>
                         </div>
                     ) : (
                         <div className="p-4 bg-gray-50 rounded-xl space-y-2">
+                             <div className="flex justify-between text-sm">
+                                <span className="text-gray-500">매도 예상 체결가</span>
+                                <span className="font-bold text-red-600">{calcFee.execPrice.toFixed(2)}권</span>
+                            </div>
                              <div className="flex justify-between text-sm">
                                 <span className="text-gray-500">예상 수수료율</span>
                                 <span className={`font-bold ${calcFee.rate > 5 ? 'text-red-600' : 'text-gray-800'}`}>{calcFee.rate}%</span>

@@ -1,3 +1,4 @@
+
 /* 
   [Supabase SQL 가이드] 
   학생 삭제 기능을 위해 아래 쿼리를 Supabase SQL Editor에서 실행해주세요.
@@ -140,6 +141,7 @@ const DashboardView: React.FC<{ students: (User & { account: Account | null })[]
     const [teacherTransactions, setTeacherTransactions] = useState<Transaction[]>([]);
     const [showHistoryModal, setShowHistoryModal] = useState(false);
     const [visibleTeacherTxns, setVisibleTeacherTxns] = useState(5);
+    const [visibleHistoryModalTxns, setVisibleHistoryModalTxns] = useState(10);
     const [activeTab, setActiveTab] = useState<'assets' | 'activity_up' | 'activity_down'>('assets');
     const [visibleRankingCount, setVisibleRankingCount] = useState(3);
     const [studentActivities, setStudentActivities] = useState<Record<string, number>>({});
@@ -295,7 +297,7 @@ const DashboardView: React.FC<{ students: (User & { account: Account | null })[]
     return (
         <div className="space-y-6">
              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div onClick={() => setShowHistoryModal(true)} className="bg-[#2B548F] text-white p-6 rounded-xl shadow-lg cursor-pointer hover:bg-[#234576] transition-colors relative overflow-hidden group">
+                <div onClick={() => { setVisibleHistoryModalTxns(10); setShowHistoryModal(true); }} className="bg-[#2B548F] text-white p-6 rounded-xl shadow-lg cursor-pointer hover:bg-[#234576] transition-colors relative overflow-hidden group">
                     <div className="relative z-10">
                         <h3 className="font-medium text-blue-200 text-sm mb-1">권쌤 지갑 (국고)</h3>
                         <p className="text-3xl font-bold">{teacherAccount?.balance.toLocaleString() ?? 0}권</p>
@@ -433,31 +435,51 @@ const DashboardView: React.FC<{ students: (User & { account: Account | null })[]
 
              {showHistoryModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowHistoryModal(false)}>
-                    <div className="bg-white rounded-xl shadow-2xl p-6 max-w-lg max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-xl font-bold">권쌤 지갑 내역 (국고)</h3>
-                            <button onClick={() => setShowHistoryModal(false)} className="p-1 rounded-full hover:bg-gray-200">
-                                <XIcon className="w-6 h-6 text-gray-600" />
+                    <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm md:max-w-4xl max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                        <div className="flex justify-between items-center mb-4 border-b pb-3">
+                            <h3 className="text-xl font-bold text-gray-800 flex items-center">
+                                <ManageIcon className="w-5 h-5 mr-2 text-[#2B548F]"/> 권쌤 지갑 내역 (국고)
+                            </h3>
+                            <button onClick={() => setShowHistoryModal(false)} className="p-1 rounded-full hover:bg-gray-200 transition-colors">
+                                <XIcon className="w-6 h-6 text-gray-400" />
                             </button>
                         </div>
-                        <div className="flex-grow overflow-y-auto">
+                        <div className="flex-grow overflow-y-auto pr-1">
                             {teacherTransactions.length > 0 ? (
-                                <ul className="space-y-2">
-                                    {teacherTransactions.map(t => (
-                                        <li key={t.transactionId} className="bg-gray-50 p-3 rounded-lg flex justify-between items-center border border-gray-100">
-                                            <div>
-                                                <p className="font-semibold text-sm">{t.description}</p>
-                                                <p className="text-xs text-gray-500">{new Date(t.date).toLocaleString()}</p>
-                                            </div>
-                                            <p className={`font-bold ${t.amount > 0 ? 'text-blue-600' : 'text-red-600'}`}>
-                                                {t.amount > 0 ? '+' : ''}{t.amount.toLocaleString()}
-                                            </p>
-                                        </li>
-                                    ))}
-                                </ul>
+                                <>
+                                    <ul className="divide-y divide-gray-100">
+                                        {teacherTransactions.slice(0, visibleHistoryModalTxns).map(t => (
+                                            <li key={t.transactionId} className="py-4 flex justify-between items-center hover:bg-gray-50 px-2 rounded-lg transition-colors">
+                                                <div>
+                                                    <p className="font-bold text-sm text-gray-900">{t.description}</p>
+                                                    <p className="text-xs text-gray-400 mt-1">{new Date(t.date).toLocaleString()}</p>
+                                                </div>
+                                                <p className={`font-extrabold text-base ${t.amount > 0 ? 'text-blue-600' : 'text-red-500'}`}>
+                                                    {t.amount > 0 ? '+' : ''}{t.amount.toLocaleString()}<span className="text-xs ml-0.5 font-normal">권</span>
+                                                </p>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                    {teacherTransactions.length > visibleHistoryModalTxns && (
+                                        <button 
+                                            onClick={() => setVisibleHistoryModalTxns(prev => prev + 10)}
+                                            className="w-full mt-4 py-4 bg-gray-50 text-[#2B548F] font-bold text-sm rounded-xl border border-gray-100 hover:bg-blue-50 transition-colors active:scale-95"
+                                        >
+                                            내역 더보기 (+10건)
+                                        </button>
+                                    )}
+                                </>
                             ) : (
-                                <p className="text-center text-gray-500 py-8">거래 내역이 없습니다.</p>
+                                <div className="flex flex-col items-center justify-center py-20">
+                                    <ErrorIcon className="w-12 h-12 text-gray-200 mb-3" />
+                                    <p className="text-center text-gray-400">거래 내역이 존재하지 않습니다.</p>
+                                </div>
                             )}
+                        </div>
+                        <div className="mt-4 pt-3 border-t text-right">
+                             <button onClick={() => setShowHistoryModal(false)} className="px-6 py-2.5 bg-gray-800 text-white font-bold rounded-lg hover:bg-black transition-colors">
+                                닫기
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -1223,7 +1245,7 @@ const AddTaxModal: React.FC<{ students: User[], onClose: () => void, onComplete:
                     </label>
                     {students.map(s => (
                         <label key={s.userId} className="flex items-center space-x-2 text-sm">
-                            <input type="checkbox" checked={selectedIds.includes(s.userId)} onChange={(e) => {
+                            <input type="checkbox" checked={selectedIds.includes(selectedIds.includes(s.userId))} onChange={(e) => {
                                 if(e.target.checked) setSelectedIds([...selectedIds, s.userId]);
                                 else setSelectedIds(selectedIds.filter(id => id !== s.userId));
                             }} />
