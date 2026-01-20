@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
-import { Account, Transaction, StockProduct, StudentStock, SavingsProduct, StudentSaving, User, Job, StockHistory, Fund, FundInvestment, FundStatus } from '../types';
+import { Account, Transaction, StockProduct, StudentStock, SavingsProduct, StudentSaving, User, Role, Job, StockHistory, Fund, FundInvestment, FundStatus } from '../types';
 import { HomeIcon, TransferIcon, NewStockIcon, NewPiggyBankIcon, BackIcon, XIcon, CheckIcon, ErrorIcon, PlusIcon, MinusIcon, NewJobIcon, NewTaxIcon, LogoutIcon, NewFundIcon, ArrowUpIcon, ArrowDownIcon, NewspaperIcon } from '../components/icons';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -121,7 +121,6 @@ const ChangePasswordModal: React.FC<{ isOpen: boolean, onClose: () => void }> = 
 const StudentPage: React.FC<StudentPageProps> = ({ initialView }) => {
     const { currentUser, logout } = useContext(AuthContext);
     
-    // Fixed: 'savings' | 'funds' typo in array literal (bitwise OR operator used instead of comma)
     const validViews: View[] = ['home', 'transfer', 'stocks', 'savings', 'funds'];
     const startView: View = (initialView && validViews.includes(initialView as View)) 
         ? (initialView as View) 
@@ -415,7 +414,7 @@ const HomeView: React.FC<{ account: Account, currentUser: User, refreshAccount: 
 };
 
 const TransferView: React.FC<{ currentUser: User, account: Account, refreshAccount: () => void, showNotification: (type: 'success' | 'error', text: string) => void }> = ({ currentUser, account, refreshAccount, showNotification }) => {
-    const [targetType, setTargetType] = useState<'student' | 'teacher'>('student');
+    const [targetType, setTargetType] = useState<'mart' | 'student' | 'teacher'>('mart');
     const [targetAccountId, setTargetAccountId] = useState('');
     const [amount, setAmount] = useState('');
     const [memo, setMemo] = useState('');
@@ -454,6 +453,12 @@ const TransferView: React.FC<{ currentUser: User, account: Account, refreshAccou
                 const teacherAcc = await api.getTeacherAccount();
                 if (!teacherAcc) throw new Error("선생님 계좌를 찾을 수 없습니다.");
                 await api.transfer(currentUser.userId, teacherAcc.accountId, parseInt(amount), memo || '선생님께 송금');
+             } else if (targetType === 'mart') {
+                const martUsers = await api.getUsersByRole(Role.MART);
+                if (!martUsers || martUsers.length === 0) throw new Error("마트 계좌를 찾을 수 없습니다.");
+                const martAcc = await api.getStudentAccountByUserId(martUsers[0].userId);
+                if (!martAcc) throw new Error("마트 계좌를 찾을 수 없습니다.");
+                await api.transfer(currentUser.userId, martAcc.accountId, parseInt(amount), memo || '마트 결제');
              } else {
                  const fullId = `권쌤은행 ${targetAccountId}`;
                  const details = await api.getRecipientDetailsByAccountId(fullId);
@@ -479,6 +484,12 @@ const TransferView: React.FC<{ currentUser: User, account: Account, refreshAccou
             
             <div className="flex bg-gray-100 p-1 rounded-xl mb-6">
                 <button 
+                    onClick={() => setTargetType('mart')}
+                    className={`flex-1 py-3 rounded-lg text-sm font-bold transition-all ${targetType === 'mart' ? 'bg-white shadow text-indigo-600' : 'text-gray-500'}`}
+                >
+                    마트
+                </button>
+                <button 
                     onClick={() => setTargetType('student')}
                     className={`flex-1 py-3 rounded-lg text-sm font-bold transition-all ${targetType === 'student' ? 'bg-white shadow text-indigo-600' : 'text-gray-500'}`}
                 >
@@ -493,7 +504,15 @@ const TransferView: React.FC<{ currentUser: User, account: Account, refreshAccou
             </div>
 
             <div className="space-y-4">
-                {targetType === 'student' ? (
+                {targetType === 'mart' ? (
+                    <div className="bg-orange-50 p-4 rounded-xl flex items-center">
+                        <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-bold mr-3">M</div>
+                        <div>
+                            <div className="font-bold text-gray-800">학교 마트</div>
+                            <div className="text-xs text-gray-500">마트 공식 계좌</div>
+                        </div>
+                    </div>
+                ) : targetType === 'student' ? (
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">받는 사람 계좌</label>
                         <div className="flex">
@@ -559,7 +578,7 @@ const TransferView: React.FC<{ currentUser: User, account: Account, refreshAccou
                 disabled={loading || (targetType === 'student' && !recipientInfo) || !amount}
                 className="w-full mt-8 p-4 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 disabled:bg-gray-300 disabled:shadow-none transition-all active:scale-95"
             >
-                {loading ? '송금 중...' : '보내기'}
+                {loading ? '보내는 중...' : '보내기'}
             </button>
         </div>
     );
@@ -601,7 +620,7 @@ const StocksView: React.FC<{ currentUser: User, refreshAccount: () => void, show
                             <div key={s.id} onClick={() => handleStockClick(s)} className="bg-white p-4 rounded-xl shadow-sm cursor-pointer hover:bg-gray-50 transition-colors flex justify-between items-center">
                                 <span className="font-bold text-gray-800">{s.name}</span>
                                 <div className="text-right">
-                                    <div className="font-mono font-bold">{Math.round(s.currentPrice).toLocaleString()}권</div>
+                                    <div className="font-mono font-bold">{s.currentPrice.toFixed(2)}권</div>
                                 </div>
                             </div>
                         ))}
@@ -624,12 +643,12 @@ const StocksView: React.FC<{ currentUser: User, refreshAccount: () => void, show
                                         <div>
                                             <div className="text-xs text-gray-400">평가손익</div>
                                             <div className={`font-bold ${profit >= 0 ? 'text-red-500' : 'text-blue-500'}`}>
-                                                {profit > 0 ? '+' : ''}{Math.floor(profit).toLocaleString()} ({profitRate.toFixed(1)}%)
+                                                {profit > 0 ? '+' : ''}{profit.toFixed(2)} ({profitRate.toFixed(2)}%)
                                             </div>
                                         </div>
                                         <div className="text-right">
                                             <div className="text-xs text-gray-400">평가금액</div>
-                                            <div className="font-bold">{Math.floor(currentVal).toLocaleString()}권</div>
+                                            <div className="font-bold">{currentVal.toFixed(2)}권</div>
                                         </div>
                                     </div>
                                 </div>
@@ -653,7 +672,7 @@ const StocksView: React.FC<{ currentUser: User, refreshAccount: () => void, show
                                 <LineChart data={history}>
                                     <XAxis dataKey="createdAt" hide />
                                     <YAxis domain={['auto', 'auto']} hide />
-                                    <Tooltip labelFormatter={() => ''} formatter={(val: number) => [`${val}권`, '가격']} />
+                                    <Tooltip labelFormatter={() => ''} formatter={(val: number) => [`${val.toFixed(2)}권`, '가격']} />
                                     <Line type="monotone" dataKey="price" stroke="#4F46E5" strokeWidth={2} dot={false} />
                                 </LineChart>
                             </ResponsiveContainer>
@@ -662,7 +681,7 @@ const StocksView: React.FC<{ currentUser: User, refreshAccount: () => void, show
                         <div className="p-4 bg-white border-t">
                             <div className="flex justify-between items-center mb-6">
                                 <span className="text-gray-500">현재가</span>
-                                <span className="text-2xl font-bold">{Math.round(selectedStock.currentPrice).toLocaleString()}권</span>
+                                <span className="text-2xl font-bold">{selectedStock.currentPrice.toFixed(2)}권</span>
                             </div>
                             <div className="grid grid-cols-2 gap-3">
                                 <button 
@@ -819,7 +838,7 @@ const StockTransactionModal: React.FC<{ mode: 'buy'|'sell', stock: StockProduct,
                 )}
 
                 <div className="text-gray-500 mb-2">{stock.name}</div>
-                <div className="text-3xl font-bold mb-8">{Math.round(stock.currentPrice).toLocaleString()}권</div>
+                <div className="text-3xl font-bold mb-8">{stock.currentPrice.toFixed(2)}권</div>
                 
                 <div className="flex items-center gap-6 mb-8">
                     <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="p-3 rounded-full bg-gray-100 active:bg-gray-200"><MinusIcon className="w-6 h-6"/></button>

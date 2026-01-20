@@ -1,3 +1,4 @@
+
 import { supabase } from './supabaseClient';
 import { Role, User, Account, StockProduct, StockProductWithDetails, StudentStock, SavingsProduct, StudentSaving, Job, TaxItemWithRecipients, StockHistory, Fund, FundInvestment, FundStatus } from '../types';
 
@@ -371,11 +372,12 @@ const getStudentStocks = async (userId: string): Promise<StudentStock[]> => {
 };
 
 const getStockHistory = async (stockId: string): Promise<StockHistory[]> => {
+    // 최신 순으로 100개를 가져온 뒤 UI 표시를 위해 뒤집음
     const { data, error } = await supabase
         .from('stock_price_history')
         .select('*')
         .eq('stockId', stockId)
-        .order('createdAt', { ascending: true })
+        .order('createdAt', { ascending: false })
         .limit(100);
         
     let history: StockHistory[] = [];
@@ -383,12 +385,13 @@ const getStockHistory = async (stockId: string): Promise<StockHistory[]> => {
     if (error) {
         console.warn("Could not fetch stock history:", error.message);
     } else {
+        // 최신순을 시간순으로 정렬
         history = (data || []).map((item: any) => ({
             id: item.id,
             stockId: item.stockId || item.stockid, 
             price: item.price,
             createdAt: item.createdAt || item.createdat 
-        }));
+        })).reverse();
     }
 
     if (history.length === 0) {

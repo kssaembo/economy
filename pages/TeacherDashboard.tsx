@@ -121,7 +121,7 @@ const MessageModal: React.FC<{
     if (!isOpen) return null;
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl p-6 max-w-sm flex flex-col items-center text-center">
+            <div className="bg-white rounded-xl shadow-2xl p-6 max-sm flex flex-col items-center text-center">
                 {type === 'success' ? <CheckIcon className="w-12 h-12 text-green-500 mb-4" /> : <ErrorIcon className="w-12 h-12 text-red-500 mb-4" />}
                 <h3 className={`text-xl font-bold mb-2 ${type === 'success' ? 'text-gray-900' : 'text-red-600'}`}>
                     {type === 'success' ? '성공' : '오류'}
@@ -633,7 +633,7 @@ const StudentManagementView: React.FC<{ students: (User & { account: Account | n
                             <p className="text-red-500 my-4">QR 토큰이 없습니다.</p>
                         )}
                         <p className="text-xs text-gray-400 mb-6 text-center break-all w-full">
-                            {getQrBaseUrl()}?token={selectedStudentQr.account?.qrToken?.substring(0,10)}...
+                            {getQrBaseUrl()}?token={selectedStudentQr.account?.qrToken}
                         </p>
                         <button onClick={() => setSelectedStudentQr(null)} className="w-full py-3 bg-gray-800 text-white rounded-xl font-bold">닫기</button>
                     </div>
@@ -843,7 +843,7 @@ const BatchQrPrintModal: React.FC<{ students: (User & { account: Account | null 
                                 <div className="border p-1 mb-2">
                                     <QRCodeSVG value={`${getQrBaseUrl()}?token=${s.account!.qrToken}`} size={120} />
                                 </div>
-                                <p className="text-[10px] text-gray-400 break-all leading-tight">{s.account!.qrToken!.substring(0, 8)}...</p>
+                                <p className="text-[10px] text-gray-400 break-all leading-tight">{getQrBaseUrl()}?token={s.account!.qrToken}</p>
                             </div>
                         ))}
                     </div>
@@ -1037,7 +1037,7 @@ const AddJobModal: React.FC<{ onClose: () => void, onComplete: () => void }> = (
                     <input type="number" value={salary} onChange={(e) => setSalary(e.target.value)} placeholder="월급" className="w-full p-2 border rounded"/>
                 </div>
                 <button onClick={handleSubmit} className="w-full mt-4 p-3 bg-blue-600 text-white rounded-lg font-bold">추가</button>
-                <button onClick={onClose} className="w-full mt-2 p-2 text-gray-500">취소</button>
+                <button onClick={onClose} className="mt-2 w-full p-2 text-gray-500">취소</button>
             </div>
         </div>
     );
@@ -1072,7 +1072,7 @@ const AssignJobModal: React.FC<{ job: Job, students: User[], onClose: () => void
                     ))}
                 </div>
                 <button onClick={handleSubmit} className="w-full mt-4 p-3 bg-blue-600 text-white rounded-lg font-bold">저장</button>
-                <button onClick={onClose} className="w-full mt-2 p-2 text-gray-500">취소</button>
+                <button onClick={onClose} className="mt-2 w-full p-2 text-gray-500">취소</button>
             </div>
         </div>
     );
@@ -1245,7 +1245,7 @@ const AddTaxModal: React.FC<{ students: User[], onClose: () => void, onComplete:
                     </label>
                     {students.map(s => (
                         <label key={s.userId} className="flex items-center space-x-2 text-sm">
-                            <input type="checkbox" checked={selectedIds.includes(selectedIds.includes(s.userId))} onChange={(e) => {
+                            <input type="checkbox" checked={selectedIds.includes(s.userId)} onChange={(e) => {
                                 if(e.target.checked) setSelectedIds([...selectedIds, s.userId]);
                                 else setSelectedIds(selectedIds.filter(id => id !== s.userId));
                             }} />
@@ -1254,7 +1254,7 @@ const AddTaxModal: React.FC<{ students: User[], onClose: () => void, onComplete:
                     ))}
                 </div>
                 <button onClick={handleSubmit} className="w-full p-3 bg-blue-600 text-white font-bold rounded-lg">고지하기</button>
-                <button onClick={onClose} className="w-full p-2 mt-2 text-gray-500">취소</button>
+                <button onClick={onClose} className="mt-2 w-full p-2 text-gray-500 hover:text-gray-800 disabled:text-gray-300">취소</button>
             </div>
         </div>
     );
