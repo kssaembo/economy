@@ -14,6 +14,17 @@ export interface User {
   grade?: number;
   class?: number;
   number?: number;
+  teacherId?: string; // Tenant identifier
+  teacherAlias?: string; // e.g., "권쌤" replacement
+  currencyUnit?: string; // e.g., "권" replacement
+}
+
+export interface TeacherAccount {
+  id: string;
+  loginId: string;
+  alias: string;
+  currencyUnit: string;
+  recoveryCode: string;
 }
 
 export interface Account {
@@ -22,6 +33,7 @@ export interface Account {
   userId: string;
   balance: number;
   qrToken?: string;
+  teacherId: string;
 }
 
 export enum TransactionType {
@@ -49,6 +61,7 @@ export interface Transaction {
   description: string;
   senderId?: string;
   receiverId?: string;
+  teacherId: string;
 }
 
 export interface StockProduct {
@@ -56,7 +69,8 @@ export interface StockProduct {
   name: string;
   currentPrice: number;
   stockAccountId: string;
-  volatility?: number; // Price sensitivity (0.01 - 1.0)
+  volatility?: number;
+  teacherId: string;
 }
 
 export interface StockProductWithDetails extends StockProduct {
@@ -77,6 +91,7 @@ export interface StudentStock {
   quantity: number;
   purchasePrice: number;
   stock?: StockProduct;
+  teacherId: string;
 }
 
 export interface SavingsProduct {
@@ -86,6 +101,7 @@ export interface SavingsProduct {
   rate: number;
   cancellationRate: number;
   maxAmount: number;
+  teacherId: string;
 }
 
 export interface StudentSaving {
@@ -96,6 +112,7 @@ export interface StudentSaving {
   joinDate: string;
   maturityDate: string;
   product?: SavingsProduct;
+  teacherId: string;
 }
 
 export interface AssignedStudent {
@@ -111,6 +128,7 @@ export interface Job {
   lastPaidDate?: string;
   incentive: number;
   assigned_students: AssignedStudent[];
+  teacherId: string;
 }
 
 export interface TaxItem {
@@ -119,6 +137,7 @@ export interface TaxItem {
     amount: number;
     dueDate: string;
     createdAt: string;
+    teacherId: string;
 }
 
 export interface TaxRecipient {
@@ -133,33 +152,31 @@ export interface TaxItemWithRecipients extends TaxItem {
     recipients: TaxRecipient[];
 }
 
-// --- Fund Types ---
-
 export enum FundStatus {
-  RECRUITING = 'RECRUITING', // 모집중
-  ONGOING = 'ONGOING',       // 운영중 (평가대기)
-  SUCCESS = 'SUCCESS',       // 달성
-  EXCEED = 'EXCEED',         // 초과달성
-  FAIL = 'FAIL'              // 실패
+  RECRUITING = 'RECRUITING',
+  ONGOING = 'ONGOING',
+  SUCCESS = 'SUCCESS',
+  EXCEED = 'EXCEED',
+  FAIL = 'FAIL'
 }
 
 export interface Fund {
   id: string;
   name: string;
   description: string;
-  creatorId: string; // 펀드 제안 학생 ID
-  creatorName?: string; // 조인된 학생 이름
+  creatorId: string;
+  creatorName?: string;
   teacherId: string;
-  unitPrice: number; // 1좌당 가격
-  targetAmount: number; // 목표 금액 (참고용)
-  baseReward: number; // 달성 시 보상 (좌당)
-  incentiveReward: number; // 초과 달성 시 추가 보상 (좌당)
-  recruitmentDeadline: string; // 모집 마감일
-  maturityDate: string; // 펀드 종료(평가)일
+  unitPrice: number;
+  targetAmount: number;
+  baseReward: number;
+  incentiveReward: number;
+  recruitmentDeadline: string;
+  maturityDate: string;
   status: FundStatus;
   createdAt: string;
-  totalInvestedAmount?: number; // 총 투자된 금액 (계산됨)
-  investorCount?: number; // 투자자 수 (계산됨)
+  totalInvestedAmount?: number;
+  investorCount?: number;
 }
 
 export interface FundInvestment {

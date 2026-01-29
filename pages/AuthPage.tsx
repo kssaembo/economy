@@ -5,101 +5,65 @@ import { api } from '../services/api';
 import { Role, User } from '../types';
 import { StudentIcon, MainAdminIcon, MainBankIcon, MainMartIcon, CheckIcon, ErrorIcon } from '../components/icons';
 
-type AuthMode = 'main' | 'login' | 'student-select' | 'app-login' | 'app-change-password';
+type AuthMode = 'login' | 'signup' | 'recovery' | 'recovery-reset';
 
 const AuthPage: React.FC = () => {
     const { login } = useContext(AuthContext);
     
-    // Initialize mode based on URL parameter to prevent redirection to main screen on logout
-    const [mode, setMode] = useState<AuthMode>(() => {
-        if (typeof window !== 'undefined') {
-            const params = new URLSearchParams(window.location.search);
-            if (params.get('mode') === 'app') {
-                return 'app-login';
-            }
-        }
-        return 'main';
-    });
-    
-    const [loginTarget, setLoginTarget] = useState<{ role: Role, title: string, userId: string } | null>(null);
-    const [password, setPassword] = useState('');
-    
-    // App Login State
-    const [grade, setGrade] = useState('');
-    const [cls, setCls] = useState('');
-    const [num, setNum] = useState('');
-    const [appPassword, setAppPassword] = useState('');
-    const [newAppPassword, setNewAppPassword] = useState(''); // For password change
-    
+    const [mode, setMode] = useState<AuthMode>('login');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
-    const [students, setStudents] = useState<User[]>([]);
 
-    // 1. 초기 로드 시 URL만 확인 (Dependency Array 비움 [])
-    // Note: mode state initialization above handles the first mount, 
-    // but we keep this for potential dynamic URL changes if needed.
-    useEffect(() => {
-        const params = new URLSearchParams(window.location.search);
-        if (params.get('mode') === 'app' && mode !== 'app-login' && mode !== 'app-change-password') {
-            setMode('app-login');
-        }
-    }, [mode]);
+    // Teacher Auth State
+    const [teacherEmail, setTeacherEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [teacherAlias, setTeacherAlias] = useState('');
+    const [currencyUnit, setCurrencyUnit] = useState('');
+    const [recoveryCode, setRecoveryCode] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [recoveryModalVisible, setRecoveryModalVisible] = useState(false);
+    const [recoveryConfirmChecked, setRecoveryConfirmChecked] = useState(false);
 
-    // 2. 모드가 변경될 때 필요한 데이터 로딩 (학생 선택 모드일 때만)
-    useEffect(() => {
-        if (mode === 'student-select') {
-            api.getUsersByRole(Role.STUDENT).then(setStudents);
-        }
-    }, [mode]);
-
-    const handleAdminLogin = async () => {
-        if (!loginTarget) return;
-        setLoading(true);
-        setError('');
-        try {
-            // 하드코딩된 '1234' 대신 서버 측 검증 함수 호출
-            const isValid = await api.verifyAdminPassword(loginTarget.userId, password);
-            if (isValid) {
-                await handleLogin(loginTarget.userId);
-            } else {
-                setError('비밀번호가 일치하지 않습니다.');
-            }
-        } catch (err: any) {
-            setError(err.message || '로그인 중 오류가 발생했습니다.');
-        } finally {
-            setLoading(false);
-        }
+    const validatePassword = (pw: string) => {
+        // 보안을 위해 더 강력한 검사 권장되나 기존 규칙 유지
+        const regex = /^[a-z0-9]+$/;
+        return regex.test(pw);
     };
-    
-    const handleLogin = async (userId: string) => {
-        setLoading(true);
-        setError('');
-        try {
-            const user = await api.login(userId);
-            if (user) {
-                login(user);
-            } else {
-                setError('사용자를 찾을 수 없습니다.');
-            }
-        } catch (err) {
-            setError('로그인 중 오류가 발생했습니다.');
-        } finally {
-            setLoading(false);
+
+    const handleTeacherSignup = async () => {
+        if (!teacherEmail || !password || !teacherAlias || !currencyUnit) {
+            setError('모든 항목을 입력해주세요.');
+            return;
         }
-    };
-    
-    const handleAppLogin = async () => {
-        if (!grade || !cls || !num || !appPassword) {
-            setError('모든 정보를 입력해주세요.');
+        if (!validatePassword(password)) {
+            setError('비밀번호는 영어 소문자와 숫자만 사용 가능합니다.');
             return;
         }
         setLoading(true);
         setError('');
         try {
-            const user = await api.loginWithPassword(parseInt(grade), parseInt(cls), parseInt(num), appPassword);
+            const result = await api.signupTeacher(teacherEmail, password, teacherAlias, currencyUnit);
+            setRecoveryCode(result.recoveryCode);
+            setRecoveryModalVisible(true);
+            setSuccessMessage('회원가입이 완료되었습니다!');
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleTeacherLogin = async () => {
+        if (!teacherEmail || !password) return;
+        setLoading(true);
+        setError('');
+        try {
+            const user = await api.loginTeacher(teacherEmail, password);
             if (user) {
                 login(user);
+            } else {
+                setError('이메일 또는 비밀번호가 일치하지 않습니다.');
             }
         } catch (err: any) {
             setError(err.message);
@@ -108,274 +72,221 @@ const AuthPage: React.FC = () => {
         }
     };
 
-    const handleChangePassword = async () => {
-        if (!grade || !cls || !num || !appPassword || !newAppPassword) {
-            setError('모든 정보를 입력해주세요.');
+    const handleSendRecoveryEmail = async () => {
+        if (!teacherEmail) {
+            setError('이메일을 입력해주세요.');
             return;
         }
         setLoading(true);
         setError('');
-        setSuccessMessage('');
         try {
-            // 1. Verify credentials first by trying to login
-            const user = await api.loginWithPassword(parseInt(grade), parseInt(cls), parseInt(num), appPassword);
-            if (user) {
-                // 2. If valid, change password
-                await api.changePassword(user.userId, appPassword, newAppPassword);
-                setSuccessMessage('비밀번호가 성공적으로 변경되었습니다. 새 비밀번호로 로그인해주세요.');
-                // Clear fields for login
-                setAppPassword(''); 
-                setNewAppPassword('');
-                setTimeout(() => {
-                    setMode('app-login');
-                    setSuccessMessage('');
-                }, 2000);
+            const success = await api.requestRecoveryCode(teacherEmail);
+            if (success) {
+                setSuccessMessage('입력하신 이메일로 복구 코드가 발송되었습니다.');
+            } else {
+                setError('등록되지 않은 이메일입니다.');
             }
         } catch (err: any) {
-            setError(err.message === '비밀번호가 일치하지 않습니다.' ? '현재 비밀번호가 일치하지 않습니다.' : err.message);
+            setError(err.message);
+        } finally {
+            setLoading(false);
+            setTimeout(() => setSuccessMessage(''), 5000);
+        }
+    };
+
+    const handleRecoveryVerify = async () => {
+        if (!teacherEmail || !recoveryCode) {
+            setError('이메일과 복구 코드를 입력해주세요.');
+            return;
+        }
+        setLoading(true);
+        try {
+            const isValid = await api.verifyRecoveryCode(teacherEmail, recoveryCode);
+            if (isValid) {
+                setMode('recovery-reset');
+                setError('');
+            } else {
+                setError('복구 코드가 일치하지 않습니다.');
+            }
+        } catch (err: any) {
+            setError(err.message);
         } finally {
             setLoading(false);
         }
     };
-    
-    const reset = () => {
-        // If in app mode, stay in app mode but clear errors
-        const params = new URLSearchParams(window.location.search);
-        if (params.get('mode') === 'app' || mode === 'app-login' || mode === 'app-change-password') {
-             if (mode === 'app-change-password') {
-                 setMode('app-login'); // Go back to login form
-             }
-             setGrade(''); setCls(''); setNum(''); setAppPassword(''); setNewAppPassword(''); setError(''); setSuccessMessage('');
-             return;
+
+    const handlePasswordReset = async () => {
+        if (!newPassword) return;
+        if (!validatePassword(newPassword)) {
+            setError('비밀번호는 영어 소문자와 숫자만 사용 가능합니다.');
+            return;
         }
-        
-        setMode('main');
-        setLoginTarget(null);
-        setPassword('');
-        setError('');
+        setLoading(true);
+        try {
+            await api.resetTeacherPassword(teacherEmail, recoveryCode, newPassword);
+            setSuccessMessage('비밀번호가 변경되었습니다. 다시 로그인해주세요.');
+            setTimeout(() => {
+                setMode('login');
+                setSuccessMessage('');
+                setRecoveryCode('');
+            }, 2000);
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
     };
 
-    if (loading && mode !== 'main') {
-        return <div className="flex items-center justify-center h-full text-white bg-gray-800">로딩 중...</div>;
-    }
-    
-    // Student App Login View
-    if (mode === 'app-login') {
-        return (
-            <div className="flex flex-col h-full p-8 bg-gray-50">
-                 <div className="flex-grow flex flex-col items-center justify-center max-w-sm mx-auto w-full">
-                    <div className="bg-white p-8 rounded-2xl shadow-xl w-full">
-                        <h2 className="text-2xl font-bold text-center mb-2 text-gray-800">학생 로그인</h2>
-                        <p className="text-center text-gray-500 mb-6">학번과 비밀번호를 입력하세요.</p>
-                        
-                        <div className="space-y-4">
-                            <div className="grid grid-cols-3 gap-2">
-                                <input type="number" value={grade} onChange={e => setGrade(e.target.value)} placeholder="학년" className="p-3 border rounded-lg text-center" />
-                                <input type="number" value={cls} onChange={e => setCls(e.target.value)} placeholder="반" className="p-3 border rounded-lg text-center" />
-                                <input type="number" value={num} onChange={e => setNum(e.target.value)} placeholder="번호" className="p-3 border rounded-lg text-center" />
-                            </div>
-                            <input 
-                                type="password" 
-                                value={appPassword} 
-                                onChange={e => setAppPassword(e.target.value)} 
-                                placeholder="비밀번호" 
-                                className="w-full p-3 border rounded-lg"
-                                onKeyDown={e => e.key === 'Enter' && handleAppLogin()}
-                            />
-                            
-                            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-                            {successMessage && <p className="text-green-600 text-sm text-center">{successMessage}</p>}
-                            
-                            <button onClick={handleAppLogin} disabled={loading} className="w-full p-4 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg transition-transform active:scale-95 disabled:bg-gray-400">
-                                {loading ? '로그인 중...' : '로그인'}
-                            </button>
+    const handleStudentLoginRedirect = () => {
+        window.location.href = 'https://economy-rho.vercel.app/?mode=app';
+    };
 
-                            <button onClick={() => { setError(''); setMode('app-change-password'); }} className="w-full text-sm text-gray-500 hover:text-indigo-600 hover:underline mt-2">
-                                비밀번호 변경
-                            </button>
-                        </div>
-                    </div>
-                    <p className="mt-8 text-xs text-gray-400">Class Bank Student App</p>
-                 </div>
-            </div>
-        );
-    }
-
-    // Student App Change Password View
-    if (mode === 'app-change-password') {
+    if (recoveryModalVisible) {
         return (
-            <div className="flex flex-col h-full p-8 bg-gray-50">
-                 <div className="flex-grow flex flex-col items-center justify-center max-w-sm mx-auto w-full">
-                    <div className="bg-white p-8 rounded-2xl shadow-xl w-full">
-                        <div className="flex items-center mb-4">
-                            <button onClick={() => setMode('app-login')} className="text-gray-400 hover:text-gray-600 mr-2">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-                                </svg>
-                            </button>
-                            <h2 className="text-2xl font-bold text-gray-800">비밀번호 변경</h2>
-                        </div>
-                        <p className="text-sm text-gray-500 mb-6">본인 확인을 위해 정보를 입력해주세요.</p>
-                        
-                        <div className="space-y-4">
-                            <div className="grid grid-cols-3 gap-2">
-                                <input type="number" value={grade} onChange={e => setGrade(e.target.value)} placeholder="학년" className="p-3 border rounded-lg text-center" />
-                                <input type="number" value={cls} onChange={e => setCls(e.target.value)} placeholder="반" className="p-3 border rounded-lg text-center" />
-                                <input type="number" value={num} onChange={e => setNum(e.target.value)} placeholder="번호" className="p-3 border rounded-lg text-center" />
-                            </div>
-                            <input 
-                                type="password" 
-                                value={appPassword} 
-                                onChange={e => setAppPassword(e.target.value)} 
-                                placeholder="현재 비밀번호" 
-                                className="w-full p-3 border rounded-lg"
-                            />
-                            <input 
-                                type="password" 
-                                value={newAppPassword} 
-                                onChange={e => setNewAppPassword(e.target.value)} 
-                                placeholder="새 비밀번호 (4자리 이상)" 
-                                className="w-full p-3 border rounded-lg bg-indigo-50"
-                            />
-                            
-                            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-                            {successMessage && <div className="text-green-600 text-sm text-center bg-green-50 p-2 rounded">{successMessage}</div>}
-                            
-                            {!successMessage && (
-                                <button onClick={handleChangePassword} disabled={loading} className="w-full p-4 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg transition-transform active:scale-95 disabled:bg-gray-400">
-                                    {loading ? '변경 중...' : '비밀번호 변경하기'}
-                                </button>
-                            )}
-                        </div>
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+                <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl animate-fadeIn">
+                    <div className="bg-amber-50 p-4 rounded-2xl mb-6 flex flex-col items-center">
+                        <ErrorIcon className="w-12 h-12 text-amber-500 mb-2" />
+                        <h3 className="text-xl font-bold text-amber-900">복구 코드 안내</h3>
                     </div>
-                 </div>
-            </div>
-        );
-    }
-    
-    if (mode === 'login' && loginTarget) {
-        return (
-            <div className="flex flex-col h-full p-8 bg-gray-800 text-white">
-                <button onClick={reset} className="self-start mb-8 text-gray-400 hover:text-white">{'<'} 뒤로</button>
-                <div className="flex-grow flex flex-col items-center justify-center">
-                    <h2 className="text-3xl font-bold mb-2">{loginTarget.title}</h2>
-                    <p className="text-gray-400 mb-8">비밀번호를 입력하세요.</p>
-                    <input
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleAdminLogin()}
-                        className="w-full max-w-xs p-3 mb-4 text-center bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        autoFocus
-                    />
-                    {error && <p className="text-red-400 mb-4">{error}</p>}
-                    <button onClick={handleAdminLogin} className="w-full max-w-xs p-3 bg-blue-600 rounded-lg font-semibold hover:bg-blue-700 transition">
-                        {loginTarget.title === '교사 관리자' ? '관리자 로그인' : `${loginTarget.title} 로그인`}
+                    <p className="text-gray-600 text-center mb-6 leading-relaxed">
+                        비밀번호를 잊어버렸을 때 사용하는 <span className="font-bold text-gray-900">비밀번호 복구 코드</span>입니다. 보안을 위해 안전한 곳에 기록하세요!
+                    </p>
+                    <div className="bg-gray-100 p-4 rounded-xl text-center mb-6 font-mono font-extrabold text-2xl tracking-widest text-indigo-600">
+                        {recoveryCode}
+                    </div>
+                    <label className="flex items-center gap-3 mb-8 cursor-pointer group">
+                        <input 
+                            type="checkbox" 
+                            checked={recoveryConfirmChecked} 
+                            onChange={e => setRecoveryConfirmChecked(e.target.checked)}
+                            className="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" 
+                        />
+                        <span className="text-sm text-gray-700 group-hover:text-gray-900">코드를 안전하게 기록했습니다.</span>
+                    </label>
+                    <button 
+                        disabled={!recoveryConfirmChecked}
+                        onClick={() => { setRecoveryModalVisible(false); setMode('login'); }}
+                        className="w-full p-4 bg-indigo-600 text-white font-bold rounded-2xl shadow-lg hover:bg-indigo-700 disabled:bg-gray-300 transition-all active:scale-95"
+                    >
+                        확인
                     </button>
                 </div>
             </div>
         );
     }
-    
-    if (mode === 'student-select') {
+
+    if (mode === 'signup') {
         return (
-           <div className="flex flex-col h-full p-4 bg-[#D1D3D8]">
-               <button onClick={reset} className="self-start mb-4 text-gray-500 hover:text-gray-800">{'<'} 뒤로</button>
-               <h2 className="text-2xl font-bold mb-4 text-center text-gray-800">학생을 선택하세요</h2>
-               <div className="flex-grow grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 overflow-y-auto pr-1 content-start">
-                   {students.map(student => (
-                       <button 
-                           key={student.userId} 
-                           onClick={() => handleLogin(student.userId)}
-                           className="p-2 bg-white rounded-xl text-gray-800 text-center hover:bg-indigo-50 transition-shadow shadow-md hover:shadow-lg flex flex-col items-center justify-center aspect-square"
-                       >
-                           <StudentIcon className="w-1/3 h-1/3 text-gray-400 mb-1"/>
-                           <span className="font-bold text-base leading-tight truncate w-full">{student.name}</span>
-                           <span className="text-xs text-gray-500">{`${student.grade}-${student.class} ${student.number}번`}</span>
-                       </button>
-                   ))}
-               </div>
-           </div>
-       );
-   }
+            <div className="flex flex-col h-full p-6 bg-gray-50 items-center justify-center">
+                <div className="w-full max-w-md bg-white p-8 rounded-3xl shadow-xl">
+                    <button onClick={() => setMode('login')} className="text-gray-400 mb-4 hover:text-gray-600">{'<'} 뒤로</button>
+                    <h2 className="text-2xl font-bold mb-6 text-gray-800">선생님 가입</h2>
+                    <div className="space-y-4">
+                        <input type="email" placeholder="이메일 주소" value={teacherEmail} onChange={e => setTeacherEmail(e.target.value)} className="w-full p-4 bg-gray-50 border rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500" />
+                        <div>
+                            <input type="password" placeholder="비밀번호" value={password} onChange={e => setPassword(e.target.value)} className="w-full p-4 bg-gray-50 border rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500" />
+                            <p className="text-[10px] text-gray-400 mt-1 ml-2">* 영어 소문자와 숫자만 사용 가능합니다.</p>
+                        </div>
+                        <input type="text" placeholder="선생님 별칭 (예: 권쌤, 민수쌤)" value={teacherAlias} onChange={e => setTeacherAlias(e.target.value)} className="w-full p-4 bg-gray-50 border rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500" />
+                        <input type="text" placeholder="화폐 단위 (예: 권, 원, 달러)" value={currencyUnit} onChange={e => setCurrencyUnit(e.target.value)} className="w-full p-4 bg-gray-50 border rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500" />
+                        {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+                        <button onClick={handleTeacherSignup} disabled={loading} className="w-full p-4 bg-indigo-600 text-white font-bold rounded-2xl shadow-lg hover:bg-indigo-700 transition-all active:scale-95">
+                            {loading ? '가입 중...' : '회원가입 완료'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (mode === 'recovery') {
+        return (
+            <div className="flex flex-col h-full p-6 bg-gray-50 items-center justify-center">
+                <div className="w-full max-w-md bg-white p-8 rounded-3xl shadow-xl">
+                    <button onClick={() => setMode('login')} className="text-gray-400 mb-4 hover:text-gray-600">{'<'} 뒤로</button>
+                    <h2 className="text-2xl font-bold mb-2 text-gray-800">비밀번호 찾기</h2>
+                    <p className="text-sm text-gray-500 mb-6">등록하신 이메일로 복구 코드를 보내드립니다.</p>
+                    <div className="space-y-4">
+                        <div className="flex gap-2">
+                            <input type="email" placeholder="이메일 주소" value={teacherEmail} onChange={e => setTeacherEmail(e.target.value)} className="flex-grow p-4 bg-gray-50 border rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500" />
+                            <button onClick={handleSendRecoveryEmail} disabled={loading} className="px-4 bg-gray-100 text-gray-600 text-xs font-bold rounded-2xl hover:bg-gray-200">
+                                {loading ? '발송 중' : '코드 발송'}
+                            </button>
+                        </div>
+                        <input type="text" placeholder="복구 코드 입력" value={recoveryCode} onChange={e => setRecoveryCode(e.target.value)} className="w-full p-4 bg-gray-50 border rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500" />
+                        {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+                        {successMessage && <p className="text-green-600 text-sm text-center">{successMessage}</p>}
+                        <button onClick={handleRecoveryVerify} disabled={loading} className="w-full p-4 bg-amber-500 text-white font-bold rounded-2xl shadow-lg hover:bg-amber-600 transition-all active:scale-95">
+                            코드 확인
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (mode === 'recovery-reset') {
+        return (
+            <div className="flex flex-col h-full p-6 bg-gray-50 items-center justify-center">
+                <div className="w-full max-w-md bg-white p-8 rounded-3xl shadow-xl">
+                    <h2 className="text-2xl font-bold mb-2 text-gray-800">새 비밀번호 설정</h2>
+                    <div className="space-y-4 mt-6">
+                        <div>
+                            <input type="password" placeholder="새 비밀번호" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="w-full p-4 bg-gray-50 border rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500" />
+                            <p className="text-[10px] text-gray-400 mt-1 ml-2">* 영어 소문자와 숫자만 사용 가능합니다.</p>
+                        </div>
+                        {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+                        {successMessage && <p className="text-green-600 text-sm text-center">{successMessage}</p>}
+                        <button onClick={handlePasswordReset} disabled={loading} className="w-full p-4 bg-indigo-600 text-white font-bold rounded-2xl shadow-lg hover:bg-indigo-700 transition-all active:scale-95">
+                            비밀번호 변경 완료
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
-        <div className="flex flex-col h-full p-6 bg-[length:auto_100%] bg-center bg-no-repeat transition-all duration-500 bg-[url('https://anvdmcqszhmipbnxltsg.supabase.co/storage/v1/object/public/images/Gemini_Generated_Image_nhj2hmnhj2hmnhj2.png')] landscape:bg-cover landscape:bg-[url('https://anvdmcqszhmipbnxltsg.supabase.co/storage/v1/object/public/images/Gemini_Generated_Image_aeqmp5aeqmp5aeqm.png')]">
-            <div className="flex-grow flex flex-col items-center justify-center">
-                {/* Title Section: Mobile Landscape (smaller margin/text) vs Tablet Landscape (larger) */}
-                <div className="text-center mb-6 landscape:mb-2 md:landscape:mb-8">
-                    <h1 className="text-6xl font-extrabold text-gray-800 tracking-tight landscape:text-4xl md:landscape:text-7xl" style={{textShadow: '2px 2px 4px rgba(255,255,255,0.5)', fontFamily: "'Gamja Flower', cursive"}}>Class Bank</h1>
-                    <p className="text-2xl font-medium text-gray-800 mt-4 landscape:mt-1 landscape:text-xl md:landscape:mt-4 md:landscape:text-3xl" style={{ fontFamily: "'Gamja Flower', cursive", textShadow: '1px 1px 2px rgba(255,255,255,0.5)' }}>권쌤과 경제활동</p>
+        <div className="flex flex-col h-full p-6 bg-white transition-all duration-500 relative overflow-hidden">
+            <div className="absolute top-0 right-0 -mt-20 -mr-20 w-80 h-80 bg-indigo-50 rounded-full blur-3xl opacity-50"></div>
+            <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-80 h-80 bg-blue-50 rounded-full blur-3xl opacity-50"></div>
+
+            <div className="flex-grow flex flex-col items-center justify-center relative z-10">
+                <div className="text-center mb-10">
+                    <h1 className="text-7xl font-black text-gray-900 tracking-tighter mb-4" style={{fontFamily: "'Gamja Flower', cursive"}}>Class Bank</h1>
+                    <p className="text-base font-medium text-gray-500 max-w-xs mx-auto leading-relaxed">우리 학급만의 특별한 경제활동 시스템</p>
                 </div>
 
-                {/* 
-                    Button Container Strategy:
-                    1. Mobile Landscape ('landscape:'): Height 18vh (approx 3/4 of previous 24vh), Row layout.
-                    2. Tablet Landscape ('md:landscape:'): Height 17vh (approx 3/4 of previous 22.5vh), Row layout.
-                */}
-                <div className="w-full max-w-xs flex flex-col gap-4 
-                    landscape:flex-row landscape:max-w-5xl landscape:w-full landscape:px-4 landscape:gap-3 landscape:h-[18vh] landscape:items-stretch
-                    md:landscape:max-w-7xl md:landscape:px-8 md:landscape:gap-6 md:landscape:h-[17vh]">
-                    
+                <div className="w-full max-w-sm bg-white/80 backdrop-blur-md p-6 rounded-3xl shadow-2xl border border-white/20">
+                    <h2 className="text-xl font-bold mb-6 text-gray-800 text-center">선생님 로그인</h2>
+                    <div className="space-y-4">
+                        <input type="email" placeholder="이메일" value={teacherEmail} onChange={e => setTeacherEmail(e.target.value)} className="w-full p-4 bg-white/50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500" />
+                        <input type="password" placeholder="비밀번호" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleTeacherLogin()} className="w-full p-4 bg-white/50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500" />
+                        {error && <p className="text-red-500 text-xs text-center">{error}</p>}
+                        <button onClick={handleTeacherLogin} disabled={loading} className="w-full p-4 bg-indigo-600 text-white font-bold rounded-2xl shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95">
+                            {loading ? '로그인 중...' : '로그인'}
+                        </button>
+                        <div className="flex justify-between px-2">
+                            <button onClick={() => setMode('recovery')} className="text-xs text-gray-400 hover:text-indigo-600">비밀번호 찾기</button>
+                            <button onClick={() => setMode('signup')} className="text-xs font-bold text-indigo-600 hover:underline">회원가입</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="w-full max-w-sm mt-8">
                     <button 
-                        onClick={() => { setLoginTarget({ role: Role.TEACHER, title: "교사 관리자", userId: 'teacher-01' }); setMode('login'); }}
-                        className="relative w-full py-3 rounded-2xl border-2 border-gray-400 shadow-lg overflow-hidden group transition-all duration-300 hover:shadow-xl hover:shadow-blue-400/30 hover:-translate-y-1.5 bg-[#EBEFF3]
-                        landscape:flex-1 landscape:rounded-2xl landscape:py-0 
-                        md:landscape:rounded-3xl">
-                        <div className="shimmer absolute top-0 -left-full w-3/4 h-full bg-gradient-to-r from-transparent via-white/50 to-transparent transform -skew-x-12" />
-                        <div className="relative z-10 flex flex-col items-center justify-center h-full">
-                            {/* Icon Size: 3/4 of previous (w-16 -> w-12, etc) */}
-                            <MainAdminIcon className="w-12 h-12 mb-2 landscape:w-8 landscape:h-8 landscape:mb-1 md:landscape:w-20 md:landscape:h-20 md:landscape:mb-3"/>
-                            {/* Text Size: Reduced */}
-                            <span className="font-bold text-gray-800 text-lg landscape:text-xs md:landscape:text-xl">교사 관리자</span>
-                        </div>
-                    </button>
-                     <button
-                        onClick={() => { setLoginTarget({ role: Role.BANKER, title: "은행원", userId: 'banker-01' }); setMode('login'); }}
-                        className="relative w-full py-3 rounded-2xl border-2 border-gray-400 shadow-lg overflow-hidden group transition-all duration-300 hover:shadow-xl hover:shadow-blue-400/30 hover:-translate-y-1.5 bg-[#EBEFF3]
-                        landscape:flex-1 landscape:rounded-2xl landscape:py-0 
-                        md:landscape:rounded-3xl">
-                        <div className="shimmer absolute top-0 -left-full w-3/4 h-full bg-gradient-to-r from-transparent via-white/50 to-transparent transform -skew-x-12" />
-                        <div className="relative z-10 flex flex-col items-center justify-center h-full">
-                            <MainBankIcon className="w-12 h-12 mb-2 landscape:w-8 landscape:h-8 landscape:mb-1 md:landscape:w-20 md:landscape:h-20 md:landscape:mb-3"/>
-                            <span className="font-bold text-gray-800 text-lg landscape:text-xs md:landscape:text-xl">은행원</span>
-                        </div>
-                    </button>
-                     <button
-                        onClick={() => { setLoginTarget({ role: Role.MART, title: "마트", userId: 'mart-01' }); setMode('login'); }}
-                        className="relative w-full py-3 rounded-2xl border-2 border-gray-400 shadow-lg overflow-hidden group transition-all duration-300 hover:shadow-xl hover:shadow-blue-400/30 hover:-translate-y-1.5 bg-[#EBEFF3]
-                        landscape:flex-1 landscape:rounded-2xl landscape:py-0 
-                        md:landscape:rounded-3xl">
-                        <div className="shimmer absolute top-0 -left-full w-3/4 h-full bg-gradient-to-r from-transparent via-white/50 to-transparent transform -skew-x-12" />
-                        <div className="relative z-10 flex flex-col items-center justify-center h-full">
-                            <MainMartIcon className="w-12 h-12 mb-2 landscape:w-8 landscape:h-8 landscape:mb-1 md:landscape:w-20 md:landscape:h-20 md:landscape:mb-3"/>
-                            <span className="font-bold text-gray-800 text-lg landscape:text-xs md:landscape:text-xl">마트</span>
-                        </div>
-                    </button>
-                    <button
-                        onClick={() => setMode('student-select')}
-                        className="relative w-full p-4 bg-[#4CAF50] text-white rounded-2xl shadow-lg font-bold text-lg overflow-hidden group transition-all duration-300 hover:shadow-xl hover:shadow-green-500/40 hover:-translate-y-1 hover:bg-opacity-95 flex items-center justify-center 
-                        landscape:flex-1 landscape:flex-col landscape:p-0 landscape:rounded-2xl landscape:h-full
-                        md:landscape:rounded-3xl"
+                        onClick={handleStudentLoginRedirect}
+                        className="w-full p-5 bg-white text-gray-800 border-2 border-gray-50 rounded-2xl shadow-sm font-bold text-lg hover:bg-gray-50 transition-all active:scale-95 flex items-center justify-center"
                     >
-                        <div className="shimmer absolute top-0 -left-full w-3/4 h-full bg-gradient-to-r from-transparent via-white/50 to-transparent transform -skew-x-12" />
-                        <StudentIcon className="w-6 h-6 mr-3 landscape:mr-0 landscape:mb-1 landscape:w-6 landscape:h-6 md:landscape:w-14 md:landscape:h-14 md:landscape:mb-4"/>
-                        <span className="landscape:text-sm md:landscape:text-2xl">학생 (QR)</span>
+                        학생 로그인
                     </button>
                 </div>
             </div>
             
-            <footer className="text-center text-gray-600/90 mt-4 landscape:mt-0">
-                <p className="text-sm font-semibold" style={{ textShadow: '1px 1px 1px rgba(255,255,255,0.8)' }}>ⓒ 2025. Kwon's class. All rights reserved.</p>
+            <footer className="text-center text-gray-400 mt-8 relative z-10">
+                <p className="text-[10px] font-semibold">ⓒ 2025 Class Bank Economy. All rights reserved.</p>
             </footer>
-
-            {/* 임시 버튼: 프리뷰 환경에서 학생 로그인 페이지로 이동하기 위함 */}
-            <button 
-                onClick={() => setMode('app-login')}
-                className="fixed bottom-2 right-2 px-2 py-1 bg-white/50 hover:bg-white/80 rounded border border-gray-300 text-[10px] text-gray-600 backdrop-blur-sm transition-colors z-50 shadow-sm"
-            >
-                학생 로그인 페이지
-            </button>
         </div>
     );
 };
