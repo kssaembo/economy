@@ -12,6 +12,7 @@ type NotificationType = { type: 'success' | 'error', text: string };
 
 interface StudentPageProps {
     initialView?: string;
+    onBackToMenu?: () => void;
 }
 
 // --- Common Components ---
@@ -204,7 +205,7 @@ const TransferView: React.FC<{ currentUser: User, account: Account, refreshAccou
                 if (!teacherAcc) throw new Error(`${alias} 계좌를 찾을 수 없습니다.`);
                 await api.transfer(currentUser.userId, teacherAcc.accountId, parseInt(amount), memo || `${alias}께 송금`);
              } else if (targetType === 'mart') {
-                const martUsers = await api.getUsersByRole(Role.MART);
+                const martUsers = await api.getUsersByRole(Role.MART, currentUser.teacher_id || '');
                 if (!martUsers || martUsers.length === 0) throw new Error("마트 계좌를 찾을 수 없습니다.");
                 const martAcc = await api.getStudentAccountByUserId(martUsers[0].userId);
                 if (!martAcc) throw new Error("마트 계좌를 찾을 수 없습니다.");
@@ -268,11 +269,13 @@ const TransferView: React.FC<{ currentUser: User, account: Account, refreshAccou
 
 // --- Main StudentPage Component ---
 
-const StudentPage: React.FC<StudentPageProps> = ({ initialView }) => {
+const StudentPage: React.FC<StudentPageProps> = ({ initialView, onBackToMenu }) => {
     const { currentUser, logout } = useContext(AuthContext);
     const [view, setView] = useState<View>((initialView as View) || 'home');
     const [account, setAccount] = useState<Account | null>(null);
     const [notification, setNotification] = useState<NotificationType | null>(null);
+
+    const handleLogout = onBackToMenu || logout;
 
     const refreshAccount = useCallback(async () => {
         if (!currentUser) return;
@@ -309,7 +312,7 @@ const StudentPage: React.FC<StudentPageProps> = ({ initialView }) => {
                     <h1 className="text-xl font-bold text-gray-800">{currentUser.name}</h1>
                     <p className="text-xs text-gray-500">{currentUser.grade}학년 {currentUser.class}반 {currentUser.number}번</p>
                 </div>
-                <button onClick={logout} className="p-2 text-gray-400 hover:text-red-500 transition-colors">
+                <button onClick={handleLogout} className="p-2 text-gray-400 hover:text-red-500 transition-colors">
                     <LogoutIcon className="w-6 h-6" />
                 </button>
             </header>

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useContext } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
@@ -30,11 +31,13 @@ const MessageModal: React.FC<{
     );
 };
 
-const MartPage: React.FC = () => {
+const MartPage: React.FC<{ onBackToMenu?: () => void }> = ({ onBackToMenu }) => {
     const { currentUser, logout } = useContext(AuthContext);
     const [view, setView] = useState<MartView>('pos');
     const [martAccount, setMartAccount] = useState<Account | null>(null);
     const [loading, setLoading] = useState(true);
+
+    const handleLogout = onBackToMenu || logout;
 
     const fetchMartAccount = useCallback(async (silent = false) => {
         if (currentUser) {
@@ -86,9 +89,9 @@ const MartPage: React.FC = () => {
                     <DesktopNavButton label="세부내역" Icon={NewHistoryIcon} active={view === 'history'} onClick={() => setView('history')} />
                 </nav>
                 <div className="mt-auto">
-                    <button onClick={logout} className="w-full flex items-center p-3 text-sm text-gray-600 rounded-lg hover:bg-gray-200/50 transition-colors">
+                    <button onClick={handleLogout} className="w-full flex items-center p-3 text-sm text-gray-600 rounded-lg hover:bg-gray-200/50 transition-colors">
                         <LogoutIcon className="w-5 h-5 mr-3" />
-                        로그아웃
+                        {onBackToMenu ? '메뉴로' : '로그아웃'}
                     </button>
                 </div>
             </aside>
@@ -101,7 +104,7 @@ const MartPage: React.FC = () => {
                         <h1 className="text-xl font-bold text-gray-800">마트 모드</h1>
                         <p className="text-sm text-gray-500">{currentUser?.name}</p>
                     </div>
-                    <button onClick={logout} className="p-2 rounded-full hover:bg-gray-100">
+                    <button onClick={handleLogout} className="p-2 rounded-full hover:bg-gray-100">
                         <LogoutIcon className="w-6 h-6 text-gray-600" />
                     </button>
                 </header>
@@ -136,7 +139,7 @@ const PosView: React.FC<{currentUser: User | null}> = ({currentUser}) => {
     const fetchStudents = useCallback(async () => {
         setLoading(true);
         try {
-            const users = await api.getUsersByRole(Role.STUDENT);
+            const users = await api.getUsersByRole(Role.STUDENT, currentUser?.userId || '');
             const usersWithAccounts = await Promise.all(
                 users.map(async u => ({ ...u, account: await api.getStudentAccountByUserId(u.userId) }))
             );
@@ -147,7 +150,7 @@ const PosView: React.FC<{currentUser: User | null}> = ({currentUser}) => {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [currentUser?.userId]);
 
     useEffect(() => {
         fetchStudents();

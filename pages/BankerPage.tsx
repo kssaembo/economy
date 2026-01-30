@@ -1,3 +1,4 @@
+
 import React, { useState, useContext, useEffect, useCallback, useMemo } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
@@ -7,9 +8,11 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'rec
 
 type View = 'deposit_withdraw' | 'stock_exchange' | 'savings_management';
 
-const BankerPage: React.FC = () => {
+const BankerPage: React.FC<{ onBackToMenu?: () => void }> = ({ onBackToMenu }) => {
     const { currentUser, logout } = useContext(AuthContext);
     const [view, setView] = useState<View>('deposit_withdraw');
+
+    const handleLogout = onBackToMenu || logout;
 
     const renderView = () => {
         switch (view) {
@@ -38,9 +41,9 @@ const BankerPage: React.FC = () => {
                     <DesktopNavButton label="적금 관리" Icon={NewPiggyBankIcon} active={view === 'savings_management'} onClick={() => setView('savings_management')} />
                 </nav>
                 <div className="mt-auto">
-                    <button onClick={logout} className="w-full flex items-center p-3 text-sm text-gray-600 rounded-lg hover:bg-gray-200/50 transition-colors">
+                    <button onClick={handleLogout} className="w-full flex items-center p-3 text-sm text-gray-600 rounded-lg hover:bg-gray-200/50 transition-colors">
                         <LogoutIcon className="w-5 h-5 mr-3" />
-                        로그아웃
+                        {onBackToMenu ? '메뉴로' : '로그아웃'}
                     </button>
                 </div>
             </aside>
@@ -53,7 +56,7 @@ const BankerPage: React.FC = () => {
                         <h1 className="text-xl font-bold text-gray-800">은행원 모드</h1>
                         <p className="text-sm text-gray-500">{currentUser?.name}</p>
                     </div>
-                    <button onClick={logout} className="p-2 rounded-full hover:bg-gray-100">
+                    <button onClick={handleLogout} className="p-2 rounded-full hover:bg-gray-100">
                         <LogoutIcon className="w-6 h-6 text-gray-600" />
                     </button>
                 </header>
@@ -75,16 +78,17 @@ const BankerPage: React.FC = () => {
 
 // --- Deposit/Withdraw View ---
 const DepositWithdrawView: React.FC = () => {
+    const { currentUser } = useContext(AuthContext);
     const [students, setStudents] = useState<(User & { account: Account | null})[]>([]);
     const [selectedStudent, setSelectedStudent] = useState<(User & { account: Account | null}) | null>(null);
     const [mode, setMode] = useState<'deposit' | 'withdraw' | null>(null);
 
     const fetchStudents = useCallback(async () => {
-        const users = await api.getUsersByRole(Role.STUDENT);
+        const users = await api.getUsersByRole(Role.STUDENT, currentUser?.userId || '');
         const usersWithAccounts = await Promise.all(users.map(async u => ({...u, account: await api.getStudentAccountByUserId(u.userId) })));
         usersWithAccounts.sort((a,b) => (a.number || 0) - (b.number || 0));
         setStudents(usersWithAccounts);
-    }, []);
+    }, [currentUser?.userId]);
 
     useEffect(() => {
         fetchStudents();
@@ -182,6 +186,7 @@ const TransactionModal: React.FC<{ student: User & { account: Account | null }, 
 
 // --- Stock Exchange View ---
 const StockExchangeView: React.FC = () => {
+    const { currentUser } = useContext(AuthContext);
     const [stocks, setStocks] = useState<StockProductWithDetails[]>([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState<'add' | 'price' | 'delete' | 'holders' | 'volatility' | null>(null);
@@ -197,14 +202,14 @@ const StockExchangeView: React.FC = () => {
     const fetchStocks = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await api.getStockProducts();
+            const data = await api.getStockProducts(currentUser?.userId || '');
             setStocks(data);
         } catch (error) {
             console.error("Failed to fetch stocks", error);
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [currentUser?.userId]);
 
     useEffect(() => {
         fetchStocks();
@@ -526,6 +531,7 @@ const VolatilityModal: React.FC<{ stocks: StockProduct[], onClose: () => void, o
 
 // --- Savings Management View ---
 const SavingsManagementView: React.FC = () => {
+    const { currentUser } = useContext(AuthContext);
     const [products, setProducts] = useState<SavingsProduct[]>([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState<'add' | 'delete' | 'enrollees' | null>(null);
@@ -536,14 +542,14 @@ const SavingsManagementView: React.FC = () => {
     const fetchProducts = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await api.getSavingsProducts();
+            const data = await api.getSavingsProducts(currentUser?.userId || '');
             setProducts(data);
         } catch (error) {
             console.error("Failed to fetch savings products", error);
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [currentUser?.userId]);
 
     useEffect(() => {
         fetchProducts();
@@ -571,6 +577,7 @@ const SavingsManagementView: React.FC = () => {
                         setShowModal('delete');
                     } else {
                         setDeleteMode(!deleteMode);
+                        // Fixed: Changed setStocksToDelete to setProductsToDelete
                         setProductsToDelete([]);
                     }
                 }} className="px-3 py-2 bg-red-600 text-white text-xs font-semibold rounded-lg shadow hover:bg-red-700">
@@ -601,6 +608,7 @@ const SavingsManagementView: React.FC = () => {
                 </table>
             </div>
             {showModal === 'add' && <AddSavingModal onClose={() => setShowModal(null)} onComplete={fetchProducts} />}
+            {/* Fixed: Changed setStocksToDelete to setProductsToDelete */}
             {showModal === 'delete' && <DeleteSavingModal productIds={productsToDelete} onClose={() => setShowModal(null)} onComplete={() => { fetchProducts(); setDeleteMode(false); setProductsToDelete([]); }}/>}
             {showModal === 'enrollees' && selectedProduct && <SavingEnrolleesModal product={selectedProduct} onClose={() => setShowModal(null)} />}
         </div>

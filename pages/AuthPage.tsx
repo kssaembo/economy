@@ -7,6 +7,23 @@ import { StudentIcon, MainAdminIcon, MainBankIcon, MainMartIcon, CheckIcon, Erro
 
 type AuthMode = 'login' | 'signup' | 'recovery' | 'recovery-reset';
 
+// --- Shared UI Components (Defined outside to prevent focus loss) ---
+const InputField = (props: React.InputHTMLAttributes<HTMLInputElement>) => (
+    <input 
+        {...props} 
+        className={`w-full p-3.5 bg-white border border-gray-200 rounded-2xl outline-none transition-all focus:border-[#0066FF] focus:ring-4 focus:ring-blue-50 placeholder:text-gray-300 font-medium ${props.className}`}
+    />
+);
+
+const PrimaryButton = ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+    <button 
+        {...props}
+        className={`w-full p-4 bg-[#1D1D1F] text-white font-bold rounded-2xl shadow-sm hover:scale-[1.02] active:scale-[0.98] transition-all disabled:bg-gray-200 disabled:hover:scale-100 ${props.className}`}
+    >
+        {children}
+    </button>
+);
+
 const AuthPage: React.FC = () => {
     const { login } = useContext(AuthContext);
     
@@ -26,7 +43,6 @@ const AuthPage: React.FC = () => {
     const [recoveryConfirmChecked, setRecoveryConfirmChecked] = useState(false);
 
     const validatePassword = (pw: string) => {
-        // 보안을 위해 더 강력한 검사 권장되나 기존 규칙 유지
         const regex = /^[a-z0-9]+$/;
         return regex.test(pw);
     };
@@ -69,28 +85,6 @@ const AuthPage: React.FC = () => {
             setError(err.message);
         } finally {
             setLoading(false);
-        }
-    };
-
-    const handleSendRecoveryEmail = async () => {
-        if (!teacherEmail) {
-            setError('이메일을 입력해주세요.');
-            return;
-        }
-        setLoading(true);
-        setError('');
-        try {
-            const success = await api.requestRecoveryCode(teacherEmail);
-            if (success) {
-                setSuccessMessage('입력하신 이메일로 복구 코드가 발송되었습니다.');
-            } else {
-                setError('등록되지 않은 이메일입니다.');
-            }
-        } catch (err: any) {
-            setError(err.message);
-        } finally {
-            setLoading(false);
-            setTimeout(() => setSuccessMessage(''), 5000);
         }
     };
 
@@ -143,34 +137,36 @@ const AuthPage: React.FC = () => {
 
     if (recoveryModalVisible) {
         return (
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
-                <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl animate-fadeIn">
-                    <div className="bg-amber-50 p-4 rounded-2xl mb-6 flex flex-col items-center">
-                        <ErrorIcon className="w-12 h-12 text-amber-500 mb-2" />
-                        <h3 className="text-xl font-bold text-amber-900">복구 코드 안내</h3>
+            <div className="fixed inset-0 bg-white/80 backdrop-blur-xl flex items-center justify-center z-[100] p-4">
+                <div className="bg-white rounded-[32px] p-10 max-w-sm w-full shadow-[0_32px_64px_rgba(0,0,0,0.1)] border border-gray-100 animate-fadeIn text-center">
+                    <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <CheckIcon className="w-8 h-8 text-[#0066FF]" />
                     </div>
-                    <p className="text-gray-600 text-center mb-6 leading-relaxed">
-                        비밀번호를 잊어버렸을 때 사용하는 <span className="font-bold text-gray-900">비밀번호 복구 코드</span>입니다. 보안을 위해 안전한 곳에 기록하세요!
+                    <h3 className="text-2xl font-black text-gray-900 mb-3">복구 코드 확인</h3>
+                    <p className="text-gray-500 text-sm mb-8 leading-relaxed">
+                        비밀번호를 분실했을 때 사용하는 마스터 코드입니다.<br/>
+                        <span className="text-red-500 font-bold">절대로 타인에게 노출하지 마세요.</span>
                     </p>
-                    <div className="bg-gray-100 p-4 rounded-xl text-center mb-6 font-mono font-extrabold text-2xl tracking-widest text-indigo-600">
+                    <div className="bg-gray-50 p-6 rounded-2xl mb-8 font-mono font-black text-3xl tracking-[0.2em] text-[#0066FF] border border-gray-100 select-all">
                         {recoveryCode}
                     </div>
-                    <label className="flex items-center gap-3 mb-8 cursor-pointer group">
+                    <label className="flex items-center justify-center gap-3 mb-10 cursor-pointer group">
                         <input 
                             type="checkbox" 
                             checked={recoveryConfirmChecked} 
                             onChange={e => setRecoveryConfirmChecked(e.target.checked)}
-                            className="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" 
+                            className="w-5 h-5 rounded-full border-gray-300 text-[#0066FF] focus:ring-0" 
                         />
-                        <span className="text-sm text-gray-700 group-hover:text-gray-900">코드를 안전하게 기록했습니다.</span>
+                        <span className="text-sm font-semibold text-gray-600 group-hover:text-gray-900">코드를 안전하게 기록했습니다</span>
                     </label>
-                    <button 
+                    <PrimaryButton 
                         disabled={!recoveryConfirmChecked}
                         onClick={() => { setRecoveryModalVisible(false); setMode('login'); }}
-                        className="w-full p-4 bg-indigo-600 text-white font-bold rounded-2xl shadow-lg hover:bg-indigo-700 disabled:bg-gray-300 transition-all active:scale-95"
+                        className="bg-[#0066FF] hover:bg-[#0055DD]"
                     >
-                        확인
-                    </button>
+                        시작하기
+                    </PrimaryButton>
+                    <p className="mt-6 text-[10px] text-gray-300">분실 시 문의: sinjoppo@naver.com</p>
                 </div>
             </div>
         );
@@ -178,22 +174,25 @@ const AuthPage: React.FC = () => {
 
     if (mode === 'signup') {
         return (
-            <div className="flex flex-col h-full p-6 bg-gray-50 items-center justify-center">
-                <div className="w-full max-w-md bg-white p-8 rounded-3xl shadow-xl">
-                    <button onClick={() => setMode('login')} className="text-gray-400 mb-4 hover:text-gray-600">{'<'} 뒤로</button>
-                    <h2 className="text-2xl font-bold mb-6 text-gray-800">선생님 가입</h2>
+            <div className="flex flex-col h-full bg-[#F2F4F7] items-center justify-center p-6">
+                <div className="w-full max-w-[400px] bg-white p-10 rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.06)] border border-white">
+                    <button onClick={() => setMode('login')} className="text-gray-400 mb-6 text-sm font-medium hover:text-gray-900 flex items-center gap-1 transition-colors">
+                        <span className="text-lg">←</span> 뒤로가기
+                    </button>
+                    <h2 className="text-3xl font-black mb-2 text-gray-900 tracking-tight">선생님 가입</h2>
+                    <p className="text-gray-400 text-sm mb-8">학급 경제를 위한 새로운 계정을 만드세요.</p>
                     <div className="space-y-4">
-                        <input type="email" placeholder="이메일 주소" value={teacherEmail} onChange={e => setTeacherEmail(e.target.value)} className="w-full p-4 bg-gray-50 border rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500" />
+                        <InputField type="email" placeholder="이메일 주소" value={teacherEmail} onChange={e => setTeacherEmail(e.target.value)} />
                         <div>
-                            <input type="password" placeholder="비밀번호" value={password} onChange={e => setPassword(e.target.value)} className="w-full p-4 bg-gray-50 border rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500" />
-                            <p className="text-[10px] text-gray-400 mt-1 ml-2">* 영어 소문자와 숫자만 사용 가능합니다.</p>
+                            <InputField type="password" placeholder="비밀번호" value={password} onChange={e => setPassword(e.target.value)} />
+                            <p className="text-[10px] text-gray-300 mt-2 ml-1">영어 소문자와 숫자만 사용 가능</p>
                         </div>
-                        <input type="text" placeholder="선생님 별칭 (예: 권쌤, 민수쌤)" value={teacherAlias} onChange={e => setTeacherAlias(e.target.value)} className="w-full p-4 bg-gray-50 border rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500" />
-                        <input type="text" placeholder="화폐 단위 (예: 권, 원, 달러)" value={currencyUnit} onChange={e => setCurrencyUnit(e.target.value)} className="w-full p-4 bg-gray-50 border rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500" />
-                        {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-                        <button onClick={handleTeacherSignup} disabled={loading} className="w-full p-4 bg-indigo-600 text-white font-bold rounded-2xl shadow-lg hover:bg-indigo-700 transition-all active:scale-95">
-                            {loading ? '가입 중...' : '회원가입 완료'}
-                        </button>
+                        <InputField type="text" placeholder="선생님 별칭 (예: 민수쌤)" value={teacherAlias} onChange={e => setTeacherAlias(e.target.value)} />
+                        <InputField type="text" placeholder="화폐 단위 (예: 원, 달러, 톨)" value={currencyUnit} onChange={e => setCurrencyUnit(e.target.value)} />
+                        {error && <p className="text-red-500 text-xs font-bold text-center animate-pulse">{error}</p>}
+                        <PrimaryButton onClick={handleTeacherSignup} disabled={loading} className="mt-4 bg-[#0066FF] hover:bg-[#0055DD]">
+                            {loading ? '가입 처리 중...' : '가입 완료'}
+                        </PrimaryButton>
                     </div>
                 </div>
             </div>
@@ -202,24 +201,24 @@ const AuthPage: React.FC = () => {
 
     if (mode === 'recovery') {
         return (
-            <div className="flex flex-col h-full p-6 bg-gray-50 items-center justify-center">
-                <div className="w-full max-w-md bg-white p-8 rounded-3xl shadow-xl">
-                    <button onClick={() => setMode('login')} className="text-gray-400 mb-4 hover:text-gray-600">{'<'} 뒤로</button>
-                    <h2 className="text-2xl font-bold mb-2 text-gray-800">비밀번호 찾기</h2>
-                    <p className="text-sm text-gray-500 mb-6">등록하신 이메일로 복구 코드를 보내드립니다.</p>
+            <div className="flex flex-col h-full bg-[#F2F4F7] items-center justify-center p-6">
+                <div className="w-full max-w-[400px] bg-white p-10 rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.06)] border border-white">
+                    <button onClick={() => setMode('login')} className="text-gray-400 mb-6 text-sm font-medium hover:text-gray-900 flex items-center gap-1 transition-colors">
+                        <span className="text-lg">←</span> 뒤로가기
+                    </button>
+                    <h2 className="text-3xl font-black mb-2 text-gray-900 tracking-tight">비밀번호 찾기</h2>
+                    <p className="text-gray-400 text-sm mb-8">가입 시 발급받은 복구 코드를 입력하세요.</p>
                     <div className="space-y-4">
-                        <div className="flex gap-2">
-                            <input type="email" placeholder="이메일 주소" value={teacherEmail} onChange={e => setTeacherEmail(e.target.value)} className="flex-grow p-4 bg-gray-50 border rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500" />
-                            <button onClick={handleSendRecoveryEmail} disabled={loading} className="px-4 bg-gray-100 text-gray-600 text-xs font-bold rounded-2xl hover:bg-gray-200">
-                                {loading ? '발송 중' : '코드 발송'}
-                            </button>
-                        </div>
-                        <input type="text" placeholder="복구 코드 입력" value={recoveryCode} onChange={e => setRecoveryCode(e.target.value)} className="w-full p-4 bg-gray-50 border rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500" />
-                        {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-                        {successMessage && <p className="text-green-600 text-sm text-center">{successMessage}</p>}
-                        <button onClick={handleRecoveryVerify} disabled={loading} className="w-full p-4 bg-amber-500 text-white font-bold rounded-2xl shadow-lg hover:bg-amber-600 transition-all active:scale-95">
+                        <InputField type="email" placeholder="이메일 주소" value={teacherEmail} onChange={e => setTeacherEmail(e.target.value)} />
+                        <InputField type="text" placeholder="복구 코드 입력" value={recoveryCode} onChange={e => setRecoveryCode(e.target.value)} className="font-mono tracking-widest uppercase" />
+                        {error && <p className="text-red-500 text-xs font-bold text-center">{error}</p>}
+                        <PrimaryButton onClick={handleRecoveryVerify} disabled={loading} className="mt-4">
                             코드 확인
-                        </button>
+                        </PrimaryButton>
+                        <div className="text-center pt-8 border-t border-gray-50 mt-4">
+                            <p className="text-xs text-gray-400 mb-1">복구 코드를 분실하셨나요?</p>
+                            <p className="text-xs font-black text-gray-900">문의: sinjoppo@naver.com</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -228,19 +227,16 @@ const AuthPage: React.FC = () => {
 
     if (mode === 'recovery-reset') {
         return (
-            <div className="flex flex-col h-full p-6 bg-gray-50 items-center justify-center">
-                <div className="w-full max-w-md bg-white p-8 rounded-3xl shadow-xl">
-                    <h2 className="text-2xl font-bold mb-2 text-gray-800">새 비밀번호 설정</h2>
-                    <div className="space-y-4 mt-6">
-                        <div>
-                            <input type="password" placeholder="새 비밀번호" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="w-full p-4 bg-gray-50 border rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500" />
-                            <p className="text-[10px] text-gray-400 mt-1 ml-2">* 영어 소문자와 숫자만 사용 가능합니다.</p>
-                        </div>
-                        {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-                        {successMessage && <p className="text-green-600 text-sm text-center">{successMessage}</p>}
-                        <button onClick={handlePasswordReset} disabled={loading} className="w-full p-4 bg-indigo-600 text-white font-bold rounded-2xl shadow-lg hover:bg-indigo-700 transition-all active:scale-95">
-                            비밀번호 변경 완료
-                        </button>
+            <div className="flex flex-col h-full bg-[#F2F4F7] items-center justify-center p-6">
+                <div className="w-full max-w-[400px] bg-white p-10 rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.06)] border border-white">
+                    <h2 className="text-3xl font-black mb-2 text-gray-900 tracking-tight">비밀번호 재설정</h2>
+                    <p className="text-gray-400 text-sm mb-8">사용하실 새로운 비밀번호를 입력해주세요.</p>
+                    <div className="space-y-4">
+                        <InputField type="password" placeholder="새 비밀번호" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+                        {error && <p className="text-red-500 text-xs font-bold text-center">{error}</p>}
+                        <PrimaryButton onClick={handlePasswordReset} disabled={loading} className="mt-4 bg-[#0066FF] hover:bg-[#0055DD]">
+                            변경 완료
+                        </PrimaryButton>
                     </div>
                 </div>
             </div>
@@ -248,44 +244,48 @@ const AuthPage: React.FC = () => {
     }
 
     return (
-        <div className="flex flex-col h-full p-6 bg-white transition-all duration-500 relative overflow-hidden">
-            <div className="absolute top-0 right-0 -mt-20 -mr-20 w-80 h-80 bg-indigo-50 rounded-full blur-3xl opacity-50"></div>
-            <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-80 h-80 bg-blue-50 rounded-full blur-3xl opacity-50"></div>
-
-            <div className="flex-grow flex flex-col items-center justify-center relative z-10">
-                <div className="text-center mb-10">
-                    <h1 className="text-7xl font-black text-gray-900 tracking-tighter mb-4" style={{fontFamily: "'Gamja Flower', cursive"}}>Class Bank</h1>
-                    <p className="text-base font-medium text-gray-500 max-w-xs mx-auto leading-relaxed">우리 학급만의 특별한 경제활동 시스템</p>
+        <div className="flex flex-col h-full bg-[#F2F4F7] items-center justify-center p-4 transition-all duration-700">
+            <div className="w-full max-w-[420px] text-center mb-6">
+                <div className="w-16 h-16 bg-[#0066FF] rounded-[20px] flex items-center justify-center mx-auto mb-4 shadow-[0_12px_24px_rgba(0,102,255,0.25)] border-2 border-white/20">
+                    <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                    </svg>
                 </div>
+                <h1 className="text-5xl font-black text-gray-900 tracking-tighter mb-2" style={{fontFamily: "'Gamja Flower', cursive"}}>Class Bank</h1>
+                <p className="text-gray-500 font-medium tracking-tight text-sm">우리 학급만의 특별한 경제활동 시스템</p>
+            </div>
 
-                <div className="w-full max-w-sm bg-white/80 backdrop-blur-md p-6 rounded-3xl shadow-2xl border border-white/20">
-                    <h2 className="text-xl font-bold mb-6 text-gray-800 text-center">선생님 로그인</h2>
-                    <div className="space-y-4">
-                        <input type="email" placeholder="이메일" value={teacherEmail} onChange={e => setTeacherEmail(e.target.value)} className="w-full p-4 bg-white/50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500" />
-                        <input type="password" placeholder="비밀번호" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleTeacherLogin()} className="w-full p-4 bg-white/50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500" />
-                        {error && <p className="text-red-500 text-xs text-center">{error}</p>}
-                        <button onClick={handleTeacherLogin} disabled={loading} className="w-full p-4 bg-indigo-600 text-white font-bold rounded-2xl shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95">
-                            {loading ? '로그인 중...' : '로그인'}
-                        </button>
-                        <div className="flex justify-between px-2">
-                            <button onClick={() => setMode('recovery')} className="text-xs text-gray-400 hover:text-indigo-600">비밀번호 찾기</button>
-                            <button onClick={() => setMode('signup')} className="text-xs font-bold text-indigo-600 hover:underline">회원가입</button>
-                        </div>
+            <div className="w-full max-w-[380px] bg-white p-8 rounded-[32px] shadow-[0_24px_48px_rgba(0,0,0,0.1)] border border-white relative transition-shadow hover:shadow-[0_32px_64px_rgba(0,0,0,0.12)]">
+                <h2 className="text-lg font-black mb-6 text-gray-900 text-center tracking-tight">선생님 로그인</h2>
+                <div className="space-y-3.5">
+                    <InputField type="email" placeholder="이메일" value={teacherEmail} onChange={e => setTeacherEmail(e.target.value)} />
+                    <InputField type="password" placeholder="비밀번호" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleTeacherLogin()} />
+                    {error && <p className="text-red-500 text-[11px] font-bold text-center">{error}</p>}
+                    <PrimaryButton onClick={handleTeacherLogin} disabled={loading} className="mt-2 bg-[#0066FF] hover:bg-[#0055DD] shadow-md shadow-blue-200">
+                        {loading ? '인증 중...' : '로그인'}
+                    </PrimaryButton>
+                    <div className="flex justify-between px-1 mt-4">
+                        <button onClick={() => setMode('recovery')} className="text-[11px] font-bold text-black hover:text-[#0066FF] transition-colors">비밀번호 찾기</button>
+                        <button onClick={() => setMode('signup')} className="text-[11px] font-bold text-[#0066FF] hover:underline">무료 회원가입</button>
                     </div>
                 </div>
-
-                <div className="w-full max-w-sm mt-8">
-                    <button 
-                        onClick={handleStudentLoginRedirect}
-                        className="w-full p-5 bg-white text-gray-800 border-2 border-gray-50 rounded-2xl shadow-sm font-bold text-lg hover:bg-gray-50 transition-all active:scale-95 flex items-center justify-center"
-                    >
-                        학생 로그인
-                    </button>
-                </div>
             </div>
+
+            <button 
+                onClick={handleStudentLoginRedirect}
+                className="w-full max-w-[380px] mt-6 p-4 bg-white text-gray-800 border border-gray-100 rounded-[24px] shadow-lg font-black text-base hover:bg-white hover:border-[#0066FF] hover:ring-4 hover:ring-blue-50 transition-all active:scale-[0.98] flex items-center justify-center"
+            >
+                학생 로그인 페이지로 이동
+            </button>
             
-            <footer className="text-center text-gray-400 mt-8 relative z-10">
-                <p className="text-[10px] font-semibold">ⓒ 2025 Class Bank Economy. All rights reserved.</p>
+            <footer className="mt-10 text-center">
+                <p className="text-[11px] text-gray-400 font-medium leading-relaxed mb-1">
+                    제안이나 문의사항이 있으시면 언제든 메일 주세요.<br/>
+                    <span className="text-gray-900 font-bold">Contact: sinjoppo@naver.com</span>
+                </p>
+                <p className="text-[10px] text-gray-300 font-bold uppercase tracking-widest">
+                    &copy; 2025 Class Bank Economy.
+                </p>
             </footer>
         </div>
     );

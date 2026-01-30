@@ -5,14 +5,19 @@ import TeacherDashboard from './pages/TeacherDashboard';
 import StudentPage from './pages/StudentPage';
 import MartPage from './pages/MartPage';
 import BankerPage from './pages/BankerPage';
+import RoleSelectionPage from './pages/RoleSelectionPage';
 import { User, Role } from './types';
 import { AuthContext } from './contexts/AuthContext';
 import { api } from './services/api';
+import { HomeIcon } from './components/icons';
 
 const AppContent: React.FC = () => {
   const { currentUser, login } = useContext(AuthContext);
   const [isTokenProcessing, setIsTokenProcessing] = useState(true);
   const [requestedView, setRequestedView] = useState<string | undefined>(undefined);
+  
+  // 선생님 계정일 때 현재 보고 있는 화면 모드 상태
+  const [teacherActiveView, setTeacherActiveView] = useState<'admin' | 'banker' | 'mart' | 'student' | null>(null);
 
   useEffect(() => {
     const handleTokenLogin = async () => {
@@ -47,11 +52,8 @@ const AppContent: React.FC = () => {
             login(user);
             
             if (viewParam) {
-                // URL에 명시된 화면이 있으면 그곳으로 이동
                 setRequestedView(viewParam);
             } else {
-                // URL에 화면 정보가 없을 경우 (기존 QR 등)
-                // 학생이면 '송금(transfer)' 화면을 기본값으로, 그 외는 '홈(home)'을 기본값으로 설정
                 const defaultView = user.role === Role.STUDENT ? 'transfer' : 'home';
                 setRequestedView(defaultView);
             }
@@ -79,8 +81,8 @@ const AppContent: React.FC = () => {
 
   if (isTokenProcessing) {
       return (
-          <div className="flex flex-col items-center justify-center h-full text-gray-600">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+          <div className="flex flex-col items-center justify-center h-full text-gray-600 bg-white">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0066FF] mb-4"></div>
               <p className="text-lg font-medium">QR 코드로 접속 중입니다...</p>
           </div>
       );
@@ -90,9 +92,34 @@ const AppContent: React.FC = () => {
     return <AuthPage />;
   }
 
+  // 선생님인 경우 통합 메뉴 페이지 로직
+  if (currentUser.role === Role.TEACHER) {
+      if (!teacherActiveView) {
+          return <RoleSelectionPage onSelect={setTeacherActiveView} />;
+      }
+
+      return (
+          <div className="flex flex-col h-full relative">
+              {/* 다른 메뉴로 이동할 수 있는 홈 버튼 (선생님 전용) */}
+              <button 
+                  onClick={() => setTeacherActiveView(null)}
+                  className="fixed bottom-6 right-6 z-[60] w-14 h-14 bg-gray-900 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-90 transition-all border-4 border-white/20 backdrop-blur-md"
+                  title="메뉴로 돌아가기"
+              >
+                  <HomeIcon className="w-7 h-7" />
+              </button>
+              
+              <div className="flex-1 h-full overflow-hidden">
+                  {teacherActiveView === 'admin' && <TeacherDashboard onBackToMenu={() => setTeacherActiveView(null)} />}
+                  {teacherActiveView === 'banker' && <BankerPage onBackToMenu={() => setTeacherActiveView(null)} />}
+                  {teacherActiveView === 'mart' && <MartPage onBackToMenu={() => setTeacherActiveView(null)} />}
+                  {teacherActiveView === 'student' && <StudentPage initialView={requestedView} onBackToMenu={() => setTeacherActiveView(null)} />}
+              </div>
+          </div>
+      );
+  }
+
   switch (currentUser.role) {
-    case Role.TEACHER:
-      return <TeacherDashboard />;
     case Role.STUDENT:
       return <StudentPage initialView={requestedView} />;
     case Role.MART:

@@ -128,12 +128,12 @@ const checkTeacherExists = async (teacherId: string): Promise<boolean> => {
     return !!data;
 };
 
-const getUsersByRole = async (role: Role, teacherId?: string): Promise<User[]> => {
-    let query = supabase.from('users').select('*').eq('role', role);
-    if (teacherId) {
-        query = query.eq('teacherId', teacherId);
-    }
-    const { data, error } = await query;
+const getUsersByRole = async (role: Role, teacherId: string): Promise<User[]> => {
+    const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('role', role)
+        .eq('teacher_id', teacherId); // Updated to teacher_id
     handleSupabaseError(error, `getUsersByRole (${role})`);
     return data || [];
 };
@@ -188,14 +188,15 @@ const loginWithQrToken = async (token: string): Promise<User | null> => {
     return login(accountData.userId);
 };
 
-const addStudent = async (name: string, grade: number, classNum: number, number: number): Promise<void> => {
+const addStudent = async (name: string, grade: number, classNum: number, number: number, teacherId: string): Promise<void> => {
     const userId = uuidv4();
     const { error } = await supabase.rpc('add_student', {
         p_user_id: userId,
         p_name: name,
         p_grade: grade,
         p_class: classNum,
-        p_number: number
+        p_number: number,
+        p_teacher_id: teacherId
     });
     handleSupabaseError(error, 'addStudent');
 };
@@ -241,21 +242,14 @@ const getStudentAccountByUserId = async (userId: string): Promise<Account | null
 };
 
 const getTeacherAccount = async (): Promise<Account | null> => {
-    const { data: users, error: userError } = await supabase
-        .from('users')
-        .select('userId')
-        .eq('role', 'teacher')
-        .limit(1);
-    
-    if (userError || !users || users.length === 0) return null;
-    
     const { data: account, error: accountError } = await supabase
         .from('accounts')
         .select('*')
-        .eq('userId', users[0].userId)
+        .eq('teacher_id', (await supabase.auth.getUser()).data.user?.id || '')
+        .limit(1)
         .single();
         
-    if (accountError) return null;
+    if (accountError && accountError.code !== 'PGRST116') return null;
     return account;
 };
 
@@ -349,12 +343,13 @@ const martTransfer = async (studentAccountId: string, amount: number, direction:
     return data;
 };
 
-const getStockProducts = async (): Promise<StockProductWithDetails[]> => {
+const getStockProducts = async (teacherId: string): Promise<StockProductWithDetails[]> => {
     const { data: tableData, error: tableError } = await supabase
         .from('stock_products')
-        .select('id, name, currentPrice, volatility');
+        .select('id, name, currentPrice, volatility')
+        .eq('teacher_id', teacherId); // Updated to teacher_id
     if (tableError) throw new Error(tableError.message);
-    const { data: rpcData, error: rpcError } = await supabase.rpc('get_stock_products_with_details');
+    const { data: rpcData, error: rpcError } = await supabase.rpc('get_stock_products_with_details', { p_teacher_id: teacherId });
     const mergedData = (tableData || []).map((tableItem: any) => {
         const rpcItem = (rpcData || []).find((r: any) => r.id === tableItem.id);
         return {
@@ -454,8 +449,11 @@ const getStockHolders = async (stockId: string): Promise<{ studentName: string, 
     return data || [];
 };
 
-const getSavingsProducts = async (): Promise<SavingsProduct[]> => {
-    const { data, error } = await supabase.from('savings_products').select('*');
+const getSavingsProducts = async (teacherId: string): Promise<SavingsProduct[]> => {
+    const { data, error } = await supabase
+        .from('savings_products')
+        .select('*')
+        .eq('teacher_id', teacherId); // Updated to teacher_id
     handleSupabaseError(error, 'getSavingsProducts');
     return data || [];
 };
@@ -510,8 +508,8 @@ const getSavingsEnrollees = async (productId: string): Promise<{ studentName: st
     return data || [];
 };
 
-const getJobs = async (): Promise<Job[]> => {
-    const { data, error } = await supabase.rpc('get_jobs_with_details');
+const getJobs = async (teacherId: string): Promise<Job[]> => {
+    const { data, error } = await supabase.rpc('get_jobs_with_details', { p_teacher_id: teacherId });
     handleSupabaseError(error, 'getJobs');
     return data || [];
 };
@@ -555,10 +553,17 @@ const payAllSalaries = async (): Promise<string> => {
     return data;
 };
 
-const getTaxes = async (): Promise<TaxItemWithRecipients[]> => {
-    const { data: taxes, error: taxError } = await supabase.from('tax_items').select('*').order('created_at', { ascending: false });
+const getTaxes = async (teacherId: string): Promise<TaxItemWithRecipients[]> => {
+    const { data: taxes, error: taxError } = await supabase
+        .from('tax_items')
+        .select('*')
+        .eq('teacher_id', teacherId) // Updated to teacher_id
+        .order('created_at', { ascending: false });
     if (taxError) throw new Error(taxError.message);
-    const { data: recipients, error: rcptError } = await supabase.from('tax_recipients').select('*');
+    const { data: recipients, error: rcptError } = await supabase
+        .from('tax_recipients')
+        .select('*')
+        .eq('teacher_id', teacherId); // Updated to teacher_id
     if (rcptError) throw new Error(rcptError.message);
     return taxes.map((tax: any) => ({
         id: tax.id,
@@ -606,8 +611,8 @@ const payTax = async (userId: string, taxId: string): Promise<string> => {
     return data;
 };
 
-const getFunds = async (): Promise<Fund[]> => {
-    const { data, error } = await supabase.rpc('get_funds_with_stats');
+const getFunds = async (teacherId: string): Promise<Fund[]> => {
+    const { data, error } = await supabase.rpc('get_funds_with_stats', { p_teacher_id: teacherId });
     handleSupabaseError(error, 'getFunds');
     const now = new Date();
     return (data || []).map((f: any) => {

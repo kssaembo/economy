@@ -14,9 +14,9 @@ export interface User {
   grade?: number;
   class?: number;
   number?: number;
-  teacherId?: string; // Tenant identifier
-  teacherAlias?: string; // e.g., "권쌤" replacement
-  currencyUnit?: string; // e.g., "권" replacement
+  teacher_id?: string; // Updated to match DB column
+  teacherAlias?: string; // Match provided column name
+  currencyUnit?: string;
 }
 
 export interface TeacherAccount {
@@ -33,7 +33,7 @@ export interface Account {
   userId: string;
   balance: number;
   qrToken?: string;
-  teacherId: string;
+  teacher_id: string; // Updated
 }
 
 export enum TransactionType {
@@ -61,7 +61,7 @@ export interface Transaction {
   description: string;
   senderId?: string;
   receiverId?: string;
-  teacherId: string;
+  teacher_id: string; // Updated
 }
 
 export interface StockProduct {
@@ -70,7 +70,7 @@ export interface StockProduct {
   currentPrice: number;
   stockAccountId: string;
   volatility?: number;
-  teacherId: string;
+  teacher_id: string; // Updated
 }
 
 export interface StockProductWithDetails extends StockProduct {
@@ -91,7 +91,7 @@ export interface StudentStock {
   quantity: number;
   purchasePrice: number;
   stock?: StockProduct;
-  teacherId: string;
+  teacher_id: string; // Updated
 }
 
 export interface SavingsProduct {
@@ -101,7 +101,7 @@ export interface SavingsProduct {
   rate: number;
   cancellationRate: number;
   maxAmount: number;
-  teacherId: string;
+  teacher_id: string; // Updated
 }
 
 export interface StudentSaving {
@@ -112,7 +112,7 @@ export interface StudentSaving {
   joinDate: string;
   maturityDate: string;
   product?: SavingsProduct;
-  teacherId: string;
+  teacher_id: string; // Updated
 }
 
 export interface AssignedStudent {
@@ -128,7 +128,7 @@ export interface Job {
   lastPaidDate?: string;
   incentive: number;
   assigned_students: AssignedStudent[];
-  teacherId: string;
+  teacher_id: string; // Updated
 }
 
 export interface TaxItem {
@@ -137,7 +137,7 @@ export interface TaxItem {
     amount: number;
     dueDate: string;
     createdAt: string;
-    teacherId: string;
+    teacher_id: string; // Updated
 }
 
 export interface TaxRecipient {
@@ -166,7 +166,7 @@ export interface Fund {
   description: string;
   creatorId: string;
   creatorName?: string;
-  teacherId: string;
+  teacher_id: string; // Updated
   unitPrice: number;
   targetAmount: number;
   baseReward: number;
