@@ -157,8 +157,15 @@ const App: React.FC = () => {
         setCurrentUser(user);
     },
     logout: () => {
+        const wasStudent = currentUser?.role === Role.STUDENT;
         // Clear local storage
         localStorage.removeItem('class_bank_user_id');
+        
+        // URL 업데이트 (404 에러 방지를 위해 replaceState 사용)
+        const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + (wasStudent ? '?mode=app' : '');
+        window.history.replaceState({}, '', newUrl);
+        
+        // 유저 상태 초기화 (AuthPage가 다시 마운트되면서 위에서 설정한 URL 파라미터를 읽음)
         setCurrentUser(null);
     },
   }), [currentUser]);

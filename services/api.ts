@@ -70,7 +70,19 @@ const uuidv4 = () => {
 // 공통 화폐 단위 및 교사 별칭 주입 헬퍼
 const injectCurrencyUnit = async (user: User | null): Promise<User | null> => {
     if (!user) return null;
-    const teacherId = user.role === Role.TEACHER ? user.userId : user.teacher_id;
+    
+    // 학생의 경우 teacher_id를, 선생님의 경우 자신의 userId를 기준으로 선생님 정보를 가져옴
+    let teacherId = user.role === Role.TEACHER ? user.userId : user.teacher_id;
+    
+    // 만약 학생인데 teacher_id가 없다면, DB에서 다시 한 번 조회를 시도함 (데이터 무결성 보완)
+    if (!teacherId && user.role === Role.STUDENT) {
+        const { data: userData } = await supabase.from('users').select('teacher_id').eq('userId', user.userId).single();
+        if (userData?.teacher_id) {
+            teacherId = userData.teacher_id;
+            user.teacher_id = userData.teacher_id; // 객체 업데이트
+        }
+    }
+
     if (teacherId) {
         try {
             const { data, error } = await supabase
@@ -84,12 +96,18 @@ const injectCurrencyUnit = async (user: User | null): Promise<User | null> => {
             }
             
             if (data) {
-                if (data.currencyUnit) user.currencyUnit = data.currencyUnit;
-                if (data.alias) user.teacherAlias = data.alias; // teacherAlias 필드에 매핑
+                user.currencyUnit = data.currencyUnit || '권';
+                user.teacherAlias = data.alias || '';
+            } else {
+                // 선생님 정보를 못 찾은 경우 기본값 설정
+                if (!user.currencyUnit) user.currencyUnit = '권';
             }
         } catch (err) {
             console.error("Failed to inject teacher info:", err);
+            if (!user.currencyUnit) user.currencyUnit = '권';
         }
+    } else {
+        if (!user.currencyUnit) user.currencyUnit = '권';
     }
     return user;
 };
@@ -209,7 +227,7 @@ const getUsersByRole = async (role: Role, teacherId: string): Promise<User[]> =>
                 if (tData) {
                     users = users.map(u => ({ 
                         ...u, 
-                        currencyUnit: tData.currencyUnit || u.currencyUnit,
+                        currencyUnit: tData.currencyUnit || u.currencyUnit || '권',
                         teacherAlias: tData.alias || u.teacherAlias // 별칭 주입
                     }));
                 }
@@ -233,7 +251,9 @@ const loginWithPassword = async (grade: number, classNum: number, number: number
     if (error) throw new Error(error.message);
     if (!data.success) throw new Error(data.message);
     
-    return injectCurrencyUnit(data.user as User);
+    // 주입된 사용자 객체에 화폐 단위 강제 확인
+    const user = data.user as User;
+    return injectCurrencyUnit(user);
 };
 
 const verifyAdminPassword = async (userId: string, password: string): Promise<boolean> => {
@@ -689,7 +709,7 @@ const manageJobAssignment = async (jobId: string, studentUserIds: string[]): Pro
 };
 
 const updateJobIncentive = async (jobId: string, incentive: number): Promise<void> => {
-    const { error } = await supabase.rpc('update_job_incentive', { p_job_id: jobId.toString(), p_incentive: incentive });
+    const { error = null } = await supabase.rpc('update_job_incentive', { p_job_id: jobId.toString(), p_incentive: incentive });
     handleSupabaseError(error, 'updateJobIncentive');
 };
 
@@ -818,7 +838,7 @@ const createFund = async (fund: any): Promise<string> => {
 };
 
 const deleteFund = async (fundId: string): Promise<string> => {
-    const { error } = await supabase.rpc('delete_fund', { p_fund_id: fundId.toString() });
+    const { error = null } = await supabase.rpc('delete_fund', { p_fund_id: fundId.toString() });
     handleSupabaseError(error, 'deleteFund');
     return '삭제되었습니다.';
 };

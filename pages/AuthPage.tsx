@@ -3,22 +3,22 @@ import React, { useState, useContext, useEffect } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
 import { Role, User } from '../types';
-import { StudentIcon, MainAdminIcon, MainBankIcon, MainMartIcon, CheckIcon, ErrorIcon } from '../components/icons';
+import { StudentIcon, MainAdminIcon, MainBankIcon, MainMartIcon, CheckIcon, ErrorIcon, BackIcon } from '../components/icons';
 
-type AuthMode = 'login' | 'signup' | 'recovery' | 'recovery-reset';
+type AuthMode = 'login' | 'signup' | 'recovery' | 'recovery-reset' | 'student-login' | 'student-password-change';
 
-// --- Shared UI Components (Defined outside to prevent focus loss) ---
+// --- Shared UI Components ---
 const InputField = (props: React.InputHTMLAttributes<HTMLInputElement>) => (
     <input 
         {...props} 
-        className={`w-full p-3.5 bg-white border border-gray-200 rounded-2xl outline-none transition-all focus:border-[#0066FF] focus:ring-4 focus:ring-blue-50 placeholder:text-gray-300 font-medium ${props.className}`}
+        className={`w-full p-3.5 bg-white border border-gray-200 rounded-2xl outline-none transition-all focus:border-[#0066FF] focus:ring-4 focus:ring-blue-50 placeholder:text-gray-300 font-medium text-gray-900 ${props.className}`}
     />
 );
 
 const PrimaryButton = ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
     <button 
         {...props}
-        className={`w-full p-4 bg-[#1D1D1F] text-white font-bold rounded-2xl shadow-sm hover:scale-[1.02] active:scale-[0.98] transition-all disabled:bg-gray-200 disabled:hover:scale-100 ${props.className}`}
+        className={`w-full p-4 bg-[#1D1D1F] text-white font-black rounded-2xl shadow-sm hover:scale-[1.02] active:scale-[0.98] transition-all disabled:bg-gray-200 disabled:hover:scale-100 ${props.className}`}
     >
         {children}
     </button>
@@ -27,7 +27,17 @@ const PrimaryButton = ({ children, ...props }: React.ButtonHTMLAttributes<HTMLBu
 const AuthPage: React.FC = () => {
     const { login } = useContext(AuthContext);
     
-    const [mode, setMode] = useState<AuthMode>('login');
+    // URL 파라미터 확인 및 초기 모드 설정
+    const [mode, setMode] = useState<AuthMode>(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('mode') === 'app') {
+                return 'student-login';
+            }
+        }
+        return 'login';
+    });
+
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
@@ -41,6 +51,20 @@ const AuthPage: React.FC = () => {
     const [newPassword, setNewPassword] = useState('');
     const [recoveryModalVisible, setRecoveryModalVisible] = useState(false);
     const [recoveryConfirmChecked, setRecoveryConfirmChecked] = useState(false);
+
+    // Student App State
+    const [grade, setGrade] = useState('');
+    const [cls, setCls] = useState('');
+    const [num, setNum] = useState('');
+    const [appPassword, setAppPassword] = useState('');
+    const [newAppPassword, setNewAppPassword] = useState('');
+
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('mode') === 'app' && mode !== 'student-login' && mode !== 'student-password-change') {
+            setMode('student-login');
+        }
+    }, [mode]);
 
     const validatePassword = (pw: string) => {
         const regex = /^[a-z0-9]+$/;
@@ -80,6 +104,52 @@ const AuthPage: React.FC = () => {
                 login(user);
             } else {
                 setError('이메일 또는 비밀번호가 일치하지 않습니다.');
+            }
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleAppLogin = async () => {
+        if (!grade || !cls || !num || !appPassword) {
+            setError('모든 정보를 입력해주세요.');
+            return;
+        }
+        setLoading(true);
+        setError('');
+        try {
+            const user = await api.loginWithPassword(parseInt(grade), parseInt(cls), parseInt(num), appPassword);
+            if (user) {
+                login(user);
+            }
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleStudentPasswordChange = async () => {
+        if (!grade || !cls || !num || !appPassword || !newAppPassword) {
+            setError('모든 정보를 입력해주세요.');
+            return;
+        }
+        setLoading(true);
+        setError('');
+        try {
+            // 먼저 기존 정보로 로그인 시도하여 확인
+            const user = await api.loginWithPassword(parseInt(grade), parseInt(cls), parseInt(num), appPassword);
+            if (user) {
+                await api.changePassword(user.userId, appPassword, newAppPassword);
+                setSuccessMessage('비밀번호가 성공적으로 변경되었습니다. 다시 로그인해주세요.');
+                setTimeout(() => {
+                    setMode('student-login');
+                    setSuccessMessage('');
+                    setAppPassword('');
+                    setNewAppPassword('');
+                }, 2000);
             }
         } catch (err: any) {
             setError(err.message);
@@ -131,8 +201,9 @@ const AuthPage: React.FC = () => {
         }
     };
 
-    const handleStudentLoginRedirect = () => {
-        window.location.href = 'https://economy-rho.vercel.app/?mode=app';
+    const resetStates = () => {
+        setError('');
+        setSuccessMessage('');
     };
 
     if (recoveryModalVisible) {
@@ -172,12 +243,75 @@ const AuthPage: React.FC = () => {
         );
     }
 
+    // --- Student Login UI ---
+    if (mode === 'student-login') {
+        return (
+            <div className="flex flex-col h-full bg-[#F2F4F7] items-center justify-center p-6">
+                <div className="w-full max-w-[420px] text-center mb-8">
+                    <h1 className="text-5xl font-black text-gray-900 tracking-tighter mb-2" style={{fontFamily: "'Gamja Flower', cursive"}}>Class Bank</h1>
+                    <p className="text-gray-500 font-bold tracking-tight text-sm uppercase tracking-widest">Student Portal</p>
+                </div>
+                <div className="w-full max-w-[400px] bg-white p-10 rounded-[40px] shadow-[0_32px_64px_rgba(0,0,0,0.08)] border border-white">
+                    <h2 className="text-2xl font-black mb-2 text-gray-900 text-center">학생 로그인</h2>
+                    <p className="text-gray-400 text-sm mb-8 text-center font-medium">본인의 학번과 비밀번호를 입력하세요.</p>
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-3 gap-3">
+                            <InputField type="number" placeholder="학년" value={grade} onChange={e => setGrade(e.target.value)} className="text-center font-bold" />
+                            <InputField type="number" placeholder="반" value={cls} onChange={e => setCls(e.target.value)} className="text-center font-bold" />
+                            <InputField type="number" placeholder="번호" value={num} onChange={e => setNum(e.target.value)} className="text-center font-bold" />
+                        </div>
+                        <InputField type="password" placeholder="비밀번호" value={appPassword} onChange={e => setAppPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAppLogin()} />
+                        {error && <p className="text-red-500 text-xs font-bold text-center">{error}</p>}
+                        <PrimaryButton onClick={handleAppLogin} disabled={loading} className="bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-100">
+                            {loading ? '로그인 중...' : '로그인'}
+                        </PrimaryButton>
+                        <div className="flex justify-between items-center px-1">
+                            <button onClick={() => { resetStates(); setMode('student-password-change'); }} className="text-xs font-bold text-gray-400 hover:text-indigo-600 transition-colors">비밀번호 변경</button>
+                            <button onClick={() => { resetStates(); setMode('login'); }} className="text-xs font-bold text-[#0066FF] hover:underline">선생님 페이지로</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // --- Student Password Change UI ---
+    if (mode === 'student-password-change') {
+        return (
+            <div className="flex flex-col h-full bg-[#F2F4F7] items-center justify-center p-6">
+                <div className="w-full max-w-[400px] bg-white p-10 rounded-[40px] shadow-[0_32px_64px_rgba(0,0,0,0.08)] border border-white">
+                    <button onClick={() => setMode('student-login')} className="text-gray-400 mb-6 text-sm font-medium hover:text-gray-900 flex items-center gap-1 transition-colors">
+                        <BackIcon className="w-5 h-5" /> 뒤로가기
+                    </button>
+                    <h2 className="text-2xl font-black mb-2 text-gray-900">비밀번호 변경</h2>
+                    <p className="text-gray-400 text-sm mb-8 font-medium">본인 확인 후 새 비밀번호를 설정합니다.</p>
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-3 gap-3">
+                            <InputField type="number" placeholder="학년" value={grade} onChange={e => setGrade(e.target.value)} className="text-center font-bold" />
+                            <InputField type="number" placeholder="반" value={cls} onChange={e => setCls(e.target.value)} className="text-center font-bold" />
+                            <InputField type="number" placeholder="번호" value={num} onChange={e => setNum(e.target.value)} className="text-center font-bold" />
+                        </div>
+                        <InputField type="password" placeholder="현재 비밀번호" value={appPassword} onChange={e => setAppPassword(e.target.value)} />
+                        <InputField type="password" placeholder="새로운 비밀번호" value={newAppPassword} onChange={e => setNewAppPassword(e.target.value)} className="bg-indigo-50/50 border-indigo-100" />
+                        {error && <p className="text-red-500 text-xs font-bold text-center">{error}</p>}
+                        {successMessage && <div className="p-3 bg-green-50 text-green-700 text-xs font-bold rounded-xl text-center border border-green-100">{successMessage}</div>}
+                        {!successMessage && (
+                            <PrimaryButton onClick={handleStudentPasswordChange} disabled={loading} className="bg-indigo-600 hover:bg-indigo-700">
+                                {loading ? '변경 중...' : '비밀번호 변경하기'}
+                            </PrimaryButton>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     if (mode === 'signup') {
         return (
             <div className="flex flex-col h-full bg-[#F2F4F7] items-center justify-center p-6">
                 <div className="w-full max-w-[400px] bg-white p-10 rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.06)] border border-white">
                     <button onClick={() => setMode('login')} className="text-gray-400 mb-6 text-sm font-medium hover:text-gray-900 flex items-center gap-1 transition-colors">
-                        <span className="text-lg">←</span> 뒤로가기
+                        <BackIcon className="w-5 h-5" /> 뒤로가기
                     </button>
                     <h2 className="text-3xl font-black mb-2 text-gray-900 tracking-tight">선생님 가입</h2>
                     <p className="text-gray-400 text-sm mb-8">학급 경제를 위한 새로운 계정을 만드세요.</p>
@@ -204,7 +338,7 @@ const AuthPage: React.FC = () => {
             <div className="flex flex-col h-full bg-[#F2F4F7] items-center justify-center p-6">
                 <div className="w-full max-w-[400px] bg-white p-10 rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.06)] border border-white">
                     <button onClick={() => setMode('login')} className="text-gray-400 mb-6 text-sm font-medium hover:text-gray-900 flex items-center gap-1 transition-colors">
-                        <span className="text-lg">←</span> 뒤로가기
+                        <BackIcon className="w-5 h-5" /> 뒤로가기
                     </button>
                     <h2 className="text-3xl font-black mb-2 text-gray-900 tracking-tight">비밀번호 찾기</h2>
                     <p className="text-gray-400 text-sm mb-8">가입 시 발급받은 복구 코드를 입력하세요.</p>
@@ -265,14 +399,14 @@ const AuthPage: React.FC = () => {
                         {loading ? '인증 중...' : '로그인'}
                     </PrimaryButton>
                     <div className="flex justify-between px-1 mt-4">
-                        <button onClick={() => setMode('recovery')} className="text-[11px] font-bold text-black hover:text-[#0066FF] transition-colors">비밀번호 찾기</button>
-                        <button onClick={() => setMode('signup')} className="text-[11px] font-bold text-[#0066FF] hover:underline">무료 회원가입</button>
+                        <button onClick={() => { resetStates(); setMode('recovery'); }} className="text-[11px] font-bold text-black hover:text-[#0066FF] transition-colors">비밀번호 찾기</button>
+                        <button onClick={() => { resetStates(); setMode('signup'); }} className="text-[11px] font-bold text-[#0066FF] hover:underline">무료 회원가입</button>
                     </div>
                 </div>
             </div>
 
             <button 
-                onClick={handleStudentLoginRedirect}
+                onClick={() => { resetStates(); setMode('student-login'); }}
                 className="w-full max-w-[380px] mt-6 p-4 bg-white text-gray-800 border border-gray-100 rounded-[24px] shadow-lg font-black text-base hover:bg-white hover:border-[#0066FF] hover:ring-4 hover:ring-blue-50 transition-all active:scale-[0.98] flex items-center justify-center"
             >
                 학생 로그인 페이지로 이동
