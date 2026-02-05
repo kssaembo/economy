@@ -38,10 +38,10 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
     },
     { 
       id: 'student', 
-      title: '학생 체험', 
+      title: '학생 페이지', 
       desc: '학생의 시점에서 자산 확인, 송금 및 투자 시스템 확인', 
       icon: StudentIcon, 
-      color: 'bg-[#FF9500]',
+      color: 'bg-[#FF9500]/50',
       target: 'student' as const
     },
   ];
@@ -52,7 +52,8 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
         <header className="flex justify-between items-start mb-12">
           <div>
             <h1 className="text-3xl font-black text-gray-900 tracking-tight mb-2">
-              안녕하세요, <span className="text-[#0066FF]">{currentUser?.name}</span> 선생님
+              안녕하세요, <br className="md:hidden" />
+              <span className="text-[#0066FF]">{currentUser?.teacherAlias || currentUser?.name}</span> 선생님
             </h1>
             <p className="text-gray-500 font-bold text-sm tracking-tight">오늘은 어떤 업무를 수행하시겠습니까?</p>
           </div>
@@ -72,13 +73,14 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
               onClick={() => onSelect(role.target)}
               className="group relative bg-white p-8 rounded-[40px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] hover:scale-[1.03] hover:border-[#0066FF]/20 transition-all flex items-center text-left"
             >
-              <div className={`w-20 h-20 ${role.color} rounded-[28px] flex items-center justify-center mr-6 shadow-lg shadow-gray-200 group-hover:rotate-6 transition-transform overflow-hidden shrink-0`}>
-                {role.id === 'student' ? (
-                   <role.icon className="w-10 h-10 text-white" />
-                ) : (
-                   <role.icon className="w-14 h-14 text-white p-2" />
-                )}
-              </div>
+              {role.id === 'student' ? (
+                <div className={`w-20 h-20 ${role.color} rounded-[28px] flex items-center justify-center mr-6 shadow-lg shadow-gray-200 group-hover:rotate-6 transition-transform overflow-hidden shrink-0`}>
+                  <role.icon className="w-10 h-10 text-white" />
+                </div>
+              ) : (
+                <role.icon className="w-20 h-20 mr-6 group-hover:rotate-6 transition-transform shrink-0 object-contain" />
+              )}
+              
               <div className="flex-1 pr-4">
                 <h3 className="text-xl font-black text-gray-900 mb-1 group-hover:text-[#0066FF] transition-colors">{role.title}</h3>
                 <p className="text-sm text-gray-400 font-bold leading-snug tracking-tight">{role.desc}</p>
@@ -92,12 +94,15 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
           ))}
         </div>
         
-        <footer className="mt-20 text-center">
-            <p className="text-[10px] text-gray-300 font-black uppercase tracking-[0.2em] mb-1">
-                Class Bank Class Economy Management System
+        <footer className="mt-20 text-center text-black">
+            <p className="text-sm font-bold mb-1">
+                제안이나 문의사항이 있으시면 언제든 메일 주세요.
             </p>
-            <p className="text-[10px] text-gray-200 font-medium">
-                &copy; 2025 Class Bank. All rights reserved.
+            <p className="text-sm font-bold mb-4">
+                Contact: sinjoppo@naver.com
+            </p>
+            <p className="text-[10px] font-medium opacity-80">
+                ⓒ 2026. Kwon's class. All rights reserved.
             </p>
         </footer>
       </div>

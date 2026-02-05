@@ -1,6 +1,7 @@
 
 import React, { useState, useMemo, useEffect, useContext } from 'react';
 import AuthPage from './pages/AuthPage';
+// Fix: Use default import for TeacherDashboard to match the standard export pattern used in other page components
 import TeacherDashboard from './pages/TeacherDashboard';
 import StudentPage from './pages/StudentPage';
 import MartPage from './pages/MartPage';

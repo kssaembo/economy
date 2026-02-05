@@ -34,6 +34,7 @@ export interface Account {
   balance: number;
   qrToken?: string;
   teacher_id: string; // Updated
+  account_type?: string; // 추가: treasury, mart, personal 등
 }
 
 export enum TransactionType {

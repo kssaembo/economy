@@ -127,7 +127,6 @@ const AddStudentModal: React.FC<{ onClose: () => void, onComplete: () => void }>
 };
 
 const QrPrintModal: React.FC<{ students: (User & { account: Account | null })[], onClose: () => void }> = ({ students, onClose }) => {
-    const printRef = useRef<HTMLDivElement>(null);
     const baseUrl = getQrBaseUrl();
 
     const handlePrint = () => {
@@ -166,16 +165,17 @@ const QrPrintModal: React.FC<{ students: (User & { account: Account | null })[],
 };
 
 const AddJobModal: React.FC<{ onClose: () => void, onComplete: () => void }> = ({ onClose, onComplete }) => {
+    const { currentUser } = useContext(AuthContext); // currentUser 컨텍스트 추가
     const [name, setName] = useState('');
     const [desc, setDesc] = useState('');
     const [salary, setSalary] = useState('');
     const [loading, setLoading] = useState(false);
 
     const handleSubmit = async () => {
-        if (!name || !salary) return;
+        if (!name || !salary || !currentUser) return; // currentUser 체크 추가
         setLoading(true);
         try {
-            await api.addJob(name, desc, parseInt(salary));
+            await api.addJob(name, desc, parseInt(salary), currentUser.userId); // 4번째 인자(userId) 추가
             onComplete();
             onClose();
         } catch (e) {
@@ -246,6 +246,7 @@ const AssignJobModal: React.FC<{ job: Job, students: User[], onClose: () => void
 };
 
 const AddTaxModal: React.FC<{ students: User[], onClose: () => void, onComplete: () => void }> = ({ students, onClose, onComplete }) => {
+    const { currentUser } = useContext(AuthContext); // currentUser 컨텍스트 추가
     const [name, setName] = useState('');
     const [amount, setAmount] = useState('');
     const [dueDate, setDueDate] = useState('');
@@ -253,10 +254,10 @@ const AddTaxModal: React.FC<{ students: User[], onClose: () => void, onComplete:
     const [loading, setLoading] = useState(false);
 
     const handleCreate = async () => {
-        if (!name || !amount || !dueDate || selectedIds.length === 0) return;
+        if (!name || !amount || !dueDate || selectedIds.length === 0 || !currentUser) return; // currentUser 체크 추가
         setLoading(true);
         try {
-            await api.createTax(name, parseInt(amount), dueDate, selectedIds);
+            await api.createTax(name, parseInt(amount), dueDate, selectedIds, currentUser.userId); // 5번째 인자(userId) 추가
             onComplete();
             onClose();
         } catch (e) {
@@ -293,9 +294,162 @@ const AddTaxModal: React.FC<{ students: User[], onClose: () => void, onComplete:
     );
 };
 
+const AddFundModal: React.FC<{ students: User[], onClose: () => void, onComplete: () => void }> = ({ students, onClose, onComplete }) => {
+    const { currentUser } = useContext(AuthContext);
+    const [name, setName] = useState('');
+    const [desc, setDesc] = useState('');
+    const [creatorId, setCreatorId] = useState('');
+    const [unitPrice, setUnitPrice] = useState('10');
+    const [targetAmount, setTargetAmount] = useState('1000');
+    const [baseReward, setBaseReward] = useState('11'); 
+    const [incentiveReward, setIncentiveReward] = useState('1'); 
+    const [deadline, setDeadline] = useState('');
+    const [maturity, setMaturity] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    const unit = currentUser?.currencyUnit || '권';
+
+    const handleSubmit = async () => {
+        if (!name || !unitPrice || !targetAmount || !deadline || !maturity || !currentUser || !creatorId) {
+            alert('모든 항목을 입력하고 신청 학생을 선택해주세요.');
+            return;
+        }
+        setLoading(true);
+        try {
+            await api.createFund({
+                name,
+                description: desc,
+                creatorId: creatorId,
+                teacherId: currentUser.userId,
+                unitPrice: parseInt(unitPrice),
+                targetAmount: parseInt(targetAmount),
+                baseReward: parseFloat(baseReward),
+                incentiveReward: parseFloat(incentiveReward),
+                recruitmentDeadline: deadline,
+                maturityDate: maturity
+            });
+            onComplete();
+            onClose();
+        } catch (e: any) {
+            console.error(e);
+            alert(e.message || '펀드 등록 중 오류가 발생했습니다.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md flex flex-col max-h-[90vh]">
+                <h3 className="text-xl font-bold mb-4">새 펀드 상품 등록</h3>
+                <div className="space-y-3 overflow-y-auto pr-1">
+                    <div>
+                        <label className="text-xs text-gray-500 ml-1">펀드 신청 학생 (기획자)</label>
+                        <select 
+                            value={creatorId} 
+                            onChange={e => setCreatorId(e.target.value)} 
+                            className="w-full p-2.5 border rounded-lg bg-white"
+                        >
+                            <option value="">학생을 선택하세요</option>
+                            {students.map(s => (
+                                <option key={s.userId} value={s.userId}>{s.grade}-{s.class} {s.number} {s.name}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="펀드 명칭" className="w-full p-2.5 border rounded-lg" />
+                    <textarea value={desc} onChange={e => setDesc(e.target.value)} placeholder="상품 설명" className="w-full p-2.5 border rounded-lg" rows={2} />
+                    <div className="grid grid-cols-2 gap-2">
+                        <div>
+                            <label className="text-xs text-gray-500 ml-1">1좌당 가격 ({unit})</label>
+                            <input type="number" value={unitPrice} onChange={e => setUnitPrice(e.target.value)} className="w-full p-2.5 border rounded-lg" />
+                        </div>
+                        <div>
+                            <label className="text-xs text-gray-500 ml-1">목표 금액 ({unit})</label>
+                            <input type="number" value={targetAmount} onChange={e => setTargetAmount(e.target.value)} className="w-full p-2.5 border rounded-lg" />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                        <div>
+                            <label className="text-xs text-gray-500 ml-1 font-bold text-blue-600">기본 배당금 ({unit})</label>
+                            <input type="number" value={baseReward} onChange={e => setBaseReward(e.target.value)} placeholder="예: 11" className="w-full p-2.5 border-2 border-blue-100 rounded-lg focus:border-blue-500 outline-none" />
+                        </div>
+                        <div>
+                            <label className="text-xs text-gray-500 ml-1 font-bold text-indigo-600">추가 인센티브 ({unit})</label>
+                            <input type="number" value={incentiveReward} onChange={e => setIncentiveReward(e.target.value)} placeholder="예: 1" className="w-full p-2.5 border-2 border-indigo-100 rounded-lg focus:border-indigo-500 outline-none" />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="text-xs text-gray-500 ml-1">모집 마감일 (날짜만 선택)</label>
+                        <input type="date" value={deadline} onChange={e => setDeadline(e.target.value)} className="w-full p-2.5 border rounded-lg" />
+                    </div>
+                    <div>
+                        <label className="text-xs text-gray-500 ml-1">만기 정산일 (날짜만 선택)</label>
+                        <input type="date" value={maturity} onChange={e => setMaturity(e.target.value)} className="w-full p-2.5 border rounded-lg" />
+                    </div>
+                </div>
+                <button onClick={handleSubmit} disabled={loading} className="w-full py-3 mt-6 bg-[#2B548F] text-white font-bold rounded-lg shadow-lg hover:bg-[#234576] active:scale-95 transition-all">
+                    {loading ? '등록 중...' : '상품 등록하기'}
+                </button>
+                <button onClick={onClose} className="w-full py-2 mt-2 text-gray-500 font-medium">닫기</button>
+            </div>
+        </div>
+    );
+};
+
+const FundInvestorsModal: React.FC<{ fund: Fund, onClose: () => void }> = ({ fund, onClose }) => {
+    const [investors, setInvestors] = useState<{ student_name: string, units: number, invested_amount: number }[]>([]);
+    const [loading, setLoading] = useState(true);
+    const unit = useContext(AuthContext).currentUser?.currencyUnit || '권';
+
+    useEffect(() => {
+        api.getFundInvestors(fund.id).then(setInvestors).finally(() => setLoading(false));
+    }, [fund.id]);
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[110] p-4" onClick={onClose}>
+            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center mb-4 border-b pb-3">
+                    <h3 className="text-xl font-bold text-gray-800">'{fund.name}' 투자자 목록</h3>
+                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-100 transition-colors">
+                        <XIcon className="w-6 h-6 text-gray-400" />
+                    </button>
+                </div>
+                <div className="flex-grow overflow-y-auto">
+                    {loading ? (
+                        <div className="p-10 text-center text-gray-400 text-sm">조회 중...</div>
+                    ) : investors.length > 0 ? (
+                        <table className="w-full text-sm">
+                            <thead className="bg-gray-50 sticky top-0">
+                                <tr>
+                                    <th className="p-2 text-left">이름</th>
+                                    <th className="p-2 text-right">구좌</th>
+                                    <th className="p-2 text-right">투자액</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {investors.map((inv, i) => (
+                                    <tr key={i} className="hover:bg-gray-50">
+                                        <td className="p-2 font-medium">{inv.student_name}</td>
+                                        <td className="p-2 text-right">{inv.units}좌</td>
+                                        <td className="p-2 text-right font-bold text-indigo-600">{Number(inv.invested_amount).toLocaleString()}{unit}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    ) : (
+                        <div className="p-10 text-center text-gray-400 font-medium">아직 가입한 학생이 없습니다.</div>
+                    )}
+                </div>
+                <button onClick={onClose} className="w-full py-3 mt-4 bg-gray-100 text-gray-600 font-bold rounded-lg hover:bg-gray-200">닫기</button>
+            </div>
+        </div>
+    );
+};
+
 // --- Sub-Views ---
 
-const DashboardView: React.FC<{ students: (User & { account: Account | null })[], refresh: () => void }> = ({ students }) => {
+// Fix: Correctly destructure 'refresh' prop even if not currently used directly, to match type definition and prevent potential errors.
+const DashboardView: React.FC<{ students: (User & { account: Account | null })[], refresh: () => void }> = ({ students, refresh }) => {
     const { currentUser } = useContext(AuthContext);
     const [teacherAccount, setTeacherAccount] = useState<Account | null>(null);
     const [teacherTransactions, setTeacherTransactions] = useState<Transaction[]>([]);
@@ -308,7 +462,7 @@ const DashboardView: React.FC<{ students: (User & { account: Account | null })[]
     const [alarms, setAlarms] = useState<AlarmItem[]>([]);
     const [isAlarmsLoading, setIsAlarmsLoading] = useState(false);
 
-    const alias = currentUser?.teacherAlias || '권쌤';
+    const alias = currentUser?.teacherAlias || '교사';
     const unit = currentUser?.currencyUnit || '권';
 
     useEffect(() => {
@@ -385,50 +539,8 @@ const DashboardView: React.FC<{ students: (User & { account: Account | null })[]
                                         date: new Date(t.date)
                                     });
                                 }
-                                if (t.type === 'StockBuy' || t.type === 'StockSell') {
-                                    newAlarms.push({
-                                        id: `stock-${t.transactionId}`,
-                                        type: 'info',
-                                        category: '주식',
-                                        message: `${s.name} 학생이 주식을 ${t.type === 'StockBuy' ? '구입' : '판매'}했습니다.`,
-                                        date: new Date(t.date)
-                                    });
-                                }
-                                if (t.type === 'SavingsJoin') {
-                                    newAlarms.push({
-                                        id: `saving-join-${t.transactionId}`,
-                                        type: 'info',
-                                        category: '적금',
-                                        message: `${s.name} 학생이 신규 적금에 가입했습니다.`,
-                                        date: new Date(t.date)
-                                    });
-                                }
-                                if (t.type === 'FundJoin') {
-                                    newAlarms.push({
-                                        id: `fund-join-${t.transactionId}`,
-                                        type: 'info',
-                                        category: '펀드',
-                                        message: `${s.name} 학생이 펀드에 투자했습니다.`,
-                                        date: new Date(t.date)
-                                    });
-                                }
                             }
                         });
-
-                        const studentSavings = await api.getStudentSavings(s.userId);
-                        studentSavings.forEach(ss => {
-                            const dDay = getDDay(ss.maturityDate);
-                            if (dDay === 0 || dDay === 1) {
-                                newAlarms.push({
-                                    id: `saving-mat-${ss.savingId}-${dDay}`,
-                                    type: dDay === 0 ? 'danger' : 'warning',
-                                    category: '적금',
-                                    message: `${s.name} 학생의 '${ss.product?.name}' 적금이 ${dDay === 0 ? '오늘' : '내일'} 만기입니다.`,
-                                    date: new Date()
-                                });
-                            }
-                        });
-
                     } else {
                         activityMap[s.userId] = 0;
                     }
@@ -462,26 +574,31 @@ const DashboardView: React.FC<{ students: (User & { account: Account | null })[]
 
     return (
         <div className="space-y-6">
-             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div onClick={() => { setVisibleHistoryModalTxns(10); setShowHistoryModal(true); }} className="bg-[#2B548F] text-white p-6 rounded-xl shadow-lg cursor-pointer hover:bg-[#234576] transition-colors relative overflow-hidden group">
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* 선생님 지갑 박스: 가로 2배 (md:col-span-2) */}
+                <div onClick={() => { setVisibleHistoryModalTxns(10); setShowHistoryModal(true); }} className="md:col-span-2 bg-[#2B548F] text-white p-8 rounded-xl shadow-lg cursor-pointer hover:bg-[#234576] transition-colors relative overflow-hidden group min-h-[160px] flex flex-col justify-center">
                     <div className="relative z-10">
                         <h3 className="font-medium text-blue-200 text-sm mb-1">{alias} 지갑 (국고)</h3>
-                        <p className="text-3xl font-bold">{teacherAccount?.balance.toLocaleString() ?? 0}{unit}</p>
-                        <p className="text-xs text-blue-200 mt-2 flex items-center">내역 보기 <span className="ml-1">→</span></p>
+                        <p className="text-5xl font-black">{teacherAccount?.balance.toLocaleString() ?? 0}{unit}</p>
+                        <p className="text-xs text-blue-200 mt-4 flex items-center">내역 보기 <span className="ml-1">→</span></p>
                     </div>
-                    <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white/10 rounded-full blur-xl group-hover:scale-110 transition-transform"></div>
+                    <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-white/10 rounded-full blur-xl group-hover:scale-110 transition-transform"></div>
                 </div>
-                <div className="bg-white p-6 rounded-xl shadow-sm">
-                    <h3 className="text-gray-500 font-medium text-sm">총 통화량 (학생)</h3>
-                    <p className="text-3xl font-bold text-indigo-600 mt-2">{totalAssets.toLocaleString()}{unit}</p>
-                </div>
-                 <div className="bg-white p-6 rounded-xl shadow-sm">
-                    <h3 className="text-gray-500 font-medium text-sm">평균 자산</h3>
-                    <p className="text-3xl font-bold text-green-600 mt-2">{avgAssets.toLocaleString()}{unit}</p>
-                </div>
-                 <div className="bg-white p-6 rounded-xl shadow-sm">
-                    <h3 className="text-gray-500 font-medium text-sm">등록 학생</h3>
-                    <p className="text-3xl font-bold text-gray-800 mt-2">{students.length}명</p>
+
+                {/* 우측 세로 배열 박스들 */}
+                <div className="flex flex-col gap-4">
+                    <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
+                        <h3 className="text-gray-500 font-bold text-sm">총 통화량</h3>
+                        <p className="text-xl font-black text-indigo-600">{totalAssets.toLocaleString()}{unit}</p>
+                    </div>
+                    <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
+                        <h3 className="text-gray-500 font-bold text-sm">평균 자산</h3>
+                        <p className="text-xl font-black text-green-600">{avgAssets.toLocaleString()}{unit}</p>
+                    </div>
+                    <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
+                        <h3 className="text-gray-500 font-bold text-sm">등록 학생</h3>
+                        <p className="text-xl font-black text-gray-800">{students.length}명</p>
+                    </div>
                 </div>
              </div>
 
@@ -601,7 +718,7 @@ const DashboardView: React.FC<{ students: (User & { account: Account | null })[]
 
              {showHistoryModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowHistoryModal(false)}>
-                    <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm md:max-w-4xl max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                    <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-sm md:max-w-4xl max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
                         <div className="flex justify-between items-center mb-4 border-b pb-3">
                             <h3 className="text-xl font-bold text-gray-800 flex items-center">
                                 <ManageIcon className="w-5 h-5 mr-2 text-[#2B548F]"/> {alias} 지갑 내역 (국고)
@@ -654,6 +771,7 @@ const DashboardView: React.FC<{ students: (User & { account: Account | null })[]
     );
 };
 
+// Fix: Correctly destructure 'refresh' prop from arguments to fix "Cannot find name 'refresh'" error.
 const StudentManagementView: React.FC<{ students: (User & { account: Account | null })[], refresh: () => void }> = ({ students, refresh }) => {
     const { currentUser } = useContext(AuthContext);
     const unit = currentUser?.currencyUnit || '권';
@@ -711,27 +829,35 @@ const StudentManagementView: React.FC<{ students: (User & { account: Account | n
                 <table className="w-full text-sm">
                     <thead className="bg-gray-50 border-b">
                         <tr>
-                            <th className="p-3 w-12"><input type="checkbox" onChange={e => setSelectedIds(e.target.checked ? students.map(s => s.userId) : [])} checked={selectedIds.length === students.length && students.length > 0} className="w-4 h-4 rounded border-gray-300" /></th>
+                            <th className="p-3 w-12 text-center"><input type="checkbox" onChange={e => setSelectedIds(e.target.checked ? students.map(s => s.userId) : [])} checked={selectedIds.length === students.length && students.length > 0} className="w-4 h-4 rounded border-gray-300" /></th>
                             <th className="p-3 text-left font-bold text-gray-500 uppercase tracking-wider">번호</th>
                             <th className="p-3 text-left font-bold text-gray-500 uppercase tracking-wider">이름</th>
+                            <th className="p-3 text-right font-bold text-gray-500 uppercase tracking-wider px-6">잔액</th>
                             <th className="p-3 text-left font-bold text-gray-500 uppercase tracking-wider">계좌번호</th>
-                            <th className="p-3 text-right font-bold text-gray-500 uppercase tracking-wider">잔액</th>
+                            <th className="p-3 text-center font-bold text-gray-500 uppercase tracking-wider pl-12">QR</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                         {students.map(s => (
                             <tr key={s.userId} className="hover:bg-blue-50/50 transition-colors">
                                 <td className="p-3 text-center"><input type="checkbox" checked={selectedIds.includes(s.userId)} onChange={() => toggleStudent(s.userId)} className="w-4 h-4 rounded border-gray-300" /></td>
-                                <td className="p-3 font-medium text-gray-600">{s.grade}-{s.class} {s.number}</td>
+                                <td className="p-3 font-medium text-gray-600">{s.number}</td>
                                 <td className="p-3 font-bold text-gray-900">{s.name}</td>
-                                <td className="p-3 font-mono text-xs text-gray-400">{s.account?.accountId.replace('권쌤은행 ', '') || '-'}</td>
-                                <td className="p-3 text-right">
-                                    <div className="flex items-center justify-end gap-2">
-                                        <span className="font-bold text-indigo-600">{s.account?.balance.toLocaleString() || 0}<span className="text-[10px] ml-0.5 font-normal text-gray-400">{unit}</span></span>
-                                        <button onClick={() => openSingleQr(s)} className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all" title="개별 QR 코드">
-                                            <QrCodeIcon className="w-4 h-4" />
-                                        </button>
-                                    </div>
+                                <td className="p-3 text-right px-6">
+                                    <span className="font-bold text-indigo-600">{(s.account?.balance || 0).toLocaleString()}<span className="text-[10px] ml-0.5 font-black text-black">{unit}</span></span>
+                                </td>
+                                <td className="p-3 font-mono text-xs text-gray-800 font-bold">
+                                    {s.account ? (
+                                        (s.account as any).accountId || 
+                                        (s.account as any).accountid || 
+                                        (s.account as any).id || 
+                                        '-'
+                                    ) : '-'}
+                                </td>
+                                <td className="p-3 text-center pl-12">
+                                    <button onClick={() => openSingleQr(s)} className="p-1.5 text-indigo-700 hover:bg-indigo-50 rounded-lg transition-all mx-auto" title="개별 QR 코드">
+                                        <QrCodeIcon className="w-5 h-5" />
+                                    </button>
                                 </td>
                             </tr>
                         ))}
@@ -753,6 +879,7 @@ const StudentManagementView: React.FC<{ students: (User & { account: Account | n
     );
 };
 
+// Fix: Correctly destructure 'refresh' prop from arguments to fix "Cannot find name 'refresh'" error.
 const JobManagementView: React.FC<{ refresh: () => void }> = ({ refresh }) => {
     const { currentUser } = useContext(AuthContext);
     const unit = currentUser?.currencyUnit || '권';
@@ -1023,54 +1150,152 @@ const FundManagementView: React.FC<{ students: User[] }> = ({ students }) => {
     const unit = currentUser?.currencyUnit || '권';
     const [funds, setFunds] = useState<Fund[]>([]);
     const [loading, setLoading] = useState(true);
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [selectedFundForInvestors, setSelectedFundForInvestors] = useState<Fund | null>(null);
+    const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+    const [fundToDelete, setFundToDelete] = useState<string | null>(null); // 삭제 확인용 상태 추가
 
     const fetchFunds = useCallback(async () => {
         setLoading(true);
         try {
             const data = await api.getFunds(currentUser?.userId || '');
             setFunds(data);
-        } catch (e) { console.error(e); }
-        finally { setLoading(false); }
+        } catch (e) { 
+            console.error(e); 
+        } finally { 
+            setLoading(false); 
+        }
     }, [currentUser?.userId]);
 
     useEffect(() => { fetchFunds(); }, [fetchFunds]);
 
     const handleSettle = async (fundId: string, status: FundStatus) => {
         try {
-            // Corrected settle_fund to settleFund
             await api.settleFund(fundId, status);
+            setMessage({ type: 'success', text: '펀드 정산이 완료되었습니다.' });
             fetchFunds();
-        } catch (e) {
-            console.error(e);
+        } catch (e: any) {
+            setMessage({ type: 'error', text: e.message });
+        }
+    };
+
+    const handleDeleteClick = (e: React.MouseEvent, fundId: string) => {
+        e.stopPropagation(); // 카드 클릭 방지
+        setFundToDelete(fundId); // 브라우저 confirm 대신 커스텀 모달용 상태 업데이트
+    };
+
+    const confirmDelete = async () => {
+        if (!fundToDelete) return;
+        try {
+            await api.deleteFund(fundToDelete);
+            setMessage({ type: 'success', text: '삭제되었습니다.' });
+            fetchFunds();
+        } catch (e: any) {
+            setMessage({ type: 'error', text: e.message });
+        } finally {
+            setFundToDelete(null);
         }
     };
 
     return (
-        <div className="space-y-4">
-            <h2 className="text-2xl font-bold text-gray-800">펀드 관리</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {funds.map(f => (
-                    <div key={f.id} className="bg-white p-5 rounded-xl shadow-sm border">
-                        <div className="flex justify-between items-start mb-2">
-                            <h3 className="font-bold text-lg">{f.name}</h3>
-                            <span className={`text-xs px-2 py-1 rounded font-bold ${f.status === FundStatus.RECRUITING ? 'bg-blue-100 text-blue-700' : f.status === FundStatus.ONGOING ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
-                                {f.status}
-                            </span>
-                        </div>
-                        <p className="text-sm text-gray-600 mb-4">{f.description}</p>
-                        <div className="grid grid-cols-2 gap-4 text-xs mb-4">
-                            <div><span className="text-gray-400">목표액:</span> <span className="font-bold">{f.targetAmount.toLocaleString()}{unit}</span></div>
-                            <div><span className="text-gray-400">모금액:</span> <span className="font-bold">{f.totalInvestedAmount?.toLocaleString()}{unit}</span></div>
-                        </div>
-                        {f.status === FundStatus.ONGOING && (
-                            <div className="flex gap-2">
-                                <button onClick={() => handleSettle(f.id, FundStatus.SUCCESS)} className="flex-1 py-2 bg-green-600 text-white rounded-lg text-xs font-bold">성공 정산</button>
-                                <button onClick={() => handleSettle(f.id, FundStatus.FAIL)} className="flex-1 py-2 bg-red-600 text-white rounded-lg text-xs font-bold">실패 정산</button>
-                            </div>
-                        )}
-                    </div>
-                ))}
+        <div className="h-full flex flex-col">
+            <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-bold text-gray-800">펀드 관리</h2>
+                <button onClick={() => setShowAddModal(true)} className="px-3 py-2 bg-[#2B548F] text-white rounded-lg text-sm font-bold shadow hover:bg-[#234576] transition-all">
+                    + 펀드 등록
+                </button>
             </div>
+            
+            {loading ? (
+                <div className="flex items-center justify-center py-20">
+                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#2B548F]"></div>
+                </div>
+            ) : funds.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 overflow-y-auto">
+                    {funds.map(f => {
+                        // DB에서 가져온 creatorName이 없을 경우, 현재 로드된 학생 목록(students)에서 이름을 한 번 더 찾음
+                        const creator = students.find(s => s.userId === f.creatorId);
+                        const applicantName = f.creatorName || creator?.name || f.creatorId?.slice(0, 8);
+
+                        return (
+                            <div key={f.id} onClick={() => setSelectedFundForInvestors(f)} className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex flex-col cursor-pointer hover:border-indigo-300 hover:shadow-md transition-all">
+                                <div className="flex justify-between items-start mb-2">
+                                    <div>
+                                        <h3 className="font-black text-lg text-black">{f.name}</h3>
+                                        <p className="text-[10px] text-indigo-700 font-black">신청자: {applicantName}</p>
+                                    </div>
+                                    <div className="flex gap-1">
+                                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-black ${f.status === FundStatus.RECRUITING ? 'bg-blue-100 text-blue-700' : f.status === FundStatus.ONGOING ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
+                                            {f.status}
+                                        </span>
+                                        <button onClick={(e) => handleDeleteClick(e, f.id)} className="text-gray-400 hover:text-red-500 p-1"><XIcon className="w-4 h-4"/></button>
+                                    </div>
+                                </div>
+                                <p className="text-xs text-gray-900 font-bold mb-3 line-clamp-2 min-h-[2.5rem]">{f.description}</p>
+                                <div className="bg-gray-50 p-3 rounded-lg text-xs mb-4 space-y-2">
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-900 font-black">목표 / 모집액</span>
+                                        <span className="font-black text-black">{(f.targetAmount || 0).toLocaleString()}{unit} / <span className="text-indigo-700">{(f.totalInvestedAmount || 0).toLocaleString()}{unit}</span></span>
+                                    </div>
+                                    <div className="flex justify-between border-t border-gray-200 pt-2 mt-1">
+                                        <span className="text-gray-900 font-black">기본 배당금</span>
+                                        <span className="font-black text-blue-700">{(f.baseReward || 0).toLocaleString()}{unit}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-900 font-black">추가 인센티브</span>
+                                        <span className="font-black text-indigo-700">+{(f.incentiveReward || 0).toLocaleString()}{unit}</span>
+                                    </div>
+                                    <div className="w-full bg-gray-200 h-1.5 rounded-full mt-2">
+                                        <div 
+                                            className="bg-indigo-600 h-1.5 rounded-full" 
+                                            style={{ width: `${Math.min(100, ((f.totalInvestedAmount || 0) / (f.targetAmount || 1)) * 100)}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
+                                
+                                <div className="mt-auto space-y-2" onClick={e => e.stopPropagation()}>
+                                    <div className="flex justify-between text-[10px] text-gray-800 font-black mb-1 px-1">
+                                        <span>투자: {f.investorCount || 0}명</span>
+                                        <span>만기: {f.maturityDate ? new Date(f.maturityDate).toLocaleDateString() : '-'}</span>
+                                    </div>
+                                    {f.status === FundStatus.ONGOING && (
+                                        <div className="grid grid-cols-3 gap-1">
+                                            <button onClick={() => handleSettle(f.id, FundStatus.FAIL)} className="py-2 bg-red-500 text-white rounded-lg text-[10px] font-bold hover:bg-red-600 transition-colors">실패</button>
+                                            <button onClick={() => handleSettle(f.id, FundStatus.SUCCESS)} className="py-2 bg-green-500 text-white rounded-lg text-[10px] font-bold hover:bg-green-600 transition-colors">성공</button>
+                                            <button onClick={() => handleSettle(f.id, FundStatus.EXCEED)} className="py-2 bg-indigo-600 text-white rounded-lg text-[10px] font-bold hover:bg-indigo-700 transition-colors">인센티브</button>
+                                        </div>
+                                    )}
+                                    {f.status === FundStatus.RECRUITING && (
+                                        <button disabled className="w-full py-2 bg-gray-100 text-gray-400 rounded-lg text-xs font-bold">모집 중...</button>
+                                    )}
+                                    {f.status !== FundStatus.RECRUITING && f.status !== FundStatus.ONGOING && (
+                                        <div className="w-full py-2 bg-gray-100 text-gray-800 text-center rounded-lg text-[10px] font-black">정산됨: {f.status}</div>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            ) : (
+                <div className="bg-white p-16 rounded-xl border-2 border-dashed border-gray-100 text-center">
+                    <NewFundIcon className="w-16 h-16 mx-auto mb-4 opacity-20" />
+                    <p className="text-gray-400 font-medium">등록된 펀드 상품이 없습니다.</p>
+                    <p className="text-gray-300 text-xs mt-1">상단의 '+ 펀드 등록' 버튼을 눌러 상품을 추가하세요.</p>
+                </div>
+            )}
+
+            {showAddModal && <AddFundModal students={students} onClose={() => setShowAddModal(false)} onComplete={fetchFunds} />}
+            {selectedFundForInvestors && <FundInvestorsModal fund={selectedFundForInvestors} onClose={() => setSelectedFundForInvestors(null)} />}
+            {message && <MessageModal isOpen={true} type={message.type} message={message.text} onClose={() => setMessage(null)} />}
+            <ConfirmModal 
+                isOpen={!!fundToDelete}
+                title="펀드 삭제"
+                message="이 펀드를 삭제하시겠습니까? 투자 기록이 모두 사라집니다."
+                onConfirm={confirmDelete}
+                onCancel={() => setFundToDelete(null)}
+                confirmText="삭제하기"
+                isDangerous
+            />
         </div>
     );
 };
@@ -1084,13 +1309,27 @@ const TeacherDashboard: React.FC<{ onBackToMenu?: () => void }> = ({ onBackToMen
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
+            // 학생 유저 목록 가져오기
             const users = await api.getUsersByRole(Role.STUDENT, currentUser?.userId || '');
+            
+            // 각 유저의 계좌 정보를 순차적으로 혹은 병렬로 가져오되, 에러 발생 시 개별 학생 데이터는 유지
             const usersWithAccounts = await Promise.all(
-                users.map(async u => ({ ...u, account: await api.getStudentAccountByUserId(u.userId) }))
+                users.map(async u => {
+                    try {
+                        const account = await api.getStudentAccountByUserId(u.userId);
+                        return { ...u, account };
+                    } catch (err) {
+                        console.warn(`학생(${u.name}) 계좌 조회 실패:`, err);
+                        return { ...u, account: null }; // 계좌 조회가 실패해도 유저는 리스트에 포함
+                    }
+                })
             );
+            
             usersWithAccounts.sort((a,b) => (a.number || 0) - (b.number || 0));
             setStudents(usersWithAccounts);
-        } catch (error) { console.error(error); }
+        } catch (error) { 
+            console.error("데이터 로딩 중 치명적 오류:", error); 
+        }
         finally { setLoading(false); }
     }, [currentUser?.userId]);
 

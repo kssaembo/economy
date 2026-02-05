@@ -79,6 +79,7 @@ const BankerPage: React.FC<{ onBackToMenu?: () => void }> = ({ onBackToMenu }) =
 // --- Deposit/Withdraw View ---
 const DepositWithdrawView: React.FC = () => {
     const { currentUser } = useContext(AuthContext);
+    const unit = currentUser?.currencyUnit || '권';
     const [students, setStudents] = useState<(User & { account: Account | null})[]>([]);
     const [selectedStudent, setSelectedStudent] = useState<(User & { account: Account | null}) | null>(null);
     const [mode, setMode] = useState<'deposit' | 'withdraw' | null>(null);
@@ -130,13 +131,13 @@ const DepositWithdrawView: React.FC = () => {
                 </table>
             </div>
             {selectedStudent && mode && (
-                <TransactionModal student={selectedStudent} mode={mode} onClose={() => { setSelectedStudent(null); setMode(null); }} onComplete={handleTxnComplete} />
+                <TransactionModal student={selectedStudent} mode={mode} onClose={() => { setSelectedStudent(null); setMode(null); }} onComplete={handleTxnComplete} unit={unit} />
             )}
         </div>
     )
 };
 
-const TransactionModal: React.FC<{ student: User & { account: Account | null }, mode: 'deposit' | 'withdraw', onClose: () => void, onComplete: () => void }> = ({ student, mode, onClose, onComplete }) => {
+const TransactionModal: React.FC<{ student: User & { account: Account | null }, mode: 'deposit' | 'withdraw', onClose: () => void, onComplete: () => void, unit: string }> = ({ student, mode, onClose, onComplete, unit }) => {
     const [amount, setAmount] = useState('');
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<{ type: 'success' | 'error', text: string } | null>(null);
@@ -168,7 +169,7 @@ const TransactionModal: React.FC<{ student: User & { account: Account | null }, 
                     <h3 className="text-xl font-bold">{student.name} 학생 {mode === 'deposit' ? '입금' : '출금'}</h3>
                     <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200"><XIcon className="w-6 h-6 text-gray-600" /></button>
                 </div>
-                 <p className="mb-4">현재 잔액: <span className="font-bold">{student.account?.balance.toLocaleString() ?? 0}권</span></p>
+                 <p className="mb-4">현재 잔액: <span className="font-bold">{(student.account?.balance.toLocaleString() ?? 0)}{unit}</span></p>
                 <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="금액" className="w-full p-3 border rounded-lg"/>
                 <button onClick={handleSubmit} disabled={loading} className="mt-6 w-full p-3 bg-indigo-600 text-white font-bold rounded-lg disabled:bg-gray-400">
                     {loading ? '처리 중...' : '실행'}
@@ -187,6 +188,7 @@ const TransactionModal: React.FC<{ student: User & { account: Account | null }, 
 // --- Stock Exchange View ---
 const StockExchangeView: React.FC = () => {
     const { currentUser } = useContext(AuthContext);
+    const unit = currentUser?.currencyUnit || '권';
     const [stocks, setStocks] = useState<StockProductWithDetails[]>([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState<'add' | 'price' | 'delete' | 'holders' | 'volatility' | null>(null);
@@ -202,14 +204,15 @@ const StockExchangeView: React.FC = () => {
     const fetchStocks = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await api.getStockProducts(currentUser?.userId || '');
+            const teacherId = currentUser?.role === Role.TEACHER ? currentUser.userId : currentUser?.teacher_id;
+            const data = await api.getStockProducts(teacherId || '');
             setStocks(data);
         } catch (error) {
             console.error("Failed to fetch stocks", error);
         } finally {
             setLoading(false);
         }
-    }, [currentUser?.userId]);
+    }, [currentUser]);
 
     useEffect(() => {
         fetchStocks();
@@ -284,13 +287,13 @@ const StockExchangeView: React.FC = () => {
                                         {s.name}
                                         {expandedStockId === s.id ? <ArrowUpIcon className="w-3 h-3 ml-1 text-gray-400"/> : <ArrowDownIcon className="w-3 h-3 ml-1 text-gray-400"/>}
                                     </td>
-                                    <td className="p-3 text-right font-mono">{s.currentPrice.toLocaleString()}권</td>
+                                    <td className="p-3 text-right font-mono">{s.currentPrice.toLocaleString()}{unit}</td>
                                     <td className="p-3 text-right font-mono">
                                          <button onClick={() => handleOpenHoldersModal(s)} className="hover:underline" disabled={s.totalQuantity === 0}>
                                             {s.totalQuantity.toLocaleString()}주
                                         </button>
                                     </td>
-                                    <td className="p-3 text-right font-mono">{s.valuation.toLocaleString()}권</td>
+                                    <td className="p-3 text-right font-mono">{s.valuation.toLocaleString()}{unit}</td>
                                     <td className="p-3 text-center">
                                         <button onClick={() => { setSelectedStock(s); setShowModal('price'); }} className="px-3 py-1 bg-gray-200 text-gray-800 text-[8px] font-semibold rounded-md hover:bg-gray-300 whitespace-nowrap">입력</button>
                                     </td>
@@ -308,7 +311,7 @@ const StockExchangeView: React.FC = () => {
                                                             <YAxis domain={['auto', 'auto']} />
                                                             <Tooltip 
                                                                 labelFormatter={(label) => new Date(label).toLocaleString()}
-                                                                formatter={(value: number) => [`${value.toLocaleString()}권`, '가격']}
+                                                                formatter={(value: number) => [`${value.toLocaleString()}${unit}`, '가격']}
                                                             />
                                                             <Line type="monotone" dataKey="price" stroke="#4F46E5" strokeWidth={2} dot={false} />
                                                         </LineChart>
@@ -335,25 +338,32 @@ const StockExchangeView: React.FC = () => {
 };
 
 const AddStockModal: React.FC<{onClose: ()=>void, onComplete: ()=>void}> = ({onClose, onComplete}) => {
+    const { currentUser } = useContext(AuthContext);
     const [name, setName] = useState('');
     const [price, setPrice] = useState('');
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<{type: 'success'|'error', text: string} | null>(null);
 
     const handleSubmit = async () => {
-        if(!name || !price) { setResult({type: 'error', text: '모든 항목을 입력하세요'}); return; }
+        if(!name || !price || !currentUser) { setResult({type: 'error', text: '모든 항목을 입력하세요'}); return; }
         setLoading(true);
         try {
-            const message = await api.addStockProduct(name, parseInt(price));
+            const teacherId = currentUser.role === Role.TEACHER ? currentUser.userId : currentUser.teacher_id;
+            if (!teacherId) throw new Error("선생님 정보를 찾을 수 없습니다.");
+
+            const message = await api.addStockProduct(name, parseInt(price), teacherId);
             setResult({type: 'success', text: message});
             setTimeout(() => { onComplete(); onClose(); }, 1500);
-        } catch(err: any) { setResult({type: 'error', text: err.message}); }
-        finally { setLoading(false); }
+        } catch(err: any) { 
+            setResult({type: 'error', text: err.message}); 
+        } finally { 
+            setLoading(false); 
+        }
     };
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl p-6 max-w-sm">
+            <div className="bg-white rounded-xl shadow-2xl p-6 max-sm">
                 <h3 className="text-xl font-bold mb-4">새 주식 종목 추가</h3>
                 <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="종목명" className="w-full p-3 border rounded-lg mb-2"/>
                 <input type="number" value={price} onChange={e => setPrice(e.target.value)} placeholder="초기 가격" className="w-full p-3 border rounded-lg"/>
@@ -382,7 +392,7 @@ const UpdatePriceModal: React.FC<{stock: StockProduct, onClose: ()=>void, onComp
     
     return (
          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl p-6 max-w-sm">
+            <div className="bg-white rounded-xl shadow-2xl p-6 max-sm">
                 <h3 className="text-xl font-bold mb-4">{stock.name} 가격 변경</h3>
                 <input type="number" value={price} onChange={e => setPrice(e.target.value)} placeholder="새로운 가격" className="w-full p-3 border rounded-lg"/>
                 <button onClick={handleSubmit} disabled={loading} className="mt-4 w-full p-3 bg-indigo-600 text-white font-bold rounded-lg">변경하기</button>
@@ -454,7 +464,6 @@ const StockHoldersModal: React.FC<{ stock: StockProductWithDetails, onClose: () 
 };
 
 const VolatilityModal: React.FC<{ stocks: StockProduct[], onClose: () => void, onComplete: () => void }> = ({ stocks, onClose, onComplete }) => {
-    // Map stockId -> volatility value
     const [volatilities, setVolatilities] = useState<Record<string, number>>({});
     const [loading, setLoading] = useState(false);
     const [successMsg, setSuccessMsg] = useState('');
@@ -478,7 +487,7 @@ const VolatilityModal: React.FC<{ stocks: StockProduct[], onClose: () => void, o
             await api.updateStockVolatility(stockId, val);
             setSuccessMsg('저장됨');
             setTimeout(() => setSuccessMsg(''), 1000);
-            onComplete(); // refresh parent
+            onComplete();
         } catch (err: any) {
             alert('오류: ' + err.message);
         } finally {
@@ -497,7 +506,7 @@ const VolatilityModal: React.FC<{ stocks: StockProduct[], onClose: () => void, o
                 <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
                     {stocks.map(stock => {
                         const k = volatilities[stock.id] || 0.01;
-                        const feeRate = (10 * k) / (1 + 10 * k); // F = 10k / (1+10k)
+                        const feeRate = (10 * k) / (1 + 10 * k);
                         return (
                             <div key={stock.id} className="flex flex-col bg-gray-50 p-2 rounded">
                                 <div className="flex justify-between items-center mb-1">
@@ -532,6 +541,7 @@ const VolatilityModal: React.FC<{ stocks: StockProduct[], onClose: () => void, o
 // --- Savings Management View ---
 const SavingsManagementView: React.FC = () => {
     const { currentUser } = useContext(AuthContext);
+    const unit = currentUser?.currencyUnit || '권';
     const [products, setProducts] = useState<SavingsProduct[]>([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState<'add' | 'delete' | 'enrollees' | null>(null);
@@ -542,14 +552,15 @@ const SavingsManagementView: React.FC = () => {
     const fetchProducts = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await api.getSavingsProducts(currentUser?.userId || '');
+            const teacherId = currentUser?.role === Role.TEACHER ? currentUser.userId : currentUser?.teacher_id;
+            const data = await api.getSavingsProducts(teacherId || '');
             setProducts(data);
         } catch (error) {
             console.error("Failed to fetch savings products", error);
         } finally {
             setLoading(false);
         }
-    }, [currentUser?.userId]);
+    }, [currentUser]);
 
     useEffect(() => {
         fetchProducts();
@@ -557,6 +568,7 @@ const SavingsManagementView: React.FC = () => {
 
     const handleSelectForDelete = (productId: string) => {
         setProductsToDelete(prev => 
+            // Fix: Corrected 'id' to 'productId' to fix "Cannot find name 'id'" error on line 571.
             prev.includes(productId) ? prev.filter(id => id !== productId) : [...prev, productId]
         );
     };
@@ -577,7 +589,6 @@ const SavingsManagementView: React.FC = () => {
                         setShowModal('delete');
                     } else {
                         setDeleteMode(!deleteMode);
-                        // Fixed: Changed setStocksToDelete to setProductsToDelete
                         setProductsToDelete([]);
                     }
                 }} className="px-3 py-2 bg-red-600 text-white text-xs font-semibold rounded-lg shadow hover:bg-red-700">
@@ -608,14 +619,14 @@ const SavingsManagementView: React.FC = () => {
                 </table>
             </div>
             {showModal === 'add' && <AddSavingModal onClose={() => setShowModal(null)} onComplete={fetchProducts} />}
-            {/* Fixed: Changed setStocksToDelete to setProductsToDelete */}
             {showModal === 'delete' && <DeleteSavingModal productIds={productsToDelete} onClose={() => setShowModal(null)} onComplete={() => { fetchProducts(); setDeleteMode(false); setProductsToDelete([]); }}/>}
-            {showModal === 'enrollees' && selectedProduct && <SavingEnrolleesModal product={selectedProduct} onClose={() => setShowModal(null)} />}
+            {showModal === 'enrollees' && selectedProduct && <SavingEnrolleesModal product={selectedProduct} onClose={() => setShowModal(null)} unit={unit} />}
         </div>
     );
 };
 
 const AddSavingModal: React.FC<{onClose: ()=>void, onComplete: ()=>void}> = ({onClose, onComplete}) => {
+    const { currentUser } = useContext(AuthContext);
     const [product, setProduct] = useState({ name: '', maturityDays: 30, rate: 5, cancellationRate: 1, maxAmount: 10000 });
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<{type: 'success'|'error', text: string} | null>(null);
@@ -626,12 +637,17 @@ const AddSavingModal: React.FC<{onClose: ()=>void, onComplete: ()=>void}> = ({on
     }
 
     const handleSubmit = async () => {
+        if (!currentUser) return;
         setLoading(true);
         try {
+            const teacherId = currentUser.role === Role.TEACHER ? currentUser.userId : currentUser.teacher_id;
+            if (!teacherId) throw new Error("선생님 정보를 찾을 수 없습니다.");
+
             const payload = {
                 ...product,
                 rate: product.rate / 100,
                 cancellationRate: product.cancellationRate / 100,
+                teacher_id: teacherId,
             };
             const message = await api.addSavingsProduct(payload);
             setResult({type: 'success', text: message});
@@ -642,7 +658,7 @@ const AddSavingModal: React.FC<{onClose: ()=>void, onComplete: ()=>void}> = ({on
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md">
+            <div className="bg-white rounded-xl shadow-2xl p-6 max-md">
                 <h3 className="text-xl font-bold mb-4">새 적금 상품 추가</h3>
                 <div className="space-y-2 text-sm">
                     <label className="block font-medium text-gray-700">적금명
@@ -702,7 +718,7 @@ const DeleteSavingModal: React.FC<{productIds: string[], onClose: ()=>void, onCo
     )
 };
 
-const SavingEnrolleesModal: React.FC<{ product: SavingsProduct, onClose: () => void }> = ({ product, onClose }) => {
+const SavingEnrolleesModal: React.FC<{ product: SavingsProduct, onClose: () => void, unit: string }> = ({ product, onClose, unit }) => {
     const [enrollees, setEnrollees] = useState<{ studentName: string; amount: number; maturityDate: string }[]>([]);
 
     useEffect(() => {
@@ -727,13 +743,12 @@ const SavingEnrolleesModal: React.FC<{ product: SavingsProduct, onClose: () => v
                             <tbody>
                                 {enrollees.map(e => {
                                     const maturityTime = new Date(e.maturityDate).getTime();
-                                    // joinTime = maturityTime - duration
                                     const possibleTime = maturityTime - (product.maturityDays * 24 * 60 * 60 * 1000 / 3);
                                     
                                     return (
                                         <tr key={e.studentName} className="border-b">
                                             <td className="p-2">{e.studentName}</td>
-                                            <td className="p-2 text-right font-mono">{e.amount.toLocaleString()}권</td>
+                                            <td className="p-2 text-right font-mono">{e.amount.toLocaleString()}{unit}</td>
                                             <td className="p-2 text-right font-mono text-red-500 text-xs">{new Date(possibleTime).toLocaleDateString()}</td>
                                             <td className="p-2 text-right font-mono">{new Date(e.maturityDate).toLocaleDateString()}</td>
                                         </tr>
@@ -754,7 +769,6 @@ const SavingEnrolleesModal: React.FC<{ product: SavingsProduct, onClose: () => v
     );
 };
 
-// --- Common Components ---
 const NavButton: React.FC<{ label: string, Icon: React.FC<any>, active: boolean, onClick: () => void }> = ({ label, Icon, active, onClick }) => (
     <button onClick={onClick} className={`flex flex-col items-center justify-center w-full py-2 rounded-lg transition-colors ${active ? 'text-[#2B548F]' : 'text-gray-500 hover:bg-blue-50'}`}>
         <Icon className="w-6 h-6 mb-1" />
@@ -768,6 +782,5 @@ const DesktopNavButton: React.FC<{ label: string, Icon: React.FC<any>, active: b
         <span>{label}</span>
     </button>
 );
-
 
 export default BankerPage;
