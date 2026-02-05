@@ -1,4 +1,3 @@
-
 import { supabase } from './supabaseClient';
 import { Role, User, Account, StockProduct, StockProductWithDetails, StudentStock, SavingsProduct, StudentSaving, Job, TaxItemWithRecipients, StockHistory, Fund, FundInvestment, FundStatus } from '../types';
 
@@ -76,37 +75,47 @@ const injectCurrencyUnit = async (user: User | null): Promise<User | null> => {
     
     // 만약 학생인데 teacher_id가 없다면, DB에서 다시 한 번 조회를 시도함 (데이터 무결성 보완)
     if (!teacherId && user.role === Role.STUDENT) {
-        const { data: userData } = await supabase.from('users').select('teacher_id').eq('userId', user.userId).single();
-        if (userData?.teacher_id) {
-            teacherId = userData.teacher_id;
-            user.teacher_id = userData.teacher_id; // 객체 업데이트
+        try {
+            const { data: userData } = await supabase
+                .from('users')
+                .select('teacher_id')
+                .eq('userId', user.userId)
+                .maybeSingle();
+            
+            if (userData?.teacher_id) {
+                teacherId = userData.teacher_id;
+                user.teacher_id = userData.teacher_id;
+            }
+        } catch (err) {
+            console.error("Failed to fetch teacher_id for student:", err);
         }
     }
 
     if (teacherId) {
         try {
-            const { data, error } = await supabase
-                .from('teachers')
-                .select('currencyUnit, alias') // alias(교사별칭) 추가 조회
-                .eq('id', teacherId) 
-                .maybeSingle(); 
+            // [수정] 보안 강화를 위해 직접 테이블 조회 대신 RPC 보안 함수 사용
+            // teacherId를 명시적으로 string으로 변환하여 p_teacher_id 인자로 전달
+            const { data, error } = await supabase.rpc('get_teacher_public_info', { p_teacher_id: teacherId.toString() });
             
             if (error) {
-                console.error("Teacher info lookup error:", error);
+                console.error("Teacher info lookup error (via RPC):", error);
             }
             
-            if (data) {
-                user.currencyUnit = data.currencyUnit || '권';
-                user.teacherAlias = data.alias || '';
+            if (data && data.length > 0) {
+                const info = data[0];
+                // 성공적으로 가져온 경우 주입 (RPC 반환 컬럼명: currency_unit, teacher_alias)
+                user.currencyUnit = info.currency_unit || '권';
+                user.teacherAlias = info.teacher_alias || '';
             } else {
-                // 선생님 정보를 못 찾은 경우 기본값 설정
+                // 정보가 없는 경우 기본값
                 if (!user.currencyUnit) user.currencyUnit = '권';
             }
         } catch (err) {
-            console.error("Failed to inject teacher info:", err);
+            console.error("Exception during teacher info injection:", err);
             if (!user.currencyUnit) user.currencyUnit = '권';
         }
     } else {
+        // teacherId 자체가 없는 경우 (예: 독립 계정 등)
         if (!user.currencyUnit) user.currencyUnit = '권';
     }
     return user;
@@ -218,17 +227,15 @@ const getUsersByRole = async (role: Role, teacherId: string): Promise<User[]> =>
         const tid = teacherId || users[0].teacher_id;
         if (tid) {
             try {
-                const { data: tData } = await supabase
-                    .from('teachers')
-                    .select('currencyUnit, alias') // alias 추가
-                    .eq('id', tid) 
-                    .maybeSingle(); 
+                // [수정] 보안 강화를 위해 직접 테이블 조회 대신 RPC 보안 함수 사용
+                const { data: rpcData } = await supabase.rpc('get_teacher_public_info', { p_teacher_id: tid.toString() });
                 
-                if (tData) {
+                if (rpcData && rpcData.length > 0) {
+                    const tData = rpcData[0];
                     users = users.map(u => ({ 
                         ...u, 
-                        currencyUnit: tData.currencyUnit || u.currencyUnit || '권',
-                        teacherAlias: tData.alias || u.teacherAlias // 별칭 주입
+                        currencyUnit: tData.currency_unit || u.currencyUnit || '권',
+                        teacherAlias: tData.teacher_alias || u.teacherAlias // 별칭 주입
                     }));
                 }
             } catch (err) {
@@ -251,7 +258,7 @@ const loginWithPassword = async (grade: number, classNum: number, number: number
     if (error) throw new Error(error.message);
     if (!data.success) throw new Error(data.message);
     
-    // 주입된 사용자 객체에 화폐 단위 강제 확인
+    // 주입된 사용자 객체에 화폐 단위 강제 확인 및 주입
     const user = data.user as User;
     return injectCurrencyUnit(user);
 };
@@ -829,7 +836,7 @@ const createFund = async (fund: any): Promise<string> => {
         p_unit_price: fund.unitPrice,
         p_target_amount: fund.targetAmount,
         p_base_reward: fund.baseReward,
-        p_incentive_reward: fund.incentiveReward,
+        p_incentive_reward: fund.incentive_reward || fund.incentiveReward,
         p_recruitment_deadline: fund.recruitmentDeadline,
         p_maturity_date: fund.maturityDate
     });
@@ -858,7 +865,7 @@ const joinFund = async (userId: string, fundId: string, units: number): Promise<
 };
 
 const settleFund = async (fundId: string, resultStatus: FundStatus): Promise<string> => {
-    const { data, error } = await supabase.rpc('settle_fund', { p_fund_id: fundId.toString(), p_status: resultStatus });
+    const { data, error = null } = await supabase.rpc('settle_fund', { p_fund_id: fundId.toString(), p_status: resultStatus });
     handleSupabaseError(error, 'settleFund');
     return data.message;
 };

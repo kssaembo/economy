@@ -1,4 +1,3 @@
-
 /* ... existing sql comments ... */
 import { api } from '../services/api';
 import React, { useState, useContext, useEffect, useCallback, useMemo, useRef } from 'react';
@@ -780,6 +779,8 @@ const StudentManagementView: React.FC<{ students: (User & { account: Account | n
     const [showAddModal, setShowAddModal] = useState(false);
     const [showQrPrintModal, setShowQrPrintModal] = useState(false);
     const [qrStudents, setQrStudents] = useState<(User & { account: Account | null })[]>([]);
+    const [resetTarget, setResetTarget] = useState<User | null>(null);
+    const [showResetSuccess, setShowResetSuccess] = useState(false);
 
     const toggleStudent = (id: string) => {
         setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
@@ -793,6 +794,17 @@ const StudentManagementView: React.FC<{ students: (User & { account: Account | n
             refresh();
         } catch (e) {
             console.error(e);
+        }
+    };
+
+    const handleResetPassword = async () => {
+        if (!resetTarget) return;
+        try {
+            await api.resetPassword(resetTarget.userId);
+            setResetTarget(null);
+            setShowResetSuccess(true);
+        } catch (e: any) {
+            alert(e.message || '비밀번호 초기화 중 오류가 발생했습니다.');
         }
     };
 
@@ -834,7 +846,8 @@ const StudentManagementView: React.FC<{ students: (User & { account: Account | n
                             <th className="p-3 text-left font-bold text-gray-500 uppercase tracking-wider">이름</th>
                             <th className="p-3 text-right font-bold text-gray-500 uppercase tracking-wider px-6">잔액</th>
                             <th className="p-3 text-left font-bold text-gray-500 uppercase tracking-wider">계좌번호</th>
-                            <th className="p-3 text-center font-bold text-gray-500 uppercase tracking-wider pl-12">QR</th>
+                            <th className="p-3 text-center font-bold text-gray-500 uppercase tracking-wider">QR</th>
+                            <th className="p-3 text-center font-bold text-gray-500 uppercase tracking-wider">초기화</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
@@ -854,9 +867,14 @@ const StudentManagementView: React.FC<{ students: (User & { account: Account | n
                                         '-'
                                     ) : '-'}
                                 </td>
-                                <td className="p-3 text-center pl-12">
+                                <td className="p-3 text-center">
                                     <button onClick={() => openSingleQr(s)} className="p-1.5 text-indigo-700 hover:bg-indigo-50 rounded-lg transition-all mx-auto" title="개별 QR 코드">
                                         <QrCodeIcon className="w-5 h-5" />
+                                    </button>
+                                </td>
+                                <td className="p-3 text-center">
+                                    <button onClick={() => setResetTarget(s)} className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-[10px] font-bold hover:bg-gray-200 transition-colors" title="비밀번호 초기화">
+                                        초기화
                                     </button>
                                 </td>
                             </tr>
@@ -874,7 +892,32 @@ const StudentManagementView: React.FC<{ students: (User & { account: Account | n
             
             {showAddModal && <AddStudentModal onClose={() => setShowAddModal(false)} onComplete={refresh} />}
             {showQrPrintModal && <QrPrintModal students={qrStudents} onClose={() => setShowQrPrintModal(false)} />}
-            <ConfirmModal isOpen={confirmDelete} title="학생 삭제" message={selectedIds.length > 0 ? `선택한 ${selectedIds.length}명의 학생을 영구적으로 삭제하시겠습니까? 계좌 및 모든 기록이 사라지며 복구할 수 없습니다.` : "삭제할 학생을 먼저 선택해 주세요."} onConfirm={selectedIds.length > 0 ? handleDelete : () => setConfirmDelete(false)} onCancel={() => setConfirmDelete(false)} isDangerous={selectedIds.length > 0} confirmText={selectedIds.length > 0 ? "삭제하기" : "확인"} />
+            
+            <ConfirmModal 
+                isOpen={confirmDelete} 
+                title="학생 삭제" 
+                message={selectedIds.length > 0 ? `선택한 ${selectedIds.length}명의 학생을 영구적으로 삭제하시겠습니까? 계좌 및 모든 기록이 사라지며 복구할 수 없습니다.` : "삭제할 학생을 먼저 선택해 주세요."} 
+                onConfirm={selectedIds.length > 0 ? handleDelete : () => setConfirmDelete(false)} 
+                onCancel={() => setConfirmDelete(false)} 
+                isDangerous={selectedIds.length > 0} 
+                confirmText={selectedIds.length > 0 ? "삭제하기" : "확인"} 
+            />
+
+            <ConfirmModal 
+                isOpen={!!resetTarget} 
+                title="비밀번호 초기화" 
+                message={`'${resetTarget?.name}' 학생의 비밀번호를 초기화하시겠습니까?`} 
+                onConfirm={handleResetPassword} 
+                onCancel={() => setResetTarget(null)} 
+                confirmText="초기화하기" 
+            />
+
+            <MessageModal 
+                isOpen={showResetSuccess} 
+                type="success" 
+                message="초기 비밀번호 '1234'로 변경되었습니다." 
+                onClose={() => setShowResetSuccess(false)} 
+            />
         </div>
     );
 };

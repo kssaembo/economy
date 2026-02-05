@@ -330,7 +330,7 @@ const TransferView: React.FC<{ currentUser: User, account: Account, refreshAccou
             <button 
                 onClick={safeHandleTransfer} 
                 disabled={loading || !amount || (targetType === 'student' && !recipientInfo)} 
-                className="w-full mt-10 p-5 bg-indigo-600 text-white font-black rounded-2xl shadow-xl shadow-indigo-100 hover:bg-indigo-700 disabled:bg-gray-100 disabled:text-gray-400 disabled:shadow-none transition-all active:scale-95 text-lg"
+                className="w-full mt-10 p-5 bg-indigo-600 text-white font-black rounded-2xl shadow-xl shadow-indigo-100 hover:bg-indigo-700 disabled:bg-gray-100 disabled:text-gray-400 disabled:shadow-none transition-all active:scale-[0.98] text-lg"
             >
                 {loading ? '보내는 중...' : '송금하기'}
             </button>
@@ -433,8 +433,8 @@ const StockTransactionModal: React.FC<{
                     </div>
                 </div>
                 <div className="p-8 bg-white border-t border-gray-100 grid grid-cols-2 gap-4">
-                    <button onClick={() => setShowConfirm(false)} className="py-5 bg-gray-100 font-black rounded-3xl text-gray-600 active:scale-95 transition-all">취소</button>
-                    <button onClick={handleTrade} disabled={loading} className={`py-5 text-white font-black rounded-3xl shadow-xl transition-all active:scale-95 ${mode === 'buy' ? 'bg-red-600 shadow-red-100' : 'bg-blue-600 shadow-blue-100'}`}>
+                    <button onClick={() => setShowConfirm(false)} className="py-5 bg-gray-100 font-black rounded-3xl text-gray-600 active:scale-[0.98] transition-all">취소</button>
+                    <button onClick={handleTrade} disabled={loading} className={`py-5 text-white font-black rounded-3xl shadow-xl transition-all active:scale-[0.98] ${mode === 'buy' ? 'bg-red-600 shadow-red-100' : 'bg-blue-600 shadow-blue-100'}`}>
                         {loading ? '처리 중...' : '확정하기'}
                     </button>
                 </div>
@@ -457,7 +457,7 @@ const StockTransactionModal: React.FC<{
                 <div className="text-4xl font-black mb-12 text-gray-900">{stock.currentPrice.toLocaleString()}{unit}</div>
                 
                 <div className="flex items-center gap-8 mb-12">
-                    <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-14 h-14 rounded-2xl bg-gray-50 flex items-center justify-center hover:bg-gray-100 active:scale-90 transition-all"><MinusIcon className="w-7 h-7 text-gray-600"/></button>
+                    <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-14 h-14 rounded-2xl bg-gray-50 flex items-center justify-center hover:bg-gray-100 active:scale-[0.9] transition-all"><MinusIcon className="w-7 h-7 text-gray-600"/></button>
                     <div className="relative">
                         <input 
                             type="number" 
@@ -467,7 +467,7 @@ const StockTransactionModal: React.FC<{
                         />
                         <span className="absolute -right-6 bottom-2 font-black text-gray-400">주</span>
                     </div>
-                    <button onClick={() => setQuantity(mode === 'sell' ? Math.min(ownedQuantity, quantity + 1) : quantity + 1)} className="w-14 h-14 rounded-2xl bg-indigo-50 flex items-center justify-center hover:bg-indigo-100 active:scale-90 transition-all"><PlusIcon className="w-7 h-7 text-indigo-600"/></button>
+                    <button onClick={() => setQuantity(mode === 'sell' ? Math.min(ownedQuantity, quantity + 1) : quantity + 1)} className="w-14 h-14 rounded-2xl bg-indigo-50 flex items-center justify-center hover:bg-indigo-100 active:scale-[0.9] transition-all"><PlusIcon className="w-7 h-7 text-indigo-600"/></button>
                 </div>
 
                 <div className="w-full max-w-sm space-y-4">
@@ -512,7 +512,7 @@ const StockTransactionModal: React.FC<{
                         setShowConfirm(true);
                     }} 
                     disabled={mode === 'sell' && (ownedQuantity <= 0 || quantity > ownedQuantity)}
-                    className="py-5 bg-black text-white font-black rounded-3xl hover:bg-gray-900 transition-all active:scale-95 disabled:bg-gray-200 disabled:text-gray-500"
+                    className="py-5 bg-black text-white font-black rounded-3xl hover:bg-gray-900 transition-all active:scale-[0.98] disabled:bg-gray-200 disabled:text-gray-500"
                 >
                     다음 단계
                 </button>
@@ -629,14 +629,14 @@ const StocksView: React.FC<{ currentUser: User, refreshAccount: () => void, show
                             <div className="grid grid-cols-2 gap-4 pt-4">
                                 <button 
                                     onClick={() => setSelectedStock({ ...selectedStock, mode: 'buy' })}
-                                    className="py-5 bg-red-50 text-red-700 font-black rounded-3xl hover:bg-red-100 transition-all active:scale-95 text-lg"
+                                    className="py-5 bg-red-50 text-red-700 font-black rounded-3xl hover:bg-red-100 transition-all active:scale-[0.98] text-lg"
                                 >
                                     주식 매수 (사기)
                                 </button>
                                 <button 
                                     onClick={() => setSelectedStock({ ...selectedStock, mode: 'sell' })}
                                     disabled={currentOwned === 0}
-                                    className="py-5 bg-blue-50 text-blue-700 font-black rounded-3xl hover:bg-blue-100 transition-all active:scale-95 text-lg disabled:opacity-50 disabled:bg-gray-50 disabled:text-gray-500"
+                                    className="py-5 bg-blue-50 text-blue-700 font-black rounded-3xl hover:bg-blue-100 transition-all active:scale-[0.98] text-lg disabled:opacity-50 disabled:bg-gray-50 disabled:text-gray-500"
                                 >
                                     주식 매도 (팔기)
                                 </button>
@@ -705,7 +705,7 @@ const JoinSavingsModal: React.FC<{
                                 alert(`최대 ${product.maxAmount.toLocaleString()}${unit}까지 가능합니다.`);
                             }
                         }} 
-                        className="py-4 bg-green-600 text-white font-black rounded-2xl shadow-xl shadow-green-100 hover:bg-green-700 transition-all active:scale-95"
+                        className="py-4 bg-green-600 text-white font-black rounded-2xl shadow-xl shadow-green-100 hover:bg-green-700 transition-all active:scale-[0.98]"
                     >
                         가입 완료
                     </button>
@@ -735,7 +735,7 @@ const JoinFundModal: React.FC<{
                 <p className="text-gray-700 text-sm font-bold mb-6">투자할 구좌 수를 선택하세요.<br/>(1구좌당 {fund.unitPrice.toLocaleString()}{unit})</p>
                 
                 <div className="flex items-center justify-center gap-6 mb-8">
-                    <button onClick={() => setUnits(Math.max(1, units - 1))} className="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center hover:bg-gray-100 active:scale-90 transition-all"><MinusIcon className="w-6 h-6 text-gray-700"/></button>
+                    <button onClick={() => setUnits(Math.max(1, units - 1))} className="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center hover:bg-gray-100 active:scale-[0.9] transition-all"><MinusIcon className="w-6 h-6 text-gray-700"/></button>
                     <div className="relative">
                         <input 
                             type="number" 
@@ -745,7 +745,7 @@ const JoinFundModal: React.FC<{
                         />
                         <span className="absolute -right-6 bottom-1 font-black text-gray-500">좌</span>
                     </div>
-                    <button onClick={() => setUnits(units + 1)} className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center hover:bg-indigo-100 active:scale-90 transition-all"><PlusIcon className="w-6 h-6 text-indigo-700"/></button>
+                    <button onClick={() => setUnits(units + 1)} className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center hover:bg-indigo-100 active:scale-[0.9] transition-all"><PlusIcon className="w-6 h-6 text-indigo-700"/></button>
                 </div>
 
                 <div className="bg-gray-50 p-6 rounded-3xl mb-8 border border-gray-100">
@@ -757,7 +757,7 @@ const JoinFundModal: React.FC<{
                     <button onClick={onClose} className="py-4 bg-gray-100 text-gray-700 font-black rounded-2xl hover:bg-gray-200 transition-all">취소</button>
                     <button 
                         onClick={() => onJoin(units)} 
-                        className="py-4 bg-indigo-600 text-white font-black rounded-2xl shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95"
+                        className="py-4 bg-indigo-600 text-white font-black rounded-2xl shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-[0.98]"
                     >
                         투자 완료
                     </button>
@@ -996,7 +996,7 @@ const FundView: React.FC<{ currentUser: User, refreshAccount: () => void, showNo
                             <button 
                                 onClick={() => setSelectedFund(f)}
                                 disabled={f.status !== FundStatus.RECRUITING}
-                                className={`w-full py-5 rounded-[24px] font-black text-lg transition-all active:scale-95 ${f.status === FundStatus.RECRUITING ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-100' : 'bg-gray-100 text-gray-500'}`}
+                                className={`w-full py-5 rounded-[24px] font-black text-lg transition-all active:scale-[0.98] ${f.status === FundStatus.RECRUITING ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-100' : 'bg-gray-100 text-gray-500'}`}
                             >
                                 {f.status === FundStatus.RECRUITING ? '지금 투자하기' : '모집 종료'}
                             </button>
@@ -1069,6 +1069,7 @@ const StudentPage: React.FC<StudentPageProps> = ({ initialView, onBackToMenu }) 
 
     // 공통 화폐 단위 결정 (효과적 사용자 객체 또는 현재 사용자 객체에서 참조)
     const effectiveUser = activeStudent || currentUser;
+    // 주입된 currencyUnit이 있는 경우 그것을 최우선으로 사용
     const currentUnit = effectiveUser?.currencyUnit || currentUser?.currencyUnit || '권';
 
     const renderView = () => {

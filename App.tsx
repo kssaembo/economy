@@ -161,12 +161,13 @@ const App: React.FC = () => {
         // Clear local storage
         localStorage.removeItem('class_bank_user_id');
         
-        // URL 업데이트 (404 에러 방지를 위해 replaceState 사용)
-        const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + (wasStudent ? '?mode=app' : '');
-        window.history.replaceState({}, '', newUrl);
+        // 404 방지를 위해 절대 주소를 기반으로 리다이렉트 (Vercel 환경 고려)
+        const baseUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+        const redirectUrl = wasStudent ? `${baseUrl}?mode=app` : baseUrl;
         
-        // 유저 상태 초기화 (AuthPage가 다시 마운트되면서 위에서 설정한 URL 파라미터를 읽음)
+        // 상태 초기화 후 페이지 이동
         setCurrentUser(null);
+        window.location.href = redirectUrl;
     },
   }), [currentUser]);
 

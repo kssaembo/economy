@@ -1,4 +1,3 @@
-
 import React, { useState, useContext, useEffect } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
@@ -267,7 +266,6 @@ const AuthPage: React.FC = () => {
                         </PrimaryButton>
                         <div className="flex justify-between items-center px-1">
                             <button onClick={() => { resetStates(); setMode('student-password-change'); }} className="text-xs font-bold text-gray-400 hover:text-indigo-600 transition-colors">비밀번호 변경</button>
-                            <button onClick={() => { resetStates(); setMode('login'); }} className="text-xs font-bold text-[#0066FF] hover:underline">선생님 페이지로</button>
                         </div>
                     </div>
                 </div>
