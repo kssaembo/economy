@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient';
-import { Role, User, Account, StockProduct, StockProductWithDetails, StudentStock, SavingsProduct, StudentSaving, Job, TaxItemWithRecipients, StockHistory, Fund, FundInvestment, FundStatus } from '../types';
+// Added missing FundInvestment import
+import { Role, User, Account, StockProduct, StockProductWithDetails, StudentStock, SavingsProduct, StudentSaving, Job, TaxItemWithRecipients, StockHistory, Fund, FundStatus, FundInvestment } from '../types';
 
 // Helper function to handle Supabase errors
 const handleSupabaseError = (error: any, context: string) => {
@@ -148,7 +149,9 @@ const loginTeacher = async (loginId: string, password: string): Promise<User | n
         p_password: password
     });
     handleSupabaseError(error, 'loginTeacher');
-    return injectCurrencyUnit(data);
+    // RPC가 SETOF(배열)를 반환하므로 첫 번째 요소를 사용함
+    const user = data && Array.isArray(data) ? data[0] : data;
+    return injectCurrencyUnit(user);
 };
 
 const requestRecoveryCode = async (loginId: string): Promise<boolean> => {
@@ -835,7 +838,7 @@ const createFund = async (fund: any): Promise<string> => {
         p_teacher_id: fund.teacherId.toString(),
         p_unit_price: fund.unitPrice,
         p_target_amount: fund.targetAmount,
-        p_base_reward: fund.baseReward,
+        p_base_reward: fund.base_reward || fund.baseReward,
         p_incentive_reward: fund.incentive_reward || fund.incentiveReward,
         p_recruitment_deadline: fund.recruitmentDeadline,
         p_maturity_date: fund.maturityDate
