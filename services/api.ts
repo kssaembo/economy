@@ -104,9 +104,10 @@ const injectCurrencyUnit = async (user: User | null): Promise<User | null> => {
             
             if (data && data.length > 0) {
                 const info = data[0];
-                // 성공적으로 가져온 경우 주입 (RPC 반환 컬럼명: currency_unit, teacher_alias)
+                // 성공적으로 가져온 경우 주입 (RPC 반환 컬럼명: currency_unit, teacher_alias, class_code)
                 user.currencyUnit = info.currency_unit || '권';
                 user.teacherAlias = info.teacher_alias || '';
+                user.classCode = info.class_code || '';
             } else {
                 // 정보가 없는 경우 기본값
                 if (!user.currencyUnit) user.currencyUnit = '권';
@@ -238,7 +239,8 @@ const getUsersByRole = async (role: Role, teacherId: string): Promise<User[]> =>
                     users = users.map(u => ({ 
                         ...u, 
                         currencyUnit: tData.currency_unit || u.currencyUnit || '권',
-                        teacherAlias: tData.teacher_alias || u.teacherAlias // 별칭 주입
+                        teacherAlias: tData.teacher_alias || u.teacherAlias, // 별칭 주입
+                        classCode: tData.class_code || u.classCode
                     }));
                 }
             } catch (err) {
@@ -250,8 +252,9 @@ const getUsersByRole = async (role: Role, teacherId: string): Promise<User[]> =>
     return users;
 };
 
-const loginWithPassword = async (grade: number, classNum: number, number: number, password: string): Promise<User | null> => {
+const loginWithPassword = async (classCode: string, grade: number, classNum: number, number: number, password: string): Promise<User | null> => {
     const { data, error } = await supabase.rpc('login_with_password', {
+        p_class_code: classCode,
         p_grade: grade,
         p_class: classNum,
         p_number: number,
@@ -386,7 +389,7 @@ const getTeacherAccount = async (): Promise<Account | null> => {
     const teacherId = user.role === Role.TEACHER ? user.userId : user.teacher_id;
     if (!teacherId) return null;
 
-    const { data, error } = await supabase
+    const { data, error = null } = await supabase
         .from('accounts')
         .select('*')
         .eq('userId', teacherId);
@@ -776,7 +779,7 @@ const createTax = async (name: string, amount: number, dueDate: string, studentI
 };
 
 const deleteTax = async (taxId: string): Promise<string> => {
-    const { error } = await supabase.rpc('delete_tax', { p_tax_id: taxId.toString() });
+    const { error = null } = await supabase.rpc('delete_tax', { p_tax_id: taxId.toString() });
     handleSupabaseError(error, 'deleteTax');
     return '세금 항목이 삭제되었습니다.';
 };

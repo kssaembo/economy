@@ -52,6 +52,7 @@ const AuthPage: React.FC = () => {
     const [recoveryConfirmChecked, setRecoveryConfirmChecked] = useState(false);
 
     // Student App State
+    const [classCode, setClassCode] = useState('');
     const [grade, setGrade] = useState('');
     const [cls, setCls] = useState('');
     const [num, setNum] = useState('');
@@ -112,14 +113,14 @@ const AuthPage: React.FC = () => {
     };
 
     const handleAppLogin = async () => {
-        if (!grade || !cls || !num || !appPassword) {
+        if (!classCode || !grade || !cls || !num || !appPassword) {
             setError('모든 정보를 입력해주세요.');
             return;
         }
         setLoading(true);
         setError('');
         try {
-            const user = await api.loginWithPassword(parseInt(grade), parseInt(cls), parseInt(num), appPassword);
+            const user = await api.loginWithPassword(classCode, parseInt(grade), parseInt(cls), parseInt(num), appPassword);
             if (user) {
                 login(user);
             }
@@ -131,7 +132,7 @@ const AuthPage: React.FC = () => {
     };
 
     const handleStudentPasswordChange = async () => {
-        if (!grade || !cls || !num || !appPassword || !newAppPassword) {
+        if (!classCode || !grade || !cls || !num || !appPassword || !newAppPassword) {
             setError('모든 정보를 입력해주세요.');
             return;
         }
@@ -139,7 +140,7 @@ const AuthPage: React.FC = () => {
         setError('');
         try {
             // 먼저 기존 정보로 로그인 시도하여 확인
-            const user = await api.loginWithPassword(parseInt(grade), parseInt(cls), parseInt(num), appPassword);
+            const user = await api.loginWithPassword(classCode, parseInt(grade), parseInt(cls), parseInt(num), appPassword);
             if (user) {
                 await api.changePassword(user.userId, appPassword, newAppPassword);
                 setSuccessMessage('비밀번호가 성공적으로 변경되었습니다. 다시 로그인해주세요.');
@@ -252,8 +253,18 @@ const AuthPage: React.FC = () => {
                 </div>
                 <div className="w-full max-w-[400px] bg-white p-10 rounded-[40px] shadow-[0_32px_64px_rgba(0,0,0,0.08)] border border-white">
                     <h2 className="text-2xl font-black mb-2 text-gray-900 text-center">학생 로그인</h2>
-                    <p className="text-gray-400 text-sm mb-8 text-center font-medium">본인의 학번과 비밀번호를 입력하세요.</p>
+                    <p className="text-gray-400 text-sm mb-8 text-center font-medium">학급 코드와 학번 정보를 입력하세요.</p>
                     <div className="space-y-4">
+                        <div className="relative">
+                            <InputField 
+                                type="text" 
+                                placeholder="학급 코드 (4자리 숫자)" 
+                                value={classCode} 
+                                maxLength={4}
+                                onChange={e => setClassCode(e.target.value.replace(/[^0-9]/g, ''))} 
+                                className="text-center font-black bg-blue-50/50 border-blue-100 text-[#0066FF] placeholder:text-blue-200"
+                            />
+                        </div>
                         <div className="grid grid-cols-3 gap-3">
                             <InputField type="number" placeholder="학년" value={grade} onChange={e => setGrade(e.target.value)} className="text-center font-bold" />
                             <InputField type="number" placeholder="반" value={cls} onChange={e => setCls(e.target.value)} className="text-center font-bold" />
@@ -282,8 +293,16 @@ const AuthPage: React.FC = () => {
                         <BackIcon className="w-5 h-5" /> 뒤로가기
                     </button>
                     <h2 className="text-2xl font-black mb-2 text-gray-900">비밀번호 변경</h2>
-                    <p className="text-gray-400 text-sm mb-8 font-medium">본인 확인 후 새 비밀번호를 설정합니다.</p>
+                    <p className="text-gray-400 text-sm mb-8 font-medium">학급 코드 및 본인 확인 후 비밀번호를 설정합니다.</p>
                     <div className="space-y-4">
+                        <InputField 
+                            type="text" 
+                            placeholder="학급 코드 (4자리)" 
+                            value={classCode} 
+                            maxLength={4}
+                            onChange={e => setClassCode(e.target.value.replace(/[^0-9]/g, ''))} 
+                            className="text-center font-black bg-blue-50/50 border-blue-100 text-[#0066FF]"
+                        />
                         <div className="grid grid-cols-3 gap-3">
                             <InputField type="number" placeholder="학년" value={grade} onChange={e => setGrade(e.target.value)} className="text-center font-bold" />
                             <InputField type="number" placeholder="반" value={cls} onChange={e => setCls(e.target.value)} className="text-center font-bold" />

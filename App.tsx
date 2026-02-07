@@ -157,16 +157,21 @@ const App: React.FC = () => {
         setCurrentUser(user);
     },
     logout: () => {
-        const wasStudent = currentUser?.role === Role.STUDENT;
-        // Clear local storage
+        // 현재 유저의 역할을 명확히 확인
+        const role = currentUser?.role;
+        const isStudent = role === Role.STUDENT || role === 'student';
+        
+        // 로컬 스토리지 비우기
         localStorage.removeItem('class_bank_user_id');
         
-        // 404 방지를 위해 절대 주소를 기반으로 리다이렉트 (Vercel 환경 고려)
-        const baseUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
-        const redirectUrl = wasStudent ? `${baseUrl}?mode=app` : baseUrl;
+        // 주소 깨짐 방지를 위해 상대 경로 기반으로 리다이렉트 주소 설정
+        // 학생인 경우 mode=app 파라미터를 붙여 학생 로그인 창이 뜨도록 함
+        const redirectUrl = isStudent ? "/?mode=app" : "/";
         
-        // 상태 초기화 후 페이지 이동
+        // 상태 초기화
         setCurrentUser(null);
+        
+        // 페이지 새로고침과 함께 리다이렉트
         window.location.href = redirectUrl;
     },
   }), [currentUser]);

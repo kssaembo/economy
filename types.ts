@@ -1,4 +1,3 @@
-
 export enum Role {
   TEACHER = 'teacher',
   STUDENT = 'student',
@@ -17,6 +16,7 @@ export interface User {
   teacher_id?: string; // Updated to match DB column
   teacherAlias?: string; // Match provided column name
   currencyUnit?: string;
+  classCode?: string; // Added for multi-tenant isolation
 }
 
 export interface TeacherAccount {
@@ -25,6 +25,7 @@ export interface TeacherAccount {
   alias: string;
   currencyUnit: string;
   recoveryCode: string;
+  classCode: string;
 }
 
 export interface Account {

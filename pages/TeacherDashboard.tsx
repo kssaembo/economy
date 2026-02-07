@@ -339,7 +339,7 @@ const AddFundModal: React.FC<{ students: User[], onClose: () => void, onComplete
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md flex flex-col max-h-[90vh]">
+            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-md flex flex-col max-h-[90vh]">
                 <h3 className="text-xl font-bold mb-4">새 펀드 상품 등록</h3>
                 <div className="space-y-3 overflow-y-auto pr-1">
                     <div>
@@ -1379,6 +1379,7 @@ const TeacherDashboard: React.FC<{ onBackToMenu?: () => void }> = ({ onBackToMen
     useEffect(() => { fetchData(); }, [fetchData]);
 
     const alias = currentUser?.teacherAlias || '교사 관리자';
+    const classCode = currentUser?.classCode || '----';
     const handleLogout = onBackToMenu || logout;
 
     const renderContent = () => {
@@ -1409,7 +1410,10 @@ const TeacherDashboard: React.FC<{ onBackToMenu?: () => void }> = ({ onBackToMen
             <aside className="hidden md:flex flex-col w-64 bg-white border-r p-4 shadow-sm z-10">
                 <div className="px-2 mb-8">
                     <h1 className="text-xl font-bold text-gray-800">{alias}</h1>
-                    <p className="text-sm text-gray-500">{currentUser?.name}</p>
+                    <div className="mt-1 flex items-center gap-2">
+                        <span className="text-[10px] font-black px-1.5 py-0.5 bg-blue-50 text-[#0066FF] rounded uppercase">Class Code</span>
+                        <span className="text-sm font-black text-[#0066FF] tracking-widest">{classCode}</span>
+                    </div>
                 </div>
                 <nav className="flex flex-col space-y-2 flex-grow">
                     <NavButton id="dashboard" label="대시보드" Icon={NewDashboardIcon} />
@@ -1424,7 +1428,10 @@ const TeacherDashboard: React.FC<{ onBackToMenu?: () => void }> = ({ onBackToMen
             </aside>
             <div className="flex-1 flex flex-col h-full overflow-hidden">
                 <header className="md:hidden bg-white p-4 border-b flex justify-between items-center shadow-sm z-10">
-                    <h1 className="text-lg font-bold text-gray-800">{alias}</h1>
+                    <div>
+                        <h1 className="text-lg font-bold text-gray-800">{alias}</h1>
+                        <p className="text-[10px] font-black text-[#0066FF]">코드: {classCode}</p>
+                    </div>
                     <button onClick={handleLogout} className="p-2 text-gray-600"><LogoutIcon className="w-6 h-6" /></button>
                 </header>
                 <main className="flex-grow p-4 md:p-8 overflow-y-auto bg-[#F3F4F6]">
