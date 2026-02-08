@@ -339,7 +339,7 @@ const AddFundModal: React.FC<{ students: User[], onClose: () => void, onComplete
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-md flex flex-col max-h-[90vh]">
+            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md flex flex-col max-h-[90vh]">
                 <h3 className="text-xl font-bold mb-4">새 펀드 상품 등록</h3>
                 <div className="space-y-3 overflow-y-auto pr-1">
                     <div>
@@ -390,6 +390,46 @@ const AddFundModal: React.FC<{ students: User[], onClose: () => void, onComplete
                     {loading ? '등록 중...' : '상품 등록하기'}
                 </button>
                 <button onClick={onClose} className="w-full py-2 mt-2 text-gray-500 font-medium">닫기</button>
+            </div>
+        </div>
+    );
+};
+
+const IssueCurrencyModal: React.FC<{ onClose: () => void, onComplete: () => void }> = ({ onClose, onComplete }) => {
+    const { currentUser } = useContext(AuthContext);
+    const [amount, setAmount] = useState('');
+    const [loading, setLoading] = useState(false);
+    const unit = currentUser?.currencyUnit || '권';
+
+    const handleSubmit = async () => {
+        if (!amount || parseInt(amount) <= 0 || !currentUser) return;
+        setLoading(true);
+        try {
+            await api.issueCurrency(currentUser.userId, parseInt(amount));
+            onComplete();
+            onClose();
+        } catch (e: any) {
+            alert(e.message || '발행 중 오류가 발생했습니다.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4">
+            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
+                <h3 className="text-xl font-bold mb-2">화폐 발행 (중앙은행)</h3>
+                <p className="text-xs text-gray-500 mb-6 leading-relaxed">입력한 금액만큼 무(無)에서 화폐를 생성하여<br/><span className="text-indigo-600 font-bold">국고 계좌</span>로 즉시 입금합니다.</p>
+                <div className="space-y-4">
+                    <div className="relative">
+                        <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0" className="w-full p-4 pr-12 border-2 border-indigo-100 rounded-xl outline-none focus:border-indigo-500 text-2xl font-black" />
+                        <span className="absolute right-4 top-5 font-bold text-gray-400">{unit}</span>
+                    </div>
+                    <button onClick={handleSubmit} disabled={loading || !amount} className="w-full py-4 bg-indigo-600 text-white font-black rounded-xl shadow-lg shadow-indigo-100 active:scale-95 transition-all disabled:bg-gray-300">
+                        {loading ? '발행 처리 중...' : '지금 발행하기'}
+                    </button>
+                    <button onClick={onClose} className="w-full py-2 text-gray-400 font-medium">취소</button>
+                </div>
             </div>
         </div>
     );
@@ -453,6 +493,7 @@ const DashboardView: React.FC<{ students: (User & { account: Account | null })[]
     const [teacherAccount, setTeacherAccount] = useState<Account | null>(null);
     const [teacherTransactions, setTeacherTransactions] = useState<Transaction[]>([]);
     const [showHistoryModal, setShowHistoryModal] = useState(false);
+    const [showIssueModal, setShowIssueModal] = useState(false); // 발행 모달 상태 추가
     const [visibleTeacherTxns, setVisibleTeacherTxns] = useState(5);
     const [visibleHistoryModalTxns, setVisibleHistoryModalTxns] = useState(10);
     const [activeTab, setActiveTab] = useState<'assets' | 'activity_up' | 'activity_down'>('assets');
@@ -464,21 +505,22 @@ const DashboardView: React.FC<{ students: (User & { account: Account | null })[]
     const alias = currentUser?.teacherAlias || '교사';
     const unit = currentUser?.currencyUnit || '권';
 
-    useEffect(() => {
-        const fetchTeacherData = async () => {
-            try {
-                const acc = await api.getTeacherAccount();
-                setTeacherAccount(acc);
-                if (acc) {
-                    const trans = await api.getTransactionsByAccountId(acc.accountId);
-                    setTeacherTransactions(trans);
-                }
-            } catch (err) {
-                console.error("Failed to fetch teacher account", err);
+    const fetchTeacherData = useCallback(async () => {
+        try {
+            const acc = await api.getTeacherAccount();
+            setTeacherAccount(acc);
+            if (acc) {
+                const trans = await api.getTransactionsByAccountId(acc.accountId);
+                setTeacherTransactions(trans);
             }
-        };
-        fetchTeacherData();
+        } catch (err) {
+            console.error("Failed to fetch teacher account", err);
+        }
     }, []);
+
+    useEffect(() => {
+        fetchTeacherData();
+    }, [fetchTeacherData]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -571,14 +613,28 @@ const DashboardView: React.FC<{ students: (User & { account: Account | null })[]
         return list;
     }, [students, activeTab, studentActivities]);
 
+    const handleIssueComplete = () => {
+        fetchTeacherData();
+    };
+
     return (
         <div className="space-y-6">
              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* 선생님 지갑 박스: 가로 2배 (md:col-span-2) */}
                 <div onClick={() => { setVisibleHistoryModalTxns(10); setShowHistoryModal(true); }} className="md:col-span-2 bg-[#2B548F] text-white p-8 rounded-xl shadow-lg cursor-pointer hover:bg-[#234576] transition-colors relative overflow-hidden group min-h-[160px] flex flex-col justify-center">
                     <div className="relative z-10">
-                        <h3 className="font-medium text-blue-200 text-sm mb-1">{alias} 지갑 (국고)</h3>
-                        <p className="text-5xl font-black">{teacherAccount?.balance.toLocaleString() ?? 0}{unit}</p>
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <h3 className="font-medium text-blue-200 text-sm mb-1">{alias} 지갑 (국고)</h3>
+                                <p className="text-5xl font-black">{teacherAccount?.balance.toLocaleString() ?? 0}{unit}</p>
+                            </div>
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); setShowIssueModal(true); }} 
+                                className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white font-bold rounded-lg border border-white/30 transition-all active:scale-95 text-xs flex items-center"
+                            >
+                                <PlusIcon className="w-4 h-4 mr-1" /> 발행
+                            </button>
+                        </div>
                         <p className="text-xs text-blue-200 mt-4 flex items-center">내역 보기 <span className="ml-1">→</span></p>
                     </div>
                     <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-white/10 rounded-full blur-xl group-hover:scale-110 transition-transform"></div>
@@ -766,6 +822,8 @@ const DashboardView: React.FC<{ students: (User & { account: Account | null })[]
                     </div>
                 </div>
              )}
+
+             {showIssueModal && <IssueCurrencyModal onClose={() => setShowIssueModal(false)} onComplete={handleIssueComplete} />}
         </div>
     );
 };
@@ -1395,13 +1453,13 @@ const TeacherDashboard: React.FC<{ onBackToMenu?: () => void }> = ({ onBackToMen
 
     const NavButton = ({ id, label, Icon }: { id: typeof view, label: string, Icon: React.FC<any> }) => (
         <button onClick={() => setView(id)} className={`w-full flex items-center p-3 text-sm font-semibold rounded-lg transition-colors ${view === id ? 'bg-[#2B548F] text-white' : 'text-gray-600 hover:bg-gray-100'}`}>
-            <Icon className="w-5 h-5 mr-3" /> {label}
+            <Icon className="w-10 h-10 mr-3" /> {label}
         </button>
     );
 
     const MobileNavButton = ({ id, label, Icon }: { id: typeof view, label: string, Icon: React.FC<any> }) => (
         <button onClick={() => setView(id)} className={`flex flex-col items-center justify-center w-full py-2 ${view === id ? 'text-[#2B548F]' : 'text-gray-400'}`}>
-            <Icon className="w-6 h-6 mb-1" /> <span className="text-[10px]">{label}</span>
+            <Icon className="w-12 h-12 mb-1" /> <span className="text-[10px]">{label}</span>
         </button>
     );
 
@@ -1423,7 +1481,7 @@ const TeacherDashboard: React.FC<{ onBackToMenu?: () => void }> = ({ onBackToMen
                     <NavButton id="funds" label="펀드 관리" Icon={NewFundIcon} />
                 </nav>
                 <button onClick={handleLogout} className="w-full flex items-center p-3 text-sm text-gray-600 rounded-lg hover:bg-gray-100 mt-auto">
-                    <LogoutIcon className="w-5 h-5 mr-3" /> {onBackToMenu ? '메뉴로' : '로그아웃'}
+                    <LogoutIcon className="w-10 h-10 mr-3" /> {onBackToMenu ? '메뉴로' : '로그아웃'}
                 </button>
             </aside>
             <div className="flex-1 flex flex-col h-full overflow-hidden">
@@ -1432,7 +1490,7 @@ const TeacherDashboard: React.FC<{ onBackToMenu?: () => void }> = ({ onBackToMen
                         <h1 className="text-lg font-bold text-gray-800">{alias}</h1>
                         <p className="text-[10px] font-black text-[#0066FF]">코드: {classCode}</p>
                     </div>
-                    <button onClick={handleLogout} className="p-2 text-gray-600"><LogoutIcon className="w-6 h-6" /></button>
+                    <button onClick={handleLogout} className="p-2 text-gray-600"><LogoutIcon className="w-12 h-12" /></button>
                 </header>
                 <main className="flex-grow p-4 md:p-8 overflow-y-auto bg-[#F3F4F6]">
                     {loading ? <div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2B548F]"></div></div> : renderContent()}

@@ -1160,7 +1160,7 @@ const StudentPage: React.FC<StudentPageProps> = ({ initialView, onBackToMenu }) 
 
             {notification && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-[200] p-4 animate-fadeIn" onClick={() => setNotification(null)}>
-                    <div className="bg-white rounded-[40px] p-10 max-sm w-full text-center shadow-2xl border border-white" onClick={e => e.stopPropagation()}>
+                    <div className="bg-white rounded-[40px] p-10 max-w-sm w-full text-center shadow-2xl border border-white" onClick={e => e.stopPropagation()}>
                         {notification.type === 'success' ? (
                             <div className="w-20 h-20 bg-green-50 rounded-[28px] flex items-center justify-center mx-auto mb-6"><CheckIcon className="w-10 h-10 text-green-600" /></div>
                         ) : (

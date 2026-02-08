@@ -2,7 +2,7 @@ import React, { useState, useContext, useEffect } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
 import { Role, User } from '../types';
-import { StudentIcon, MainAdminIcon, MainBankIcon, MainMartIcon, CheckIcon, ErrorIcon, BackIcon } from '../components/icons';
+import { StudentIcon, MainAdminIcon, MainBankIcon, MainMartIcon, CheckIcon, ErrorIcon, BackIcon, XIcon, NewspaperIcon } from '../components/icons';
 
 type AuthMode = 'login' | 'signup' | 'recovery' | 'recovery-reset' | 'student-login' | 'student-password-change';
 
@@ -23,6 +23,26 @@ const PrimaryButton = ({ children, ...props }: React.ButtonHTMLAttributes<HTMLBu
     </button>
 );
 
+const LegalModal: React.FC<{ title: string; content: React.ReactNode; isOpen: boolean; onClose: () => void }> = ({ title, content, isOpen, onClose }) => {
+    if (!isOpen) return null;
+    return (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[300] flex items-center justify-center p-4 animate-fadeIn">
+            <div className="bg-white rounded-[32px] w-full max-w-2xl max-h-[80vh] flex flex-col shadow-2xl overflow-hidden">
+                <div className="p-6 border-b flex justify-between items-center bg-gray-50">
+                    <h3 className="text-xl font-bold text-gray-900">{title}</h3>
+                    <button onClick={onClose} className="p-2 hover:bg-gray-200 rounded-full transition-colors"><XIcon className="w-6 h-6 text-gray-400" /></button>
+                </div>
+                <div className="p-8 overflow-y-auto text-sm text-gray-600 leading-relaxed font-medium">
+                    {content}
+                </div>
+                <div className="p-6 border-t text-center bg-gray-50">
+                    <button onClick={onClose} className="px-10 py-3.5 bg-gray-900 text-white rounded-2xl font-black hover:scale-105 active:scale-95 transition-all">닫기</button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const AuthPage: React.FC = () => {
     const { login } = useContext(AuthContext);
     
@@ -40,6 +60,9 @@ const AuthPage: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
+
+    // Modal State
+    const [modalState, setModalState] = useState<{ type: 'terms' | 'privacy' | 'guide' | null }>({ type: null });
 
     // Teacher Auth State
     const [teacherEmail, setTeacherEmail] = useState('');
@@ -65,6 +88,69 @@ const AuthPage: React.FC = () => {
             setMode('student-login');
         }
     }, [mode]);
+
+    const TERMS_CONTENT = (
+        <div className="whitespace-pre-wrap">
+            {`제 1 조 (목적)
+본 약관은 '클래스 뱅크'(이하 '서비스')가 제공하는 학급 경제 시뮬레이션 시스템의 이용 조건 및 절차에 관한 사항을 규정함을 목적으로 합니다.
+
+제 2 조 (가상 화폐 및 자산)
+1. 서비스 내에서 통용되는 모든 화폐, 주식, 펀드, 적금 등은 교육적 목적을 위한 가상 데이터입니다.
+2. 본 서비스의 가상 자산은 어떠한 경우에도 현실의 현금이나 재화로 교환될 수 없으며, 실제 금융 가치가 전혀 없음을 이용자는 인지합니다.
+
+제 3 조 (데이터 관리 및 책임)
+1. 교사 이용자는 담당 학급 학생들의 데이터를 관리할 권한과 책임을 가집니다.
+2. 이용자의 부주의로 인한 계정 정보 노출이나 데이터 오용에 대한 책임은 이용자 본인에게 있습니다.
+
+제 4 조 (서비스의 중단)
+시스템 점검, 서버 교체 또는 기타 기술적 결함으로 인해 서비스가 일시적으로 중단될 수 있으며, 이 경우 사전 공지 혹은 사후 통보가 이루어질 수 있습니다.`}
+        </div>
+    );
+
+    const PRIVACY_CONTENT = (
+        <div className="whitespace-pre-wrap">
+            {`클래스 뱅크 개인정보처리방침
+
+1. 개인정보 수집 항목
+- 교사: 이메일 주소, 별칭(선생님 이름), 가상 화폐 단위.
+- 학생: 이름, 학년, 반, 번호.
+
+2. 개인정보 수집 및 이용 목적
+수집된 정보는 서비스 내 학급 경제 시스템 운영, 회원 인증, 학급별 데이터 구분 및 서비스 제공의 목적으로만 사용됩니다.
+
+3. 개인정보의 보유 및 이용 기간
+이용자가 서비스 탈퇴를 요청하거나, 교사가 학급 데이터를 삭제하는 경우 수집된 개인정보는 지체 없이 파기됩니다.
+
+4. 개인정보의 보안 관리 (핵심 보안 사항)
+본 서비스는 이용자의 보안을 최우선으로 합니다.
+- 모든 이용자의 비밀번호는 일방향 해시 함수(bcrypt)를 사용하여 안전하게 암호화되어 저장됩니다.
+- 암호화된 비밀번호는 관리자를 포함한 그 누구도 원문을 복원할 수 없도록 설계되어 보호됩니다.`}
+        </div>
+    );
+
+    const GUIDE_CONTENT = (
+        <div className="space-y-6">
+            <section>
+                <h4 className="font-black text-indigo-600 text-lg mb-2">1. 시작하기 (교사)</h4>
+                <p className="text-gray-700">회원가입 후 발급되는 4자리 <b>학급 코드</b>를 학생들에게 공유하세요. 관리자 메뉴에서 학생 명부를 등록하면 시스템 준비가 끝납니다.</p>
+            </section>
+            <section>
+                <h4 className="font-black text-indigo-600 text-lg mb-2">2. 경제 시스템 구축</h4>
+                <p className="text-gray-700">직업을 생성하고 학생들을 배정하여 '월급 일괄 지급'으로 경제 흐름을 만드세요. 세금 고지를 통해 공공 자금을 환수할 수도 있습니다.</p>
+            </section>
+            <section>
+                <h4 className="font-black text-indigo-600 text-lg mb-2">3. 금융 및 투자 활동</h4>
+                <p className="text-gray-700">학생들은 주식, 펀드, 적금 상품을 통해 자산을 불려 나갈 수 있습니다. 은행원 모드를 통해 오프라인 거래를 지원하세요.</p>
+            </section>
+            <section>
+                <h4 className="font-black text-indigo-600 text-lg mb-2">4. 마트 POS기기</h4>
+                <p className="text-gray-700">마트 담당 학생은 마트 모드에 접속하여 실시간으로 물건 값을 결제 받고 판매 수익을 관리할 수 있습니다.</p>
+            </section>
+            <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100">
+                <p className="text-xs text-blue-700 font-bold leading-relaxed">💡 팁: 학생 로그인 시 QR 코드를 인쇄해 교실에 붙여두면 더욱 간편하게 접속할 수 있습니다.</p>
+            </div>
+        </div>
+    );
 
     const validatePassword = (pw: string) => {
         const regex = /^[a-z0-9]+$/;
@@ -395,8 +481,8 @@ const AuthPage: React.FC = () => {
     }
 
     return (
-        <div className="flex flex-col h-full bg-[#F2F4F7] items-center justify-center p-4 transition-all duration-700">
-            <div className="w-full max-w-[420px] text-center mb-6">
+        <div className="flex flex-col h-full bg-[#F2F4F7] items-center justify-center p-4 transition-all duration-700 overflow-y-auto">
+            <div className="w-full max-w-[420px] text-center mb-6 pt-10">
                 <div className="w-16 h-16 bg-[#0066FF] rounded-[20px] flex items-center justify-center mx-auto mb-4 shadow-[0_12px_24px_rgba(0,102,255,0.25)] border-2 border-white/20">
                     <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
@@ -428,8 +514,19 @@ const AuthPage: React.FC = () => {
             >
                 학생 로그인 페이지로 이동
             </button>
-            
-            <footer className="mt-10 text-center">
+
+            <footer className="mt-12 mb-10 text-center">
+                <div className="flex flex-wrap justify-center items-center gap-x-4 gap-y-2 mb-6">
+                    <button onClick={() => setModalState({ type: 'terms' })} className="text-[10px] font-bold text-gray-400 hover:text-gray-600 transition-colors underline underline-offset-2">이용약관</button>
+                    <button onClick={() => setModalState({ type: 'privacy' })} className="text-[10px] font-bold text-gray-400 hover:text-gray-600 transition-colors underline underline-offset-2">개인정보처리방침</button>
+                    <button 
+                        onClick={() => setModalState({ type: 'guide' })} 
+                        className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg font-black text-[10px] border border-indigo-100 hover:bg-indigo-100 transition-all flex items-center gap-1 shadow-sm"
+                    >
+                        <NewspaperIcon className="w-3 h-3" />
+                        사용 가이드
+                    </button>
+                </div>
                 <p className="text-[11px] text-gray-400 font-medium leading-relaxed mb-1">
                     제안이나 문의사항이 있으시면 언제든 메일 주세요.<br/>
                     <span className="text-gray-900 font-bold">Contact: sinjoppo@naver.com</span>
@@ -438,6 +535,10 @@ const AuthPage: React.FC = () => {
                     &copy; 2025 Class Bank Economy.
                 </p>
             </footer>
+
+            <LegalModal title="이용약관" content={TERMS_CONTENT} isOpen={modalState.type === 'terms'} onClose={() => setModalState({ type: null })} />
+            <LegalModal title="개인정보처리방침" content={PRIVACY_CONTENT} isOpen={modalState.type === 'privacy'} onClose={() => setModalState({ type: null })} />
+            <LegalModal title="클래스뱅크 사용 가이드" content={GUIDE_CONTENT} isOpen={modalState.type === 'guide'} onClose={() => setModalState({ type: null })} />
         </div>
     );
 };

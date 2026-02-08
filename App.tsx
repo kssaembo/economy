@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo, useEffect, useContext } from 'react';
 import AuthPage from './pages/AuthPage';
 // Fix: Use default import for TeacherDashboard to match the standard export pattern used in other page components
@@ -101,15 +102,6 @@ const AppContent: React.FC = () => {
 
       return (
           <div className="flex flex-col h-full relative">
-              {/* 다른 메뉴로 이동할 수 있는 홈 버튼 (선생님 전용) */}
-              <button 
-                  onClick={() => setTeacherActiveView(null)}
-                  className="fixed bottom-6 right-6 z-[60] w-14 h-14 bg-gray-900 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-90 transition-all border-4 border-white/20 backdrop-blur-md"
-                  title="메뉴로 돌아가기"
-              >
-                  <HomeIcon className="w-7 h-7" />
-              </button>
-              
               <div className="flex-1 h-full overflow-hidden">
                   {teacherActiveView === 'admin' && <TeacherDashboard onBackToMenu={() => setTeacherActiveView(null)} />}
                   {teacherActiveView === 'banker' && <BankerPage onBackToMenu={() => setTeacherActiveView(null)} />}
@@ -159,7 +151,10 @@ const App: React.FC = () => {
     logout: () => {
         // 현재 유저의 역할을 명확히 확인
         const role = currentUser?.role;
-        const isStudent = role === Role.STUDENT || role === 'student';
+        // Fix: Removed redundant string comparison ('student') to resolve TypeScript narrowing error.
+        // Role.STUDENT is already 'student', and the first part of the original comparison 
+        // narrowed the 'role' variable such that the second part was considered unreachable/unintentional.
+        const isStudent = role === Role.STUDENT;
         
         // 로컬 스토리지 비우기
         localStorage.removeItem('class_bank_user_id');

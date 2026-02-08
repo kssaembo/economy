@@ -1,3 +1,4 @@
+
 import { supabase } from './supabaseClient';
 // Added missing FundInvestment import
 import { Role, User, Account, StockProduct, StockProductWithDetails, StudentStock, SavingsProduct, StudentSaving, Job, TaxItemWithRecipients, StockHistory, Fund, FundStatus, FundInvestment } from '../types';
@@ -571,13 +572,13 @@ const getStockHistory = async (stockId: string): Promise<StockHistory[]> => {
 };
 
 const buyStock = async (userId: string, stockId: string, quantity: number): Promise<string> => {
-    const { error } = await supabase.rpc('buy_stock', { 
+    const { data, error } = await supabase.rpc('buy_stock', { 
         p_user_id: userId.toString(), 
         p_stock_id: stockId.toString(), 
         p_quantity: quantity 
     });
     handleSupabaseError(error, 'buyStock');
-    return '주식을 성공적으로 구매했습니다.';
+    return typeof data === 'string' ? data : '주식을 성공적으로 구매했습니다.';
 };
 
 const sellStock = async (userId: string, stockId: string, quantity: number): Promise<string> => {
@@ -689,7 +690,7 @@ const getSavingsEnrollees = async (productId: string): Promise<{ studentName: st
 };
 
 const getJobs = async (teacherId: string): Promise<Job[]> => {
-    const { data, error } = await supabase.rpc('get_jobs_with_details', { p_teacher_id: teacherId.toString() });
+    const { data, error = null } = await supabase.rpc('get_jobs_with_details', { p_teacher_id: teacherId.toString() });
     handleSupabaseError(error, 'getJobs');
     return data || [];
 };
@@ -895,6 +896,15 @@ const getFundInvestors = async (fundId: string): Promise<{ student_name: string,
     return data || [];
 };
 
+const issueCurrency = async (teacherId: string, amount: number): Promise<string> => {
+    const { data, error } = await supabase.rpc('issue_currency', {
+        p_teacher_id: teacherId,
+        p_amount: amount
+    });
+    handleSupabaseError(error, 'issueCurrency');
+    return data;
+};
+
 export const api = {
     login, signupTeacher, loginTeacher, requestRecoveryCode, verifyRecoveryCode, resetTeacherPassword, checkTeacherExists,
     loginWithPassword, verifyAdminPassword, changePassword, resetPassword, loginWithQrToken, getUsersByRole,
@@ -905,5 +915,5 @@ export const api = {
     joinSavings, cancelSavings, addSavingsProduct, deleteSavingsProducts, getSavingsEnrollees,
     getJobs, addJob, updateJob, deleteJob, manageJobAssignment, updateJobIncentive, payJobSalary, payAllSalaries,
     getTaxes, createTax, deleteTax, getMyUnpaidTaxes, payTax, getFunds, createFund, deleteFund, joinFund, settleFund, getMyFundInvestments,
-    getFundInvestors
+    getFundInvestors, issueCurrency
 };

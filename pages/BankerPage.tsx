@@ -1,4 +1,3 @@
-
 import React, { useState, useContext, useEffect, useCallback, useMemo } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
@@ -118,7 +117,7 @@ const DepositWithdrawView: React.FC = () => {
                             <tr key={s.userId} className="border-t">
                                 <td className="p-2">{s.grade}-{s.class} {s.number}</td>
                                 <td className="p-2 font-medium">{s.name}</td>
-                                <td className="p-2 font-mono text-xs">{s.account?.accountId.replace('권쌤은행 ', '')}</td>
+                                <td className="p-2 font-mono text-xs">{s.account?.accountId.split(' ').pop()}</td>
                                 <td className="p-2 text-center">
                                     <div className="flex justify-center gap-2">
                                         <button onClick={() => { setSelectedStudent(s); setMode('deposit'); }} className="px-4 py-2 bg-blue-500 text-white font-semibold rounded-md hover:bg-blue-600 text-base whitespace-nowrap">입금</button>
@@ -568,7 +567,6 @@ const SavingsManagementView: React.FC = () => {
 
     const handleSelectForDelete = (productId: string) => {
         setProductsToDelete(prev => 
-            // Fix: Corrected 'id' to 'productId' to fix "Cannot find name 'id'" error on line 571.
             prev.includes(productId) ? prev.filter(id => id !== productId) : [...prev, productId]
         );
     };
