@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
@@ -773,6 +772,7 @@ const SavingsView: React.FC<{ currentUser: User, refreshAccount: () => void, sho
     const [mySavings, setMySavings] = useState<StudentSaving[]>([]);
     const [selectedProduct, setSelectedProduct] = useState<SavingsProduct | null>(null);
     const [cancelTargetId, setCancelTargetId] = useState<string | null>(null);
+    const [maturityTargetId, setMaturityTargetId] = useState<string | null>(null);
 
     const fetchData = useCallback(async () => {
         const prodList = await api.getSavingsProducts(currentUser.teacher_id || '');
@@ -799,6 +799,17 @@ const SavingsView: React.FC<{ currentUser: User, refreshAccount: () => void, sho
         }
     };
 
+    const handleMaturitySettle = async () => {
+        if (!maturityTargetId) return;
+        try {
+            const msg = await api.processSavingsMaturity(currentUser.userId, maturityTargetId);
+            showNotification('success', msg);
+            setMaturityTargetId(null); fetchData(); refreshAccount();
+        } catch (e: any) {
+            showNotification('error', e.message);
+        }
+    };
+
     return (
         <div className="space-y-8">
             {mySavings.length > 0 && (
@@ -809,7 +820,8 @@ const SavingsView: React.FC<{ currentUser: User, refreshAccount: () => void, sho
                             const rate = s.product?.rate || 0;
                             const cancelRate = s.product?.cancellationRate || 0;
                             const maturityInterest = Math.floor(s.amount * rate);
-                            const cancelRefund = Math.floor(s.amount * cancelRate);
+                            // [수정] 중도 해지 환급액 표시 로직을 '원금 + 이자'로 수정
+                            const cancelRefund = Math.floor(s.amount + (s.amount * cancelRate));
                             
                             const joinTime = new Date(s.joinDate).getTime();
                             const maturityTime = new Date(s.maturityDate).getTime();
@@ -820,39 +832,68 @@ const SavingsView: React.FC<{ currentUser: User, refreshAccount: () => void, sho
                             const canCancel = Date.now() >= possibleTime;
                             const possibleDateStr = new Date(possibleTime).toLocaleDateString();
 
+                            // [수정] 만기 여부 판단 로직 (날짜 단위 비교로 변경)
+                            const now = new Date();
+                            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+                            const mDate = new Date(s.maturityDate);
+                            const maturityDay = new Date(mDate.getFullYear(), mDate.getMonth(), mDate.getDate()).getTime();
+                            const isMatured = today >= maturityDay;
+
                             return (
-                                <div key={s.savingId} className="bg-white p-6 rounded-[32px] shadow-sm border-l-[12px] border-green-500 relative overflow-hidden">
+                                <div key={s.savingId} className={`bg-white p-6 rounded-[32px] shadow-sm border-l-[12px] relative overflow-hidden ${isMatured ? 'border-indigo-600 ring-4 ring-indigo-50' : 'border-green-500'}`}>
                                     <div className="flex justify-between items-start mb-6">
                                         <div>
-                                            <div className="font-black text-2xl text-gray-900 mb-1">{s.product?.name}</div>
+                                            <div className="flex items-center gap-2">
+                                                <div className="font-black text-2xl text-gray-900 mb-1">{s.product?.name}</div>
+                                                {isMatured && <span className="bg-indigo-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse uppercase">만기 달성</span>}
+                                            </div>
                                             <div className="text-[10px] text-gray-700 font-bold uppercase">가입일: {new Date(s.joinDate).toLocaleDateString()}</div>
                                         </div>
-                                        <button 
-                                            onClick={() => canCancel && setCancelTargetId(s.savingId)} 
-                                            className={`px-4 py-2 text-[10px] font-black rounded-full transition-all ${canCancel ? 'bg-red-50 text-red-700 hover:bg-red-100' : 'bg-gray-100 text-gray-500 cursor-not-allowed'}`}
-                                            title={!canCancel ? `${possibleDateStr}부터 해지 가능합니다.` : ""}
-                                        >
-                                            해지
-                                        </button>
+                                        <div className="flex gap-2">
+                                            {!isMatured && (
+                                                <button 
+                                                    onClick={() => canCancel && setCancelTargetId(s.savingId)} 
+                                                    className={`px-4 py-2 text-[10px] font-black rounded-full transition-all ${canCancel ? 'bg-red-50 text-red-700 hover:bg-red-100' : 'bg-gray-100 text-gray-500 cursor-not-allowed'}`}
+                                                    title={!canCancel ? `${possibleDateStr}부터 해지 가능합니다.` : ""}
+                                                >
+                                                    해지
+                                                </button>
+                                            )}
+                                            {isMatured && (
+                                                <button 
+                                                    onClick={() => setMaturityTargetId(s.savingId)} 
+                                                    className="px-6 py-2 bg-indigo-600 text-white text-xs font-black rounded-full hover:bg-indigo-700 active:scale-95 transition-all shadow-lg shadow-indigo-100"
+                                                >
+                                                    만기금 수령하기
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="p-4 bg-gray-50 rounded-2xl">
                                             <div className="text-[10px] text-gray-700 font-black uppercase mb-1">가입 원금</div>
                                             <div className="font-black text-gray-900 text-lg">{s.amount.toLocaleString()}{unit}</div>
                                         </div>
-                                        <div className="p-4 bg-indigo-50 rounded-2xl">
-                                            <div className="text-[10px] text-indigo-700 font-black uppercase mb-1">만기 예정일</div>
-                                            <div className="font-black text-indigo-700 text-lg">{new Date(s.maturityDate).toLocaleDateString()}</div>
+                                        <div className={`p-4 rounded-2xl ${isMatured ? 'bg-indigo-50 border border-indigo-100' : 'bg-indigo-50'}`}>
+                                            <div className={`text-[10px] font-black uppercase mb-1 ${isMatured ? 'text-indigo-600' : 'text-indigo-700'}`}>만기 예정일</div>
+                                            <div className={`font-black text-lg ${isMatured ? 'text-indigo-700' : 'text-indigo-700'}`}>{new Date(s.maturityDate).toLocaleDateString()}</div>
                                         </div>
                                         <div className="p-4 bg-green-50 rounded-2xl">
                                             <div className="text-[10px] text-green-700 font-black uppercase mb-1">만기 시 예상 이자</div>
                                             <div className="font-black text-green-800 text-lg">+{maturityInterest.toLocaleString()}{unit}</div>
                                         </div>
-                                        <div className="p-4 bg-orange-50 rounded-2xl relative">
-                                            <div className="text-[10px] text-orange-700 font-black uppercase mb-1">중도 해지 환급액</div>
-                                            <div className="font-black text-orange-800 text-lg">{cancelRefund.toLocaleString()}{unit}</div>
-                                            {!canCancel && <span className="absolute bottom-1 right-2 text-[8px] font-bold text-red-600 tracking-tighter">해지 제한: {possibleDateStr}~</span>}
-                                        </div>
+                                        {!isMatured ? (
+                                            <div className="p-4 bg-orange-50 rounded-2xl relative">
+                                                <div className="text-[10px] text-orange-700 font-black uppercase mb-1">중도 해지 환급액</div>
+                                                <div className="font-black text-orange-800 text-lg">{cancelRefund.toLocaleString()}{unit}</div>
+                                                {!canCancel && <span className="absolute bottom-1 right-2 text-[8px] font-bold text-red-600 tracking-tighter">해지 제한: {possibleDateStr}~</span>}
+                                            </div>
+                                        ) : (
+                                            <div className="p-4 bg-indigo-600 rounded-2xl flex flex-col justify-center items-center text-white">
+                                                <div className="text-[10px] font-black uppercase mb-0.5 opacity-80">최종 수령액</div>
+                                                <div className="font-black text-xl">{(s.amount + maturityInterest).toLocaleString()}{unit}</div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             );
@@ -894,7 +935,7 @@ const SavingsView: React.FC<{ currentUser: User, refreshAccount: () => void, sho
             <ConfirmModal 
                 isOpen={!!cancelTargetId}
                 title="적금 해지"
-                message="정말로 적금을 해지하시겠습니까? 중도 해지 시 약정 이자를 받을 수 없으며 원금 일부 손실(수수료 발생)이 있을 수 있습니다."
+                message="정말로 적금을 해지하시겠습니까? 중도 해지 시 약정 이자를 받을 수 없으나 가입하셨던 원금은 안전하게 입금됩니다."
                 onConfirm={async () => {
                     try {
                         const msg = await api.cancelSavings(String(currentUser.userId), String(cancelTargetId));
@@ -905,6 +946,15 @@ const SavingsView: React.FC<{ currentUser: User, refreshAccount: () => void, sho
                 onCancel={() => setCancelTargetId(null)}
                 confirmText="해지하기"
                 isDangerous
+            />
+
+            <ConfirmModal 
+                isOpen={!!maturityTargetId}
+                title="만기 정산 수령"
+                message="축하합니다! 적금 만기일이 되었습니다. 지금 원금과 이자를 수령하시겠습니까?"
+                onConfirm={handleMaturitySettle}
+                onCancel={() => setMaturityTargetId(null)}
+                confirmText="수령하기"
             />
         </div>
     );
@@ -1160,7 +1210,7 @@ const StudentPage: React.FC<StudentPageProps> = ({ initialView, onBackToMenu }) 
 
             {notification && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-[200] p-4 animate-fadeIn" onClick={() => setNotification(null)}>
-                    <div className="bg-white rounded-[40px] p-10 max-w-sm w-full text-center shadow-2xl border border-white" onClick={e => e.stopPropagation()}>
+                    <div className="bg-white rounded-[40px] p-10 max-sm w-full text-center shadow-2xl border border-white" onClick={e => e.stopPropagation()}>
                         {notification.type === 'success' ? (
                             <div className="w-20 h-20 bg-green-50 rounded-[28px] flex items-center justify-center mx-auto mb-6"><CheckIcon className="w-10 h-10 text-green-600" /></div>
                         ) : (

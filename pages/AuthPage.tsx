@@ -1,3 +1,4 @@
+
 import React, { useState, useContext, useEffect } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
@@ -66,7 +67,7 @@ const AuthPage: React.FC = () => {
 
     // Teacher Auth State
     const [teacherEmail, setTeacherEmail] = useState('');
-    const [password, setPassword] = useState('');
+    const [password, setTeacherEmailPassword] = useState('');
     const [teacherAlias, setTeacherAlias] = useState('');
     const [currencyUnit, setCurrencyUnit] = useState('');
     const [recoveryCode, setRecoveryCode] = useState('');
@@ -92,18 +93,25 @@ const AuthPage: React.FC = () => {
     const TERMS_CONTENT = (
         <div className="whitespace-pre-wrap">
             {`제 1 조 (목적)
-본 약관은 '클래스 뱅크'(이하 '서비스')가 제공하는 학급 경제 시뮬레이션 시스템의 이용 조건 및 절차에 관한 사항을 규정함을 목적으로 합니다.
+본 약관은 '클래스 뱅크'(이하 '서비스')가 제공하는 학급 경제 시뮬레이션 시스템의 이용 조건 및 절차, 이용자와 서비스 제공자 간의 권리 및 의무를 규정함을 목적으로 합니다.
 
-제 2 조 (가상 화폐 및 자산)
-1. 서비스 내에서 통용되는 모든 화폐, 주식, 펀드, 적금 등은 교육적 목적을 위한 가상 데이터입니다.
-2. 본 서비스의 가상 자산은 어떠한 경우에도 현실의 현금이나 재화로 교환될 수 없으며, 실제 금융 가치가 전혀 없음을 이용자는 인지합니다.
+제 2 조 (용어의 정의)
+교사 이용자: 학급 경제 시스템을 생성하고 운영하며 학생 데이터를 관리하는 사용자.
+학생 이용자: 교사의 승인 하에 서비스에 접속하여 경제 활동을 체험하는 사용자.
+가상 자산: 서비스 내에서 통용되는 가상 화폐, 주식, 펀드, 예금 등의 데이터.
 
-제 3 조 (데이터 관리 및 책임)
-1. 교사 이용자는 담당 학급 학생들의 데이터를 관리할 권한과 책임을 가집니다.
-2. 이용자의 부주의로 인한 계정 정보 노출이나 데이터 오용에 대한 책임은 이용자 본인에게 있습니다.
+제 3 조 (가상 자산의 성격)
+서비스 내 모든 가상 자산은 교육적 목적을 위해 생성된 수치 데이터일 뿐입니다.
+가상 자산은 어떠한 경우에도 현실의 현금이나 재화로 교환될 수 없으며, 서비스 외부에서의 거래는 엄격히 금지됩니다.
 
-제 4 조 (서비스의 중단)
-시스템 점검, 서버 교체 또는 기타 기술적 결함으로 인해 서비스가 일시적으로 중단될 수 있으며, 이 경우 사전 공지 혹은 사후 통보가 이루어질 수 있습니다.`}
+제 4 조 (이용자의 의무 및 금지 행위)
+이용자는 타인의 계정 정보를 도용하거나 시스템의 취약점을 이용해 부당하게 가상 자산을 조작해서는 안 됩니다.
+교사 이용자는 학생의 개인정보 및 학급 데이터를 보호할 관리 책임이 있습니다.
+부적절한 방법으로 서비스 운영을 방해할 경우 이용이 제한될 수 있습니다.
+
+제 5 조 (면책 조항)
+서비스는 기술적 결함으로 인한 일시적 중단에 대해 책임을 지지 않으며, 가상 데이터의 유실에 대해 복구 의무를 지지 않습니다.
+이용자 간의 분쟁(학생 간 거래 등)은 교육적 지도의 영역이며, 서비스 제공자는 이에 대해 법적 책임을 지지 않습니다.`}
         </div>
     );
 
@@ -111,44 +119,146 @@ const AuthPage: React.FC = () => {
         <div className="whitespace-pre-wrap">
             {`클래스 뱅크 개인정보처리방침
 
-1. 개인정보 수집 항목
-- 교사: 이메일 주소, 별칭(선생님 이름), 가상 화폐 단위.
-- 학생: 이름, 학년, 반, 번호.
+1. 수집하는 개인정보 항목
+서비스는 원활한 학급 경제 시스템 운영을 위해 최소한의 정보를 수집합니다.
+- 교사: 이메일 주소(아이디), 별칭, 학급 코드.
+- 학생: 이름, 학년, 반, 번호 (학교명은 수집하지 않음).
 
-2. 개인정보 수집 및 이용 목적
-수집된 정보는 서비스 내 학급 경제 시스템 운영, 회원 인증, 학급별 데이터 구분 및 서비스 제공의 목적으로만 사용됩니다.
+2. 개인정보의 수집 및 이용 목적
+수집된 정보는 다음의 목적으로만 활용됩니다.
+- 서비스 회원 가입 및 본인 확인
+- 학급별 데이터 구분 및 경제 활동 기록 관리
+- 비밀번호 분실 시 복구 지원 및 주요 공지사항 전달
 
-3. 개인정보의 보유 및 이용 기간
-이용자가 서비스 탈퇴를 요청하거나, 교사가 학급 데이터를 삭제하는 경우 수집된 개인정보는 지체 없이 파기됩니다.
+3. 개인정보의 보유 및 파기
+- 보유 기간: 서비스 탈퇴 시 또는 교사가 학급 데이터를 삭제할 때까지 보유합니다.
+- 파기 방법: 이용자가 탈퇴를 요청하거나 목적이 달성된 경우, 복구 불가능한 방법으로 즉시 삭제합니다.
 
-4. 개인정보의 보안 관리 (핵심 보안 사항)
-본 서비스는 이용자의 보안을 최우선으로 합니다.
-- 모든 이용자의 비밀번호는 일방향 해시 함수(bcrypt)를 사용하여 안전하게 암호화되어 저장됩니다.
-- 암호화된 비밀번호는 관리자를 포함한 그 누구도 원문을 복원할 수 없도록 설계되어 보호됩니다.`}
+4. 이용자의 권리 (법정대리인 포함)
+- 학생 이용자 및 그 보호자는 언제든지 자신의 개인정보 열람, 수정 및 삭제를 요청할 수 있습니다.
+- 교사 이용자는 관리자 페이지를 통해 학생의 정보를 직접 수정하거나 초기화할 수 있습니다.
+
+5. 개인정보의 기술적 보호 조치
+- 강력한 암호화: 모든 비밀번호는 일방향 해시 함수인 bcrypt를 사용하여 암호화 저장됩니다. 이는 관리자도 원문을 알 수 없는 수준의 보안을 제공합니다.
+- 데이터 접근 제한: 서버 인프라에 대한 접근은 인가된 관리자만 가능하도록 엄격히 통제됩니다.`}
         </div>
     );
 
     const GUIDE_CONTENT = (
-        <div className="space-y-6">
-            <section>
-                <h4 className="font-black text-indigo-600 text-lg mb-2">1. 시작하기 (교사)</h4>
-                <p className="text-gray-700">회원가입 후 발급되는 4자리 <b>학급 코드</b>를 학생들에게 공유하세요. 관리자 메뉴에서 학생 명부를 등록하면 시스템 준비가 끝납니다.</p>
-            </section>
-            <section>
-                <h4 className="font-black text-indigo-600 text-lg mb-2">2. 경제 시스템 구축</h4>
-                <p className="text-gray-700">직업을 생성하고 학생들을 배정하여 '월급 일괄 지급'으로 경제 흐름을 만드세요. 세금 고지를 통해 공공 자금을 환수할 수도 있습니다.</p>
-            </section>
-            <section>
-                <h4 className="font-black text-indigo-600 text-lg mb-2">3. 금융 및 투자 활동</h4>
-                <p className="text-gray-700">학생들은 주식, 펀드, 적금 상품을 통해 자산을 불려 나갈 수 있습니다. 은행원 모드를 통해 오프라인 거래를 지원하세요.</p>
-            </section>
-            <section>
-                <h4 className="font-black text-indigo-600 text-lg mb-2">4. 마트 POS기기</h4>
-                <p className="text-gray-700">마트 담당 학생은 마트 모드에 접속하여 실시간으로 물건 값을 결제 받고 판매 수익을 관리할 수 있습니다.</p>
-            </section>
-            <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100">
-                <p className="text-xs text-blue-700 font-bold leading-relaxed">💡 팁: 학생 로그인 시 QR 코드를 인쇄해 교실에 붙여두면 더욱 간편하게 접속할 수 있습니다.</p>
+        <div className="space-y-8">
+            <div className="text-center pb-4 border-b">
+                <h3 className="text-2xl font-black text-gray-900 mb-2">🏦 클래스뱅크(ClassBank) 사용 설명서</h3>
+                <p className="text-indigo-600 font-bold">"우리 교실 속 작은 경제 세상, 클래스뱅크에 오신 것을 환영합니다!"</p>
             </div>
+
+            <section>
+                <h4 className="font-black text-lg text-gray-900 mb-3 flex items-center gap-2">
+                    <span className="w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center text-xs">1</span>
+                    시작하기 : 첫 단추 끼우기
+                </h4>
+                <div className="space-y-3 pl-8">
+                    <p className="text-gray-700 leading-relaxed">
+                        <strong className="text-gray-900">비밀번호와 복구코드:</strong> 회원가입 시 발급되는 <span className="text-red-600 font-bold">'복구코드'</span>를 반드시 안전한 곳에 기록하세요. 비밀번호 분실 시 유일한 해결책입니다. (복구코드까지 잃어버렸다면? 관리자 메일 sinjoppo@naver.com으로 연락 주세요!)
+                    </p>
+                    <p className="text-gray-700 leading-relaxed">
+                        <strong className="text-gray-900">신중한 초기 설정:</strong> 가입 시 입력하는 교사 별칭과 화폐 단위은 경제 시스템의 기초가 되며, 추후 수정이 불가능합니다. 우리 학급만의 개성 있는 이름을 신중히 결정해 주세요.
+                    </p>
+                </div>
+            </section>
+
+            <section>
+                <h4 className="font-black text-lg text-gray-900 mb-3 flex items-center gap-2">
+                    <span className="w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center text-xs">2</span>
+                    교사 관리자 기능 : 경제 시스템의 컨트롤 타워
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-8">
+                    <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                        <p className="font-black text-gray-900 mb-1 text-sm">📊 대시보드</p>
+                        <p className="text-xs text-gray-600">국고 잔액과 거래 내역을 확인합니다. 고액 거래나 주식 폭등락 등 주요 알림을 체크하고 화폐를 발행할 수 있습니다.</p>
+                    </div>
+                    <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                        <p className="font-black text-gray-900 mb-1 text-sm">👥 학생 관리</p>
+                        <p className="text-xs text-gray-600">학생 추가/삭제 및 계좌 관리를 담당합니다. 전용 접속 QR코드를 발급하거나 비밀번호를 초기화할 수 있습니다.</p>
+                    </div>
+                    <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                        <p className="font-black text-gray-900 mb-1 text-sm">💼 직업 관리</p>
+                        <p className="text-xs text-gray-600">직업별 급여를 설정합니다. '인센티브' 기능을 통해 기본급 외에 추가 보상을 주거나 삭감할 수 있습니다.</p>
+                    </div>
+                    <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                        <p className="font-black text-gray-900 mb-1 text-sm">💸 세금 관리</p>
+                        <p className="text-xs text-gray-600">납부 기한을 정해 세금을 부과합니다. 납부 여부를 리스트를 통해 즉시 확인 가능합니다.</p>
+                    </div>
+                    <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 md:col-span-2">
+                        <p className="font-black text-gray-900 mb-1 text-sm">📈 펀드 관리</p>
+                        <p className="text-xs text-gray-600">학생이 직접 실천 계획을 세워 펀드를 개설하면 교사가 승인합니다. 성공 여부에 따라 투자자들에게 수익을 배분하는 주도적 경제 활동입니다.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section>
+                <h4 className="font-black text-lg text-gray-900 mb-3 flex items-center gap-2">
+                    <span className="w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center text-xs">3</span>
+                    운영 모드 : 은행원 & 마트
+                </h4>
+                <div className="space-y-4 pl-8">
+                    <div className="border-l-4 border-indigo-200 pl-4">
+                        <p className="font-black text-gray-900 text-sm mb-1">🏦 은행원 모드 (온·오프라인 연결)</p>
+                        <ul className="text-xs text-gray-600 space-y-1 list-disc pl-4">
+                            <li>입/출금: 오프라인 종이 화폐와 온라인 계좌 간의 환전을 지원합니다.</li>
+                            <li>주식거래소: 관리자가 직접 가격을 입력해 시세를 조절하며 경제 흐름을 교육합니다.</li>
+                            <li>적금 관리: 예금 상품을 신설/삭제하고 가입자 명단을 관리합니다.</li>
+                        </ul>
+                    </div>
+                    <div className="border-l-4 border-green-200 pl-4">
+                        <p className="font-black text-gray-900 text-sm mb-1">🛒 마트 모드 (결제 시스템)</p>
+                        <ul className="text-xs text-gray-600 space-y-1 list-disc pl-4">
+                            <li>마트 계산대: 학생을 선택하고 금액을 입력하면 계좌에서 자동 출금됩니다.</li>
+                            <li>송금 & 내역: 마트 수익금을 국고나 다른 학생에게 송금하고 내역을 관리합니다.</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <section>
+                <h4 className="font-black text-lg text-gray-900 mb-3 flex items-center gap-2">
+                    <span className="w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center text-xs">4</span>
+                    학생 페이지 & 로그인 가이드
+                </h4>
+                <div className="space-y-3 pl-8">
+                    <p className="text-gray-700 text-sm leading-relaxed">
+                        <strong className="text-gray-900">로그인 방법:</strong> 1. 교사가 배부한 QR코드로 간편하게 접속하거나, 2. 학생 로그인 페이지에서 학급 코드(숫자 4자리), 학년/반/번호, 비밀번호를 입력합니다. (초기 비번: 1234)
+                    </p>
+                    <p className="text-gray-700 text-sm leading-relaxed">
+                        <strong className="text-gray-900">주요 기능:</strong> 홈(자산/세금), 금융(송금/주식/펀드/적금) 등 모든 금융 활동을 스스로 수행합니다.
+                    </p>
+                </div>
+            </section>
+
+            <section>
+                <h4 className="font-black text-lg text-gray-900 mb-3 flex items-center gap-2">
+                    <span className="w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center text-xs">5</span>
+                    경제 뉴스 : 살아있는 경제 공부
+                </h4>
+                <div className="pl-8">
+                    <p className="text-gray-700 text-sm leading-relaxed">
+                        뉴스를 읽고 포인트를 쌓으며 실전 지식을 익힙니다. 학생이 뉴스를 읽고 댓글(20자 이상)을 달면 <span className="text-indigo-600 font-bold">1포인트(학급 화폐 1단위)</span>를 얻습니다. 어려운 내용은 AI 요약 기능을 활용해 보세요.
+                    </p>
+                </div>
+            </section>
+
+            <section className="bg-blue-50 p-6 rounded-[32px] border border-blue-100">
+                <h4 className="font-black text-blue-800 mb-4 flex items-center gap-2">
+                    💡 클래스뱅크 활용 꿀팁!
+                </h4>
+                <ul className="text-xs text-blue-700 space-y-3 font-medium">
+                    <li>• <strong className="text-blue-900">우리반 페이 경험:</strong> 마트에서 학생 QR을 찍으면 '마트 결제' 탭이 자동 활성화되어 현대적인 결제 시스템을 체감할 수 있습니다.</li>
+                    <li>• <strong className="text-blue-900">펀드 성공/실패 시스템:</strong> 성공 시 보수 지급, 실패 시 약속 미이행으로 원금의 50%만 반환되므로 투자의 위험성을 배웁니다.</li>
+                    <li>• <strong className="text-blue-900">현명한 주식 운영:</strong> '우리 반 주식'을 통해 학급 상점 활성화나 학생들의 노력에 비례해 우상향하는 '우리사주' 개념으로 활용해보세요.</li>
+                    <li>• <strong className="text-blue-900">수수료의 비밀:</strong> 매도 시 발생하는 수수료를 통해 단타 매매보다는 장기 투자의 중요성을 안내해 주세요.</li>
+                </ul>
+            </section>
+
+            <p className="text-center text-[10px] text-gray-400 font-bold">의견이나 제안이 있으신가요? sinjoppo@naver.com으로 소중한 의견을 보내주세요!</p>
         </div>
     );
 
@@ -421,7 +531,7 @@ const AuthPage: React.FC = () => {
                     <div className="space-y-4">
                         <InputField type="email" placeholder="이메일 주소" value={teacherEmail} onChange={e => setTeacherEmail(e.target.value)} />
                         <div>
-                            <InputField type="password" placeholder="비밀번호" value={password} onChange={e => setPassword(e.target.value)} />
+                            <InputField type="password" placeholder="비밀번호" value={password} onChange={e => setTeacherEmailPassword(e.target.value)} />
                             <p className="text-[10px] text-gray-300 mt-2 ml-1">영어 소문자와 숫자만 사용 가능</p>
                         </div>
                         <InputField type="text" placeholder="선생님 별칭 (예: 민수쌤)" value={teacherAlias} onChange={e => setTeacherAlias(e.target.value)} />
@@ -496,7 +606,7 @@ const AuthPage: React.FC = () => {
                 <h2 className="text-lg font-black mb-6 text-gray-900 text-center tracking-tight">선생님 로그인</h2>
                 <div className="space-y-3.5">
                     <InputField type="email" placeholder="이메일" value={teacherEmail} onChange={e => setTeacherEmail(e.target.value)} />
-                    <InputField type="password" placeholder="비밀번호" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleTeacherLogin()} />
+                    <InputField type="password" placeholder="비밀번호" value={password} onChange={e => setTeacherEmailPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleTeacherLogin()} />
                     {error && <p className="text-red-500 text-[11px] font-bold text-center">{error}</p>}
                     <PrimaryButton onClick={handleTeacherLogin} disabled={loading} className="mt-2 bg-[#0066FF] hover:bg-[#0055DD] shadow-md shadow-blue-200">
                         {loading ? '인증 중...' : '로그인'}

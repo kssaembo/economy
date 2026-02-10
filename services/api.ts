@@ -659,6 +659,16 @@ const cancelSavings = async (userId: string, savingId: string): Promise<string> 
     return typeof data === 'string' ? data : '적금을 성공적으로 해지했습니다.';
 };
 
+// [추가] 적금 만기 정산 API
+const processSavingsMaturity = async (userId: string, savingId: string): Promise<string> => {
+    const { data, error } = await supabase.rpc('process_savings_maturity', { 
+        p_user_id: userId.toString(), 
+        p_saving_id: savingId.toString() 
+    });
+    handleSupabaseError(error, 'processSavingsMaturity');
+    return typeof data === 'string' ? data : '만기 정산이 완료되었습니다.';
+};
+
 const addSavingsProduct = async (product: Omit<SavingsProduct, 'id'>): Promise<string> => {
     const { data, error } = await supabase.rpc('add_savings_product', {
         p_name: product.name,
@@ -912,7 +922,7 @@ export const api = {
     getRecipientDetailsByAccountId, transfer, studentWithdraw, bankerDeposit, bankerWithdraw, martTransfer,
     getStockProducts, getStudentStocks, getStockHistory, buyStock, sellStock, addStockProduct, updateStockPrice,
     updateStockVolatility, deleteStockProducts, getStockHolders, getSavingsProducts, getStudentSavings,
-    joinSavings, cancelSavings, addSavingsProduct, deleteSavingsProducts, getSavingsEnrollees,
+    joinSavings, cancelSavings, processSavingsMaturity, addSavingsProduct, deleteSavingsProducts, getSavingsEnrollees,
     getJobs, addJob, updateJob, deleteJob, manageJobAssignment, updateJobIncentive, payJobSalary, payAllSalaries,
     getTaxes, createTax, deleteTax, getMyUnpaidTaxes, payTax, getFunds, createFund, deleteFund, joinFund, settleFund, getMyFundInvestments,
     getFundInvestors, issueCurrency

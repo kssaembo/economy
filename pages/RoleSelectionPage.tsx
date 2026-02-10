@@ -1,8 +1,9 @@
 
-import React, { useContext } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
-import { Role } from '../types';
-import { MainAdminIcon, MainBankIcon, MainMartIcon, StudentIcon, LogoutIcon } from '../components/icons';
+import { api } from '../services/api';
+import { Role, Account } from '../types';
+import { MainAdminIcon, MainBankIcon, MainMartIcon, StudentIcon, LogoutIcon, NewspaperIcon } from '../components/icons';
 
 interface RoleSelectionPageProps {
   onSelect: (view: 'admin' | 'banker' | 'mart' | 'student') => void;
@@ -10,6 +11,21 @@ interface RoleSelectionPageProps {
 
 const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
   const { currentUser, logout } = useContext(AuthContext);
+  const [teacherAccount, setTeacherAccount] = useState<Account | null>(null);
+
+  // 자동 로그인을 위해 선생님의 국고 계좌(qrToken 포함) 정보를 가져옵니다.
+  useEffect(() => {
+    if (currentUser?.role === Role.TEACHER) {
+      api.getTeacherAccount()
+        .then(setTeacherAccount)
+        .catch(err => console.error("선생님 계좌 정보를 가져오는데 실패했습니다.", err));
+    }
+  }, [currentUser]);
+
+  // 경제 뉴스 서비스 주소에 토큰을 포함시킵니다.
+  const newsUrl = teacherAccount?.qrToken 
+    ? `https://kidseconews.vercel.app/?token=${teacherAccount.qrToken}`
+    : `https://kidseconews.vercel.app/`;
 
   const roles = [
     { 
@@ -93,8 +109,23 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
             </button>
           ))}
         </div>
+
+        {/* 경제 뉴스 버튼 추가 - 동적 링크 적용 */}
+        <div className="mt-8 flex justify-center">
+          <a
+            href={newsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group flex items-center gap-3 px-8 py-5 bg-white rounded-[30px] shadow-[0_8px_25px_rgba(0,0,0,0.03)] border border-white hover:shadow-[0_15px_35px_rgba(0,0,0,0.06)] hover:scale-[1.02] hover:border-indigo-100 transition-all active:scale-95 w-full md:w-auto md:min-w-[320px] justify-center"
+          >
+            <div className="w-10 h-10 bg-indigo-50 rounded-2xl flex items-center justify-center group-hover:bg-indigo-100 transition-colors">
+              <NewspaperIcon className="w-6 h-6 text-indigo-600" />
+            </div>
+            <span className="text-lg font-black text-gray-800 group-hover:text-indigo-600 transition-colors">경제 뉴스 바로가기</span>
+          </a>
+        </div>
         
-        <footer className="mt-20 text-center text-black">
+        <footer className="mt-16 text-center text-black">
             <p className="text-sm font-bold mb-1">
                 제안이나 문의사항이 있으시면 언제든 메일 주세요.
             </p>
