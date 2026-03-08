@@ -125,6 +125,61 @@ const AddStudentModal: React.FC<{ onClose: () => void, onComplete: () => void }>
     );
 };
 
+const EditStudentModal: React.FC<{ student: User, onClose: () => void, onComplete: () => void }> = ({ student, onClose, onComplete }) => {
+    const [name, setName] = useState(student.name);
+    const [grade, setGrade] = useState(student.grade?.toString() || '');
+    const [classNum, setClassNum] = useState(student.class?.toString() || '');
+    const [number, setNumber] = useState(student.number?.toString() || '');
+    const [loading, setLoading] = useState(false);
+
+    const handleSubmit = async () => {
+        if (!name || !grade || !classNum || !number) return;
+        setLoading(true);
+        try {
+            await api.updateStudent(student.userId, name, parseInt(grade), parseInt(classNum), parseInt(number));
+            onComplete();
+            onClose();
+        } catch (e: any) {
+            console.error(e);
+            alert(e.message || '학생 정보 수정 중 오류가 발생했습니다.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
+                <h3 className="text-xl font-bold mb-4">학생 정보 수정</h3>
+                <div className="space-y-4">
+                    <div>
+                        <label className="text-xs text-gray-500 ml-1">이름</label>
+                        <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="이름" className="w-full p-3 border rounded-lg" />
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                        <div>
+                            <label className="text-xs text-gray-500 ml-1">학년</label>
+                            <input type="number" value={grade} onChange={e => setGrade(e.target.value)} placeholder="학년" className="w-full p-3 border rounded-lg" />
+                        </div>
+                        <div>
+                            <label className="text-xs text-gray-500 ml-1">반</label>
+                            <input type="number" value={classNum} onChange={e => setClassNum(e.target.value)} placeholder="반" className="w-full p-3 border rounded-lg" />
+                        </div>
+                        <div>
+                            <label className="text-xs text-gray-500 ml-1">번호</label>
+                            <input type="number" value={number} onChange={e => setNumber(e.target.value)} placeholder="번호" className="w-full p-3 border rounded-lg" />
+                        </div>
+                    </div>
+                    <button onClick={handleSubmit} disabled={loading} className="w-full py-3 bg-[#2B548F] text-white font-bold rounded-lg disabled:bg-gray-300">
+                        {loading ? '수정 중...' : '수정하기'}
+                    </button>
+                    <button onClick={onClose} className="w-full py-2 text-gray-500 font-medium">닫기</button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const QrPrintModal: React.FC<{ students: (User & { account: Account | null })[], onClose: () => void }> = ({ students, onClose }) => {
     const baseUrl = getQrBaseUrl();
 
@@ -839,6 +894,7 @@ const StudentManagementView: React.FC<{ students: (User & { account: Account | n
     const [qrStudents, setQrStudents] = useState<(User & { account: Account | null })[]>([]);
     const [resetTarget, setResetTarget] = useState<User | null>(null);
     const [showResetSuccess, setShowResetSuccess] = useState(false);
+    const [editTarget, setEditTarget] = useState<User | null>(null);
 
     const toggleStudent = (id: string) => {
         setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
@@ -905,6 +961,7 @@ const StudentManagementView: React.FC<{ students: (User & { account: Account | n
                             <th className="p-3 text-right font-bold text-gray-500 uppercase tracking-wider px-6">잔액</th>
                             <th className="p-3 text-left font-bold text-gray-500 uppercase tracking-wider">계좌번호</th>
                             <th className="p-3 text-center font-bold text-gray-500 uppercase tracking-wider">QR</th>
+                            <th className="p-3 text-center font-bold text-gray-500 uppercase tracking-wider">수정</th>
                             <th className="p-3 text-center font-bold text-gray-500 uppercase tracking-wider">초기화</th>
                         </tr>
                     </thead>
@@ -931,6 +988,11 @@ const StudentManagementView: React.FC<{ students: (User & { account: Account | n
                                     </button>
                                 </td>
                                 <td className="p-3 text-center">
+                                    <button onClick={() => setEditTarget(s)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-all mx-auto" title="정보 수정">
+                                        <PencilIcon className="w-5 h-5" />
+                                    </button>
+                                </td>
+                                <td className="p-3 text-center">
                                     <button onClick={() => setResetTarget(s)} className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-[10px] font-bold hover:bg-gray-200 transition-colors" title="비밀번호 초기화">
                                         초기화
                                     </button>
@@ -949,6 +1011,7 @@ const StudentManagementView: React.FC<{ students: (User & { account: Account | n
             </div>
             
             {showAddModal && <AddStudentModal onClose={() => setShowAddModal(false)} onComplete={refresh} />}
+            {editTarget && <EditStudentModal student={editTarget} onClose={() => setEditTarget(null)} onComplete={refresh} />}
             {showQrPrintModal && <QrPrintModal students={qrStudents} onClose={() => setShowQrPrintModal(false)} />}
             
             <ConfirmModal 

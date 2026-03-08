@@ -37,7 +37,7 @@ const BankerPage: React.FC<{ onBackToMenu?: () => void }> = ({ onBackToMenu }) =
                 <nav className="mt-8 flex flex-col space-y-2">
                     <DesktopNavButton label="입/출금" Icon={TransferIcon} active={view === 'deposit_withdraw'} onClick={() => setView('deposit_withdraw')} />
                     <DesktopNavButton label="주식거래소" Icon={StockIcon} active={view === 'stock_exchange'} onClick={() => setView('stock_exchange')} />
-                    <DesktopNavButton label="적금 관리" Icon={NewPiggyBankIcon} active={view === 'savings_management'} onClick={() => setView('savings_management')} />
+                    <DesktopNavButton label="예금 관리" Icon={NewPiggyBankIcon} active={view === 'savings_management'} onClick={() => setView('savings_management')} />
                 </nav>
                 <div className="mt-auto">
                     <button onClick={handleLogout} className="w-full flex items-center p-3 text-sm text-gray-600 rounded-lg hover:bg-gray-200/50 transition-colors">
@@ -68,7 +68,7 @@ const BankerPage: React.FC<{ onBackToMenu?: () => void }> = ({ onBackToMenu }) =
                 <nav className="md:hidden grid grid-cols-3 bg-white p-1 border-t sticky bottom-0 z-10">
                     <NavButton label="입/출금" Icon={TransferIcon} active={view === 'deposit_withdraw'} onClick={() => setView('deposit_withdraw')} />
                     <NavButton label="주식거래소" Icon={StockIcon} active={view === 'stock_exchange'} onClick={() => setView('stock_exchange')} />
-                    <NavButton label="적금 관리" Icon={NewPiggyBankIcon} active={view === 'savings_management'} onClick={() => setView('savings_management')} />
+                    <NavButton label="예금 관리" Icon={NewPiggyBankIcon} active={view === 'savings_management'} onClick={() => setView('savings_management')} />
                 </nav>
             </div>
         </div>
@@ -576,12 +576,12 @@ const SavingsManagementView: React.FC = () => {
         setShowModal('enrollees');
     }
 
-    if (loading) return <div className="text-center p-8">적금 상품 정보를 불러오는 중...</div>;
+    if (loading) return <div className="text-center p-8">예금 상품 정보를 불러오는 중...</div>;
 
     return (
         <div>
             <div className="flex justify-end items-center mb-4 gap-2">
-                <button onClick={() => setShowModal('add')} className="px-3 py-2 bg-green-600 text-white text-xs font-semibold rounded-lg shadow hover:bg-green-700">적금 추가</button>
+                <button onClick={() => setShowModal('add')} className="px-3 py-2 bg-green-600 text-white text-xs font-semibold rounded-lg shadow hover:bg-green-700">예금 추가</button>
                 <button onClick={() => {
                     if (deleteMode && productsToDelete.length > 0) {
                         setShowModal('delete');
@@ -590,7 +590,7 @@ const SavingsManagementView: React.FC = () => {
                         setProductsToDelete([]);
                     }
                 }} className="px-3 py-2 bg-red-600 text-white text-xs font-semibold rounded-lg shadow hover:bg-red-700">
-                    {deleteMode ? `선택 항목 삭제 (${productsToDelete.length})` : '적금 삭제'}
+                    {deleteMode ? `선택 항목 삭제 (${productsToDelete.length})` : '예금 삭제'}
                 </button>
                  {deleteMode && <button onClick={() => { setDeleteMode(false); setProductsToDelete([]); }} className="text-xs text-gray-600">취소</button>}
             </div>
@@ -599,7 +599,7 @@ const SavingsManagementView: React.FC = () => {
                     <thead className="bg-gray-50">
                         <tr>
                             {deleteMode && <th className="p-3 w-12"></th>}
-                            <th className="p-3 text-left">적금명</th>
+                            <th className="p-3 text-left">예금명</th>
                             <th className="p-3 text-right">만기(일)</th>
                             <th className="p-3 text-right">이자율(%)</th>
                         </tr>
@@ -657,9 +657,9 @@ const AddSavingModal: React.FC<{onClose: ()=>void, onComplete: ()=>void}> = ({on
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-xl shadow-2xl p-6 max-md">
-                <h3 className="text-xl font-bold mb-4">새 적금 상품 추가</h3>
+                <h3 className="text-xl font-bold mb-4">새 예금 상품 추가</h3>
                 <div className="space-y-2 text-sm">
-                    <label className="block font-medium text-gray-700">적금명
+                    <label className="block font-medium text-gray-700">예금명
                       <input type="text" name="name" value={product.name} onChange={handleChange} placeholder="예: 티끌모아 태산" className="w-full p-2 border rounded mt-1"/>
                     </label>
                     <div className="grid grid-cols-2 gap-2">
@@ -705,7 +705,7 @@ const DeleteSavingModal: React.FC<{productIds: string[], onClose: ()=>void, onCo
          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-xl shadow-2xl p-6 max-w-sm text-center">
                 <h3 className="text-xl font-bold mb-4">정말로 삭제하시겠습니까?</h3>
-                <p className="text-sm text-gray-600 mb-4">{productIds.length}개의 적금 상품이 영구적으로 삭제됩니다.</p>
+                <p className="text-sm text-gray-600 mb-4">{productIds.length}개의 예금 상품이 영구적으로 삭제됩니다.</p>
                 {result && <p className={`mb-2 text-sm ${result.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>{result.text}</p>}
                 <div className="flex gap-4">
                     <button onClick={onClose} disabled={loading} className="flex-1 p-3 bg-gray-200 font-bold rounded-lg">취소</button>

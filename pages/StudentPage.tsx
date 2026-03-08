@@ -132,7 +132,7 @@ const HomeView: React.FC<{ account: Account, currentUser: User, refreshAccount: 
                         <div className="font-black text-blue-700 text-lg">{Math.floor(stockValue).toLocaleString()}</div>
                     </div>
                      <div className="text-center border-l border-gray-100">
-                        <div className="text-xs text-gray-800 font-black mb-1">적금</div>
+                        <div className="text-xs text-gray-800 font-black mb-1">예금</div>
                         <div className="font-black text-green-700 text-lg">{savingsValue.toLocaleString()}</div>
                     </div>
                 </div>
@@ -792,7 +792,7 @@ const SavingsView: React.FC<{ currentUser: User, refreshAccount: () => void, sho
             const userIdStr = String(currentUser.userId);
             
             const msg = await api.joinSavings(userIdStr, productIdStr, joinAmount);
-            showNotification('success', msg || '적금에 가입되었습니다!');
+            showNotification('success', msg || '예금에 가입되었습니다!');
             setSelectedProduct(null); fetchData(); refreshAccount();
         } catch(e: any) { 
             showNotification('error', e.message); 
@@ -814,7 +814,7 @@ const SavingsView: React.FC<{ currentUser: User, refreshAccount: () => void, sho
         <div className="space-y-8">
             {mySavings.length > 0 && (
                 <div>
-                    <h3 className="text-lg font-black text-gray-900 mb-4 ml-1 tracking-tight">내 적금 현황</h3>
+                    <h3 className="text-lg font-black text-gray-900 mb-4 ml-1 tracking-tight">내 예금 현황</h3>
                     <div className="space-y-4">
                         {mySavings.map(s => {
                             const rate = s.product?.rate || 0;
@@ -903,7 +903,7 @@ const SavingsView: React.FC<{ currentUser: User, refreshAccount: () => void, sho
             )}
 
             <div>
-                <h3 className="text-lg font-black text-gray-900 mb-4 ml-1 tracking-tight">추천 적금 상품</h3>
+                <h3 className="text-lg font-black text-gray-900 mb-4 ml-1 tracking-tight">추천 예금 상품</h3>
                 <div className="grid grid-cols-1 gap-4">
                     {products.map(p => (
                         <button key={p.id} onClick={() => setSelectedProduct(p)} className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 text-left hover:scale-[1.02] transition-all group">
@@ -934,8 +934,8 @@ const SavingsView: React.FC<{ currentUser: User, refreshAccount: () => void, sho
 
             <ConfirmModal 
                 isOpen={!!cancelTargetId}
-                title="적금 해지"
-                message="정말로 적금을 해지하시겠습니까? 중도 해지 시 약정 이자를 받을 수 없으나 가입하셨던 원금은 안전하게 입금됩니다."
+                title="예금 해지"
+                message="정말로 예금을 해지하시겠습니까? 중도 해지 시 약정 이자를 받을 수 없으나 가입하셨던 원금은 안전하게 입금됩니다."
                 onConfirm={async () => {
                     try {
                         const msg = await api.cancelSavings(String(currentUser.userId), String(cancelTargetId));
@@ -951,7 +951,7 @@ const SavingsView: React.FC<{ currentUser: User, refreshAccount: () => void, sho
             <ConfirmModal 
                 isOpen={!!maturityTargetId}
                 title="만기 정산 수령"
-                message="축하합니다! 적금 만기일이 되었습니다. 지금 원금과 이자를 수령하시겠습니까?"
+                message="축하합니다! 예금 만기일이 되었습니다. 지금 원금과 이자를 수령하시겠습니까?"
                 onConfirm={handleMaturitySettle}
                 onCancel={() => setMaturityTargetId(null)}
                 confirmText="수령하기"
@@ -1164,7 +1164,7 @@ const StudentPage: React.FC<StudentPageProps> = ({ initialView, onBackToMenu }) 
                         <DesktopNavBtn icon={TransferIcon} label="송금" active={view === 'transfer'} onClick={() => setView('transfer')} />
                         <DesktopNavBtn icon={NewStockIcon} label="주식" active={view === 'stocks'} onClick={() => setView('stocks')} />
                         <DesktopNavBtn icon={NewFundIcon} label="펀드" active={view === 'funds'} onClick={() => setView('funds')} />
-                        <DesktopNavBtn icon={NewPiggyBankIcon} label="적금" active={view === 'savings'} onClick={() => setView('savings')} />
+                        <DesktopNavBtn icon={NewPiggyBankIcon} label="예금" active={view === 'savings'} onClick={() => setView('savings')} />
                     </nav>
                 )}
 
@@ -1203,7 +1203,7 @@ const StudentPage: React.FC<StudentPageProps> = ({ initialView, onBackToMenu }) 
                         <MobileNavBtn icon={TransferIcon} label="송금" active={view === 'transfer'} onClick={() => setView('transfer')} />
                         <MobileNavBtn icon={NewStockIcon} label="주식" active={view === 'stocks'} onClick={() => setView('stocks')} />
                         <MobileNavBtn icon={NewFundIcon} label="펀드" active={view === 'funds'} onClick={() => setView('funds')} />
-                        <MobileNavBtn icon={NewPiggyBankIcon} label="적금" active={view === 'savings'} onClick={() => setView('savings')} />
+                        <MobileNavBtn icon={NewPiggyBankIcon} label="예금" active={view === 'savings'} onClick={() => setView('savings')} />
                     </nav>
                 )}
             </div>

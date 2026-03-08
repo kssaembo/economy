@@ -319,6 +319,14 @@ const addStudent = async (name: string, grade: number, classNum: number, number:
     handleSupabaseError(error, 'addStudent');
 };
 
+const updateStudent = async (userId: string, name: string, grade: number, classNum: number, number: number): Promise<void> => {
+    const { error } = await supabase
+        .from('users')
+        .update({ name, grade, class: classNum, number })
+        .eq('userId', userId);
+    handleSupabaseError(error, 'updateStudent');
+};
+
 const deleteStudents = async (userIds: string[]): Promise<string> => {
     let successCount = 0;
     const errors: string[] = [];
@@ -650,16 +658,16 @@ const getStudentSavings = async (userId: string): Promise<StudentSaving[]> => {
 const joinSavings = async (userId: string, productId: string, amount: number): Promise<string> => {
     const { error } = await supabase.rpc('join_savings', { p_user_id: userId.toString(), p_product_id: productId.toString(), p_amount: amount });
     handleSupabaseError(error, 'joinSavings');
-    return '적금에 성공적으로 가입했습니다.';
+    return '예금에 성공적으로 가입했습니다.';
 };
 
 const cancelSavings = async (userId: string, savingId: string): Promise<string> => {
     const { data, error } = await supabase.rpc('cancel_student_savings', { p_user_id: userId.toString(), p_saving_id: savingId.toString() });
     handleSupabaseError(error, 'cancelSavings');
-    return typeof data === 'string' ? data : '적금을 성공적으로 해지했습니다.';
+    return typeof data === 'string' ? data : '예금을 성공적으로 해지했습니다.';
 };
 
-// [추가] 적금 만기 정산 API
+// [추가] 예금 만기 정산 API
 const processSavingsMaturity = async (userId: string, savingId: string): Promise<string> => {
     const { data, error } = await supabase.rpc('process_savings_maturity', { 
         p_user_id: userId.toString(), 
@@ -681,10 +689,10 @@ const addSavingsProduct = async (product: Omit<SavingsProduct, 'id'>): Promise<s
     handleSupabaseError(error, 'addSavingsProduct');
     
     if (data && data.success === false) {
-        throw new Error(data.message || '적금 상품 추가에 실패했습니다.');
+        throw new Error(data.message || '예금 상품 추가에 실패했습니다.');
     }
     
-    return (data && data.message) ? data.message : '적금 상품이 성공적으로 추가되었습니다.';
+    return (data && data.message) ? data.message : '예금 상품이 성공적으로 추가되었습니다.';
 };
 
 const deleteSavingsProducts = async (productIds: string[]): Promise<string> => {
@@ -763,6 +771,7 @@ const getTaxes = async (teacherId: string): Promise<TaxItemWithRecipients[]> => 
     if (rcptError) throw new Error(rcptError.message);
     return taxes.map((tax: any) => ({
         id: tax.id,
+        teacher_id: tax.teacher_id,
         name: tax.name,
         amount: tax.amount,
         dueDate: tax.due_date,
@@ -918,7 +927,7 @@ const issueCurrency = async (teacherId: string, amount: number): Promise<string>
 export const api = {
     login, signupTeacher, loginTeacher, requestRecoveryCode, verifyRecoveryCode, resetTeacherPassword, checkTeacherExists,
     loginWithPassword, verifyAdminPassword, changePassword, resetPassword, loginWithQrToken, getUsersByRole,
-    addStudent, deleteStudents, getStudentAccountByUserId, getTeacherAccount, getMartAccountByTeacherId, getTransactionsByAccountId,
+    addStudent, updateStudent, deleteStudents, getStudentAccountByUserId, getTeacherAccount, getMartAccountByTeacherId, getTransactionsByAccountId,
     getRecipientDetailsByAccountId, transfer, studentWithdraw, bankerDeposit, bankerWithdraw, martTransfer,
     getStockProducts, getStudentStocks, getStockHistory, buyStock, sellStock, addStockProduct, updateStockPrice,
     updateStockVolatility, deleteStockProducts, getStockHolders, getSavingsProducts, getStudentSavings,

@@ -39,7 +39,7 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
     { 
       id: 'banker', 
       title: '은행원 모드', 
-      desc: '입출금 처리, 주식 상장/가격 관리 및 적금 상품 관리', 
+      desc: '입출금 처리, 주식 상장/가격 관리 및 예금 상품 관리', 
       icon: MainBankIcon, 
       color: 'bg-[#5856D6]',
       target: 'banker' as const
