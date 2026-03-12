@@ -47,6 +47,11 @@ const AppContent: React.FC = () => {
         }
       }
 
+      // Always handle viewParam if present
+      if (viewParam) {
+        setRequestedView(viewParam);
+      }
+
       if (token && !currentUser) {
         try {
           const user = await api.loginWithQrToken(token);
@@ -59,7 +64,6 @@ const AppContent: React.FC = () => {
                 const defaultView = user.role === Role.STUDENT ? 'transfer' : 'home';
                 setRequestedView(defaultView);
             }
-
           } else {
             alert('유효하지 않은 QR 코드이거나 만료된 토큰입니다.');
           }
