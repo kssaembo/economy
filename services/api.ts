@@ -924,6 +924,15 @@ const issueCurrency = async (teacherId: string, amount: number): Promise<string>
     return data;
 };
 
+const deleteTeacherAccount = async (teacherId: string, password: string): Promise<{ success: boolean, message: string }> => {
+    const { data, error } = await supabase.rpc('delete_teacher_account', {
+        p_teacher_id: teacherId,
+        p_password: password
+    });
+    handleSupabaseError(error, 'deleteTeacherAccount');
+    return data;
+};
+
 export const api = {
     login, signupTeacher, loginTeacher, requestRecoveryCode, verifyRecoveryCode, resetTeacherPassword, checkTeacherExists,
     loginWithPassword, verifyAdminPassword, changePassword, resetPassword, loginWithQrToken, getUsersByRole,
@@ -934,5 +943,5 @@ export const api = {
     joinSavings, cancelSavings, processSavingsMaturity, addSavingsProduct, deleteSavingsProducts, getSavingsEnrollees,
     getJobs, addJob, updateJob, deleteJob, manageJobAssignment, updateJobIncentive, payJobSalary, payAllSalaries,
     getTaxes, createTax, deleteTax, getMyUnpaidTaxes, payTax, getFunds, createFund, deleteFund, joinFund, settleFund, getMyFundInvestments,
-    getFundInvestors, issueCurrency
+    getFundInvestors, issueCurrency, deleteTeacherAccount
 };

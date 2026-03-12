@@ -3,7 +3,7 @@ import { api } from '../services/api';
 import React, { useState, useContext, useEffect, useCallback, useMemo, useRef } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { User, Role, Account, Transaction, Job, AssignedStudent, TransactionType, TaxItemWithRecipients, Fund, FundStatus } from '../types';
-import { LogoutIcon, QrCodeIcon, UserAddIcon, XIcon, CheckIcon, ErrorIcon, BackIcon, NewDashboardIcon, NewBriefcaseIcon, NewManageAccountsIcon, ManageIcon, NewTaxIcon, NewFundIcon, NewStudentIcon, PencilIcon, ArrowDownIcon, ArrowUpIcon, PlusIcon, BellIcon } from '../components/icons';
+import { LogoutIcon, QrCodeIcon, UserAddIcon, XIcon, CheckIcon, ErrorIcon, BackIcon, NewDashboardIcon, NewBriefcaseIcon, NewManageAccountsIcon, ManageIcon, NewTaxIcon, NewFundIcon, NewStudentIcon, PencilIcon, ArrowDownIcon, ArrowUpIcon, PlusIcon, BellIcon, TransferIcon } from '../components/icons';
 import { QRCodeSVG } from 'qrcode.react';
 
 // --- Helpers ---
@@ -490,6 +490,115 @@ const IssueCurrencyModal: React.FC<{ onClose: () => void, onComplete: () => void
     );
 };
 
+const MartTransferModal: React.FC<{ onClose: () => void, onComplete: () => void }> = ({ onClose, onComplete }) => {
+    const { currentUser } = useContext(AuthContext);
+    const [amount, setAmount] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [teacherAccount, setTeacherAccount] = useState<Account | null>(null);
+    const unit = currentUser?.currencyUnit || '권';
+
+    useEffect(() => {
+        api.getTeacherAccount().then(setTeacherAccount);
+    }, []);
+
+    const handleSubmit = async () => {
+        if (!amount || parseInt(amount) <= 0 || !currentUser || !teacherAccount) return;
+        setLoading(true);
+        try {
+            // 마트 계좌로 송금 (교사 계좌 -> 마트 계좌)
+            await api.martTransfer(teacherAccount.accountId, parseInt(amount), 'FROM_STUDENT');
+            onComplete();
+            onClose();
+        } catch (e: any) {
+            alert(e.message || '송금 중 오류가 발생했습니다.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4">
+            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
+                <h3 className="text-xl font-bold mb-2 text-indigo-600">마트 송금</h3>
+                <p className="text-xs text-gray-500 mb-6 leading-relaxed">국고 계좌에서 <span className="font-bold text-gray-700">마트 계좌</span>로 자금을 이체합니다.</p>
+                <div className="space-y-4">
+                    <div className="relative">
+                        <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0" className="w-full p-4 pr-12 border-2 border-indigo-100 rounded-xl outline-none focus:border-indigo-500 text-2xl font-black" />
+                        <span className="absolute right-4 top-5 font-bold text-gray-400">{unit}</span>
+                    </div>
+                    <button onClick={handleSubmit} disabled={loading || !amount} className="w-full py-4 bg-indigo-600 text-white font-black rounded-xl shadow-lg shadow-indigo-100 active:scale-95 transition-all disabled:bg-gray-300">
+                        {loading ? '처리 중...' : '송금하기'}
+                    </button>
+                    <button onClick={onClose} className="w-full py-2 text-gray-400 font-medium">취소</button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const DeleteAccountModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+    const { currentUser, logout } = useContext(AuthContext);
+    const [password, setPassword] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+
+    const handleDelete = async () => {
+        if (!password || !currentUser) return;
+        setLoading(true);
+        setError('');
+        try {
+            const result = await api.deleteTeacherAccount(currentUser.userId, password);
+            if (result.success) {
+                alert('계정이 삭제되었습니다. 이용해 주셔서 감사합니다.');
+                logout();
+            } else {
+                setError(result.message);
+            }
+        } catch (e: any) {
+            setError(e.message || '삭제 중 오류가 발생했습니다.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[200] p-4">
+            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
+                <h3 className="text-xl font-bold mb-2 text-red-600">계정 삭제</h3>
+                <div className="bg-red-50 p-4 rounded-lg mb-4">
+                    <p className="text-sm text-red-700 font-bold mb-1">⚠️ 주의: 영구 삭제</p>
+                    <p className="text-xs text-red-600 leading-relaxed">
+                        계정을 삭제하면 모든 학생 정보, 계좌 잔액, 거래 내역이 <span className="underline">영구히 삭제되며 복구할 수 없습니다.</span>
+                    </p>
+                </div>
+                <div className="space-y-4">
+                    <div>
+                        <label className="text-xs text-gray-500 ml-1">본인 확인을 위해 비밀번호를 입력하세요</label>
+                        <input 
+                            type="password" 
+                            value={password} 
+                            onChange={e => setPassword(e.target.value)} 
+                            placeholder="비밀번호" 
+                            className="w-full p-3 border-2 border-red-50 rounded-lg outline-none focus:border-red-500" 
+                        />
+                    </div>
+                    {error && <p className="text-xs text-red-500 font-medium">{error}</p>}
+                    <div className="flex gap-2">
+                        <button onClick={onClose} className="flex-1 py-3 bg-gray-100 text-gray-600 font-bold rounded-lg">취소</button>
+                        <button 
+                            onClick={handleDelete} 
+                            disabled={loading || !password} 
+                            className="flex-1 py-3 bg-red-600 text-white font-bold rounded-lg disabled:bg-gray-300"
+                        >
+                            {loading ? '삭제 중...' : '영구 삭제'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const FundInvestorsModal: React.FC<{ fund: Fund, onClose: () => void }> = ({ fund, onClose }) => {
     const [investors, setInvestors] = useState<{ student_name: string, units: number, invested_amount: number }[]>([]);
     const [loading, setLoading] = useState(true);
@@ -549,6 +658,8 @@ const DashboardView: React.FC<{ students: (User & { account: Account | null })[]
     const [teacherTransactions, setTeacherTransactions] = useState<Transaction[]>([]);
     const [showHistoryModal, setShowHistoryModal] = useState(false);
     const [showIssueModal, setShowIssueModal] = useState(false); // 발행 모달 상태 추가
+    const [showMartModal, setShowMartModal] = useState(false); // 마트 송금 모달 상태 추가
+    const [showDeleteModal, setShowDeleteModal] = useState(false); // 계정 삭제 모달 상태 추가
     const [visibleTeacherTxns, setVisibleTeacherTxns] = useState(5);
     const [visibleHistoryModalTxns, setVisibleHistoryModalTxns] = useState(10);
     const [activeTab, setActiveTab] = useState<'assets' | 'activity_up' | 'activity_down'>('assets');
@@ -683,12 +794,20 @@ const DashboardView: React.FC<{ students: (User & { account: Account | null })[]
                                 <h3 className="font-medium text-blue-200 text-sm mb-1">{alias} 지갑 (국고)</h3>
                                 <p className="text-5xl font-black">{teacherAccount?.balance.toLocaleString() ?? 0}{unit}</p>
                             </div>
-                            <button 
-                                onClick={(e) => { e.stopPropagation(); setShowIssueModal(true); }} 
-                                className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white font-bold rounded-lg border border-white/30 transition-all active:scale-95 text-xs flex items-center"
-                            >
-                                <PlusIcon className="w-4 h-4 mr-1" /> 발행
-                            </button>
+                            <div className="flex flex-col gap-2">
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); setShowIssueModal(true); }} 
+                                    className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white font-bold rounded-lg border border-white/30 transition-all active:scale-95 text-xs flex items-center"
+                                >
+                                    <PlusIcon className="w-4 h-4 mr-1" /> 발행
+                                </button>
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); setShowMartModal(true); }} 
+                                    className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white font-bold rounded-lg border border-white/30 transition-all active:scale-95 text-xs flex items-center"
+                                >
+                                    <TransferIcon className="w-4 h-4 mr-1" /> 마트 송금
+                                </button>
+                            </div>
                         </div>
                         <p className="text-xs text-blue-200 mt-4 flex items-center">내역 보기 <span className="ml-1">→</span></p>
                     </div>
@@ -879,6 +998,19 @@ const DashboardView: React.FC<{ students: (User & { account: Account | null })[]
              )}
 
              {showIssueModal && <IssueCurrencyModal onClose={() => setShowIssueModal(false)} onComplete={handleIssueComplete} />}
+             {showMartModal && <MartTransferModal onClose={() => setShowMartModal(false)} onComplete={handleIssueComplete} />}
+             
+             {/* 계정 삭제 버튼 */}
+             <div className="flex justify-end pt-8">
+                <button 
+                    onClick={() => setShowDeleteModal(true)}
+                    className="text-[10px] text-gray-300 hover:text-red-400 transition-colors flex items-center gap-1"
+                >
+                    계정 삭제
+                </button>
+             </div>
+
+             {showDeleteModal && <DeleteAccountModal onClose={() => setShowDeleteModal(false)} />}
         </div>
     );
 };
