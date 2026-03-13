@@ -184,114 +184,89 @@ const QrPrintModal: React.FC<{ students: (User & { account: Account | null })[],
     const baseUrl = getQrBaseUrl();
 
     const handlePrint = () => {
-        window.print();
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+            alert('팝업이 차단되었습니다. 브라우저 설정에서 팝업을 허용해주세요.');
+            return;
+        }
+
+        const qrCardsHtml = students.map(s => {
+            const qrElement = document.getElementById(`qr-code-${s.userId}`);
+            const qrSvg = qrElement ? qrElement.innerHTML : '';
+            return `
+                <div class="qr-card">
+                    <div class="student-info">${s.grade}-${s.class} ${s.number} ${s.name}</div>
+                    <div class="qr-svg-container">${qrSvg}</div>
+                    <div class="qr-footer">QR 코드를 스캔하면 계좌로 바로 접속됩니다.</div>
+                </div>
+            `;
+        }).join('');
+
+        const html = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>QR 코드 출력</title>
+                <style>
+                    @page { size: A4; margin: 0; }
+                    body { margin: 0; padding: 15mm; font-family: sans-serif; background: white; }
+                    .qr-grid {
+                        display: grid;
+                        grid-template-columns: repeat(3, 1fr);
+                        gap: 10mm;
+                    }
+                    .qr-card {
+                        border: 1px solid #eee;
+                        border-radius: 12px;
+                        padding: 20px;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        text-align: center;
+                        break-inside: avoid;
+                        page-break-inside: avoid;
+                    }
+                    .student-info { font-size: 16px; font-weight: bold; margin-bottom: 12px; color: #333; }
+                    .qr-svg-container { background: white; padding: 5px; border: 1px solid #f0f0f0; border-radius: 8px; }
+                    .qr-svg-container svg { width: 140px; height: 140px; display: block; }
+                    .qr-footer { font-size: 10px; color: #999; margin-top: 10px; }
+                </style>
+            </head>
+            <body>
+                <div class="qr-grid">
+                    ${qrCardsHtml}
+                </div>
+                <script>
+                    window.onload = () => {
+                        setTimeout(() => {
+                            window.print();
+                        }, 500);
+                    };
+                </script>
+            </body>
+            </html>
+        `;
+
+        printWindow.document.write(html);
+        printWindow.document.close();
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[100] p-4 overflow-hidden no-print-overlay">
-            <style>{`
-                @media print {
-                    /* 1. 모든 기본 요소 숨기기 */
-                    body * {
-                        visibility: hidden;
-                        -webkit-print-color-adjust: exact !important;
-                        print-color-adjust: exact !important;
-                    }
-                    
-                    /* 2. 인쇄 영역만 보이게 하고 위치 초기화 */
-                    #print-section, #print-section * {
-                        visibility: visible;
-                    }
-                    
-                    #print-section {
-                        position: absolute;
-                        left: 0;
-                        top: 0;
-                        width: 100%;
-                        margin: 0;
-                        padding: 0 !important;
-                        background: white !important;
-                        display: block !important;
-                    }
-
-                    /* 3. 모든 부모 요소의 높이 및 스크롤 제한을 강제로 해제 (핵심) */
-                    html, body, #root, #root > div, div {
-                        height: auto !important;
-                        min-height: 0 !important;
-                        overflow: visible !important;
-                        position: static !important;
-                        margin: 0 !important;
-                        padding: 0 !important;
-                        display: block !important;
-                        background: white !important;
-                    }
-
-                    /* 4. 인쇄 영역을 페이지 전체로 확장 및 최상단 배치 */
-                    #print-section {
-                        position: absolute !important;
-                        left: 0 !important;
-                        top: 0 !important;
-                        width: 100% !important;
-                        background: white !important;
-                        z-index: 9999 !important;
-                    }
-
-                    /* 5. QR 그리드 설정 (가로 3개) */
-                    .qr-grid {
-                        display: grid !important;
-                        grid-template-columns: repeat(3, 1fr) !important;
-                        gap: 10mm !important;
-                        padding: 15mm !important;
-                        width: 100% !important;
-                    }
-
-                    /* 6. 개별 QR 카드 설정 및 잘림 방지 */
-                    .qr-card {
-                        border: 1px solid #000 !important;
-                        border-radius: 8px !important;
-                        padding: 10px !important;
-                        break-inside: avoid !important;
-                        page-break-inside: avoid !important;
-                        display: flex !important;
-                        flex-direction: column !important;
-                        align-items: center !important;
-                        justify-content: center !important;
-                        text-align: center !important;
-                        background: white !important;
-                        height: auto !important;
-                    }
-
-                    .qr-card p {
-                        margin-bottom: 5px !important;
-                        color: black !important;
-                        font-weight: bold !important;
-                    }
-
-                    /* 7. 인쇄 시 불필요한 UI 완전 제거 */
-                    .modal-header, .modal-footer, .no-print, button, .bg-black {
-                        display: none !important;
-                    }
-
-                    @page {
-                        size: A4;
-                        margin: 0;
-                    }
-                }
-            `}</style>
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col modal-container">
-                <div className="p-4 border-b flex justify-between items-center bg-gray-50 rounded-t-2xl modal-header">
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[100] p-4 overflow-hidden">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col">
+                <div className="p-4 border-b flex justify-between items-center bg-gray-50 rounded-t-2xl">
                     <h3 className="text-xl font-bold text-gray-800">QR 코드 출력 미리보기</h3>
                     <div className="flex gap-2">
                         <button onClick={handlePrint} className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700">인쇄하기</button>
                         <button onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg font-bold hover:bg-gray-300">닫기</button>
                     </div>
                 </div>
-                <div className="flex-grow overflow-y-auto p-8 bg-gray-100" id="print-section">
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-6 qr-grid">
+                <div className="flex-grow overflow-y-auto p-8 bg-gray-100">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
                         {students.map(s => (
-                            <div key={s.userId} className="bg-white p-4 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center text-center break-inside-avoid shadow-sm qr-card">
+                            <div key={s.userId} className="bg-white p-4 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center text-center shadow-sm">
                                 <p className="font-black text-lg mb-2 text-gray-800">{s.grade}-{s.class} {s.number} {s.name}</p>
-                                <div className="p-2 bg-white border border-gray-100 rounded-lg mb-3">
+                                <div id={`qr-code-${s.userId}`} className="p-2 bg-white border border-gray-100 rounded-lg mb-3">
                                     <QRCodeSVG value={`${baseUrl}/?token=${s.account?.qrToken}&view=transfer`} size={140} level="H" />
                                 </div>
                                 <p className="text-[10px] text-gray-400 font-medium">QR 코드를 스캔하면 계좌로 바로 접속됩니다.</p>
@@ -299,7 +274,7 @@ const QrPrintModal: React.FC<{ students: (User & { account: Account | null })[],
                         ))}
                     </div>
                 </div>
-                <div className="p-4 border-t bg-gray-50 text-center text-xs text-gray-400 rounded-b-2xl modal-footer">
+                <div className="p-4 border-t bg-gray-50 text-center text-xs text-gray-400 rounded-b-2xl">
                     인쇄 시 '배경 그래픽' 옵션을 켜주시면 더 깔끔하게 출력됩니다.
                 </div>
             </div>
