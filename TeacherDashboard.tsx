@@ -188,9 +188,76 @@ const QrPrintModal: React.FC<{ students: (User & { account: Account | null })[],
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[100] p-4 overflow-hidden">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col">
-                <div className="p-4 border-b flex justify-between items-center bg-gray-50 rounded-t-2xl">
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[100] p-4 overflow-hidden no-print-overlay">
+            <style>{`
+                @media print {
+                    /* 전체 배경 및 레이아웃 초기화 */
+                    body { 
+                        background: white !important; 
+                        margin: 0 !important; 
+                        padding: 0 !important; 
+                    }
+                    
+                    /* 모달 오버레이 및 배경 숨기기 */
+                    .no-print-overlay { 
+                        position: static !important; 
+                        background: none !important; 
+                        display: block !important; 
+                        padding: 0 !important; 
+                        overflow: visible !important;
+                    }
+                    
+                    /* 모달 컨테이너를 전체 화면으로 확장 */
+                    .modal-container { 
+                        box-shadow: none !important; 
+                        border: none !important; 
+                        width: 100% !important; 
+                        max-width: none !important; 
+                        height: auto !important; 
+                        margin: 0 !important;
+                        display: block !important;
+                    }
+                    
+                    /* 헤더, 푸터, 버튼 등 인쇄 시 불필요한 요소 숨기기 */
+                    .modal-header, .modal-footer, .no-print { 
+                        display: none !important; 
+                    }
+                    
+                    /* 인쇄 영역 설정 */
+                    #print-section { 
+                        padding: 0 !important; 
+                        background: white !important; 
+                        overflow: visible !important; 
+                        height: auto !important; 
+                        display: block !important;
+                    }
+                    
+                    /* QR 코드 그리드 최적화 (A4 기준 3열) */
+                    .qr-grid { 
+                        display: grid !important; 
+                        grid-template-columns: repeat(3, 1fr) !important; 
+                        gap: 15px !important; 
+                        width: 100% !important;
+                    }
+                    
+                    /* QR 카드 잘림 방지 및 스타일 */
+                    .qr-card { 
+                        break-inside: avoid !important; 
+                        page-break-inside: avoid !important; 
+                        border: 1px solid #eee !important; 
+                        box-shadow: none !important; 
+                        margin-bottom: 10px !important;
+                        padding: 15px !important;
+                    }
+
+                    @page {
+                        size: A4;
+                        margin: 1.5cm;
+                    }
+                }
+            `}</style>
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col modal-container">
+                <div className="p-4 border-b flex justify-between items-center bg-gray-50 rounded-t-2xl modal-header">
                     <h3 className="text-xl font-bold text-gray-800">QR 코드 출력 미리보기</h3>
                     <div className="flex gap-2">
                         <button onClick={handlePrint} className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700">인쇄하기</button>
@@ -198,9 +265,9 @@ const QrPrintModal: React.FC<{ students: (User & { account: Account | null })[],
                     </div>
                 </div>
                 <div className="flex-grow overflow-y-auto p-8 bg-gray-100" id="print-section">
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-6 qr-grid">
                         {students.map(s => (
-                            <div key={s.userId} className="bg-white p-4 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center text-center break-inside-avoid shadow-sm">
+                            <div key={s.userId} className="bg-white p-4 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center text-center break-inside-avoid shadow-sm qr-card">
                                 <p className="font-black text-lg mb-2 text-gray-800">{s.grade}-{s.class} {s.number} {s.name}</p>
                                 <div className="p-2 bg-white border border-gray-100 rounded-lg mb-3">
                                     <QRCodeSVG value={`${baseUrl}/?token=${s.account?.qrToken}&view=transfer`} size={140} level="H" />
@@ -210,7 +277,7 @@ const QrPrintModal: React.FC<{ students: (User & { account: Account | null })[],
                         ))}
                     </div>
                 </div>
-                <div className="p-4 border-t bg-gray-50 text-center text-xs text-gray-400 rounded-b-2xl">
+                <div className="p-4 border-t bg-gray-50 text-center text-xs text-gray-400 rounded-b-2xl modal-footer">
                     인쇄 시 '배경 그래픽' 옵션을 켜주시면 더 깔끔하게 출력됩니다.
                 </div>
             </div>
