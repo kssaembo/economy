@@ -191,68 +191,90 @@ const QrPrintModal: React.FC<{ students: (User & { account: Account | null })[],
         <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[100] p-4 overflow-hidden no-print-overlay">
             <style>{`
                 @media print {
-                    /* 전체 배경 및 레이아웃 초기화 */
-                    body { 
-                        background: white !important; 
-                        margin: 0 !important; 
-                        padding: 0 !important; 
+                    /* 1. 모든 기본 요소 숨기기 */
+                    body * {
+                        visibility: hidden;
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
                     }
                     
-                    /* 모달 오버레이 및 배경 숨기기 */
-                    .no-print-overlay { 
-                        position: static !important; 
-                        background: none !important; 
-                        display: block !important; 
-                        padding: 0 !important; 
+                    /* 2. 인쇄 영역만 보이게 하고 위치 초기화 */
+                    #print-section, #print-section * {
+                        visibility: visible;
+                    }
+                    
+                    #print-section {
+                        position: absolute;
+                        left: 0;
+                        top: 0;
+                        width: 100%;
+                        margin: 0;
+                        padding: 0 !important;
+                        background: white !important;
+                        display: block !important;
+                    }
+
+                    /* 3. 모든 부모 요소의 높이 및 스크롤 제한을 강제로 해제 (핵심) */
+                    html, body, #root, #root > div, div {
+                        height: auto !important;
+                        min-height: 0 !important;
                         overflow: visible !important;
-                    }
-                    
-                    /* 모달 컨테이너를 전체 화면으로 확장 */
-                    .modal-container { 
-                        box-shadow: none !important; 
-                        border: none !important; 
-                        width: 100% !important; 
-                        max-width: none !important; 
-                        height: auto !important; 
+                        position: static !important;
                         margin: 0 !important;
+                        padding: 0 !important;
                         display: block !important;
+                        background: white !important;
                     }
-                    
-                    /* 헤더, 푸터, 버튼 등 인쇄 시 불필요한 요소 숨기기 */
-                    .modal-header, .modal-footer, .no-print { 
-                        display: none !important; 
+
+                    /* 4. 인쇄 영역을 페이지 전체로 확장 및 최상단 배치 */
+                    #print-section {
+                        position: absolute !important;
+                        left: 0 !important;
+                        top: 0 !important;
+                        width: 100% !important;
+                        background: white !important;
+                        z-index: 9999 !important;
                     }
-                    
-                    /* 인쇄 영역 설정 */
-                    #print-section { 
-                        padding: 0 !important; 
-                        background: white !important; 
-                        overflow: visible !important; 
-                        height: auto !important; 
-                        display: block !important;
-                    }
-                    
-                    /* QR 코드 그리드 최적화 (A4 기준 3열) */
-                    .qr-grid { 
-                        display: grid !important; 
-                        grid-template-columns: repeat(3, 1fr) !important; 
-                        gap: 15px !important; 
+
+                    /* 5. QR 그리드 설정 (가로 3개) */
+                    .qr-grid {
+                        display: grid !important;
+                        grid-template-columns: repeat(3, 1fr) !important;
+                        gap: 10mm !important;
+                        padding: 15mm !important;
                         width: 100% !important;
                     }
-                    
-                    /* QR 카드 잘림 방지 및 스타일 */
-                    .qr-card { 
-                        break-inside: avoid !important; 
-                        page-break-inside: avoid !important; 
-                        border: 1px solid #eee !important; 
-                        box-shadow: none !important; 
-                        margin-bottom: 10px !important;
-                        padding: 15px !important;
+
+                    /* 6. 개별 QR 카드 설정 및 잘림 방지 */
+                    .qr-card {
+                        border: 1px solid #000 !important;
+                        border-radius: 8px !important;
+                        padding: 10px !important;
+                        break-inside: avoid !important;
+                        page-break-inside: avoid !important;
+                        display: flex !important;
+                        flex-direction: column !important;
+                        align-items: center !important;
+                        justify-content: center !important;
+                        text-align: center !important;
+                        background: white !important;
+                        height: auto !important;
+                    }
+
+                    .qr-card p {
+                        margin-bottom: 5px !important;
+                        color: black !important;
+                        font-weight: bold !important;
+                    }
+
+                    /* 7. 인쇄 시 불필요한 UI 완전 제거 */
+                    .modal-header, .modal-footer, .no-print, button, .bg-black {
+                        display: none !important;
                     }
 
                     @page {
                         size: A4;
-                        margin: 1.5cm;
+                        margin: 0;
                     }
                 }
             `}</style>
