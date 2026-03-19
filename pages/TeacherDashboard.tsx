@@ -184,7 +184,71 @@ const QrPrintModal: React.FC<{ students: (User & { account: Account | null })[],
     const baseUrl = getQrBaseUrl();
 
     const handlePrint = () => {
-        window.print();
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+            alert('팝업이 차단되었습니다. 브라우저 설정에서 팝업을 허용해주세요.');
+            return;
+        }
+
+        const qrCardsHtml = students.map(s => {
+            const qrElement = document.getElementById(`qr-code-${s.userId}`);
+            const qrSvg = qrElement ? qrElement.innerHTML : '';
+            return `
+                <div class="qr-card">
+                    <div class="student-info">${s.grade}-${s.class} ${s.number} ${s.name}</div>
+                    <div class="qr-svg-container">${qrSvg}</div>
+                    <div class="qr-footer">QR 코드를 스캔하면 계좌로 바로 접속됩니다.</div>
+                </div>
+            `;
+        }).join('');
+
+        const html = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>QR 코드 출력</title>
+                <style>
+                    @page { size: A4; margin: 0; }
+                    body { margin: 0; padding: 15mm; font-family: sans-serif; background: white; }
+                    .qr-grid {
+                        display: grid;
+                        grid-template-columns: repeat(3, 1fr);
+                        gap: 10mm;
+                    }
+                    .qr-card {
+                        border: 1px solid #eee;
+                        border-radius: 12px;
+                        padding: 20px;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        text-align: center;
+                        break-inside: avoid;
+                        page-break-inside: avoid;
+                    }
+                    .student-info { font-size: 16px; font-weight: bold; margin-bottom: 12px; color: #333; }
+                    .qr-svg-container { background: white; padding: 5px; border: 1px solid #f0f0f0; border-radius: 8px; }
+                    .qr-svg-container svg { width: 140px; height: 140px; display: block; }
+                    .qr-footer { font-size: 10px; color: #999; margin-top: 10px; }
+                </style>
+            </head>
+            <body>
+                <div class="qr-grid">
+                    ${qrCardsHtml}
+                </div>
+                <script>
+                    window.onload = () => {
+                        setTimeout(() => {
+                            window.print();
+                        }, 500);
+                    };
+                </script>
+            </body>
+            </html>
+        `;
+
+        printWindow.document.write(html);
+        printWindow.document.close();
     };
 
     return (
@@ -197,13 +261,13 @@ const QrPrintModal: React.FC<{ students: (User & { account: Account | null })[],
                         <button onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg font-bold hover:bg-gray-300">닫기</button>
                     </div>
                 </div>
-                <div className="flex-grow overflow-y-auto p-8 bg-gray-100" id="print-section">
+                <div className="flex-grow overflow-y-auto p-8 bg-gray-100">
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
                         {students.map(s => (
-                            <div key={s.userId} className="bg-white p-4 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center text-center break-inside-avoid shadow-sm">
+                            <div key={s.userId} className="bg-white p-4 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center text-center shadow-sm">
                                 <p className="font-black text-lg mb-2 text-gray-800">{s.grade}-{s.class} {s.number} {s.name}</p>
-                                <div className="p-2 bg-white border border-gray-100 rounded-lg mb-3">
-                                    <QRCodeSVG value={`${baseUrl}/?token=${s.account?.qrToken}`} size={140} level="H" />
+                                <div id={`qr-code-${s.userId}`} className="p-2 bg-white border border-gray-100 rounded-lg mb-3">
+                                    <QRCodeSVG value={`${baseUrl}/?token=${s.account?.qrToken}&view=transfer`} size={140} level="H" />
                                 </div>
                                 <p className="text-[10px] text-gray-400 font-medium">QR 코드를 스캔하면 계좌로 바로 접속됩니다.</p>
                             </div>

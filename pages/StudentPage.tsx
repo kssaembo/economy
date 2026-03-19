@@ -1071,13 +1071,19 @@ const FundView: React.FC<{ currentUser: User, refreshAccount: () => void, showNo
 
 const StudentPage: React.FC<StudentPageProps> = ({ initialView, onBackToMenu }) => {
     const { currentUser, logout } = useContext(AuthContext);
-    const [view, setView] = useState<View>((initialView as View) || 'home');
+    const [view, setView] = useState<View>((initialView as View) || 'transfer');
     const [account, setAccount] = useState<Account | null>(null);
     const [notification, setNotification] = useState<NotificationType | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     
     const [activeStudent, setActiveStudent] = useState<User | null>(null);
     const [students, setStudents] = useState<User[]>([]);
+
+    useEffect(() => {
+        if (initialView && ['home', 'transfer', 'stocks', 'savings', 'funds'].includes(initialView)) {
+            setView(initialView as View);
+        }
+    }, [initialView]);
 
     const handleLogout = onBackToMenu || logout;
 

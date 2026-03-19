@@ -82,6 +82,7 @@ const DepositWithdrawView: React.FC = () => {
     const [students, setStudents] = useState<(User & { account: Account | null})[]>([]);
     const [selectedStudent, setSelectedStudent] = useState<(User & { account: Account | null}) | null>(null);
     const [mode, setMode] = useState<'deposit' | 'withdraw' | null>(null);
+    const [showDailyModal, setShowDailyModal] = useState(false);
 
     const fetchStudents = useCallback(async () => {
         const users = await api.getUsersByRole(Role.STUDENT, currentUser?.userId || '');
@@ -102,6 +103,15 @@ const DepositWithdrawView: React.FC = () => {
 
     return (
          <div className="bg-white rounded-xl shadow-md overflow-hidden">
+            <div className="p-4 border-b flex justify-between items-center bg-gray-50/50">
+                <h2 className="text-lg font-bold text-gray-800">학생 목록</h2>
+                <button 
+                    onClick={() => setShowDailyModal(true)}
+                    className="px-3 py-1.5 bg-indigo-100 text-indigo-700 text-sm font-bold rounded-lg hover:bg-indigo-200 transition-colors flex items-center gap-1"
+                >
+                    오늘의 시재
+                </button>
+            </div>
             <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                     <thead className="bg-gray-50">
@@ -132,8 +142,72 @@ const DepositWithdrawView: React.FC = () => {
             {selectedStudent && mode && (
                 <TransactionModal student={selectedStudent} mode={mode} onClose={() => { setSelectedStudent(null); setMode(null); }} onComplete={handleTxnComplete} unit={unit} />
             )}
+            {showDailyModal && (
+                <DailyCashModal onClose={() => setShowDailyModal(false)} unit={unit} />
+            )}
         </div>
     )
+};
+
+const DailyCashModal: React.FC<{ onClose: () => void, unit: string }> = ({ onClose, unit }) => {
+    const { currentUser } = useContext(AuthContext);
+    const [data, setData] = useState<{ deposits: number, withdrawals: number } | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            if (!currentUser) return;
+            const teacherId = currentUser.role === Role.TEACHER ? currentUser.userId : currentUser.teacher_id;
+            if (teacherId) {
+                try {
+                    const totals = await api.getDailyTreasuryTotals(teacherId);
+                    setData(totals);
+                } catch (error) {
+                    console.error("Failed to fetch daily totals", error);
+                }
+            }
+            setLoading(false);
+        };
+        fetchData();
+    }, [currentUser]);
+
+    const cashBalance = data ? data.deposits - data.withdrawals : 0;
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
+                <h3 className="text-xl font-bold mb-6 text-center">오늘의 시재 현황</h3>
+                {loading ? (
+                    <div className="py-8 text-center text-gray-500">데이터를 불러오는 중...</div>
+                ) : (
+                    <div className="space-y-4">
+                        <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                            <span className="text-gray-600 font-medium text-sm">오늘의 입금내역</span>
+                            <span className="text-blue-700 font-bold">{(data?.deposits ?? 0).toLocaleString()}{unit}</span>
+                        </div>
+                        <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg">
+                            <span className="text-gray-600 font-medium text-sm">오늘의 출금내역</span>
+                            <span className="text-red-700 font-bold">{(data?.withdrawals ?? 0).toLocaleString()}{unit}</span>
+                        </div>
+                        <div className="pt-2 border-t border-dashed border-gray-300">
+                            <div className="flex justify-between items-center p-3 bg-gray-100 rounded-lg">
+                                <span className="text-gray-800 font-bold text-sm">오늘의 시재</span>
+                                <span className={`text-lg font-black ${cashBalance >= 0 ? 'text-indigo-600' : 'text-red-600'}`}>
+                                    {cashBalance.toLocaleString()}{unit}
+                                </span>
+                            </div>
+                        </div>
+                        <button 
+                            onClick={onClose}
+                            className="mt-6 w-full p-3 bg-gray-800 text-white font-bold rounded-lg hover:bg-gray-900 transition-colors"
+                        >
+                            확인
+                        </button>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
 };
 
 const TransactionModal: React.FC<{ student: User & { account: Account | null }, mode: 'deposit' | 'withdraw', onClose: () => void, onComplete: () => void, unit: string }> = ({ student, mode, onClose, onComplete, unit }) => {

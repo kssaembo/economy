@@ -933,6 +933,45 @@ const deleteTeacherAccount = async (teacherId: string, password: string): Promis
     return data;
 };
 
+const getDailyTreasuryTotals = async (teacherId: string): Promise<{ deposits: number, withdrawals: number }> => {
+    // 1. Get treasury account
+    const { data: accounts, error: accError } = await supabase
+        .from('accounts')
+        .select('accountId')
+        .eq('userId', teacherId)
+        .eq('account_type', 'treasury')
+        .single();
+    
+    if (accError || !accounts) return { deposits: 0, withdrawals: 0 };
+    
+    const treasuryId = accounts.accountId;
+    
+    // 2. Get today's date range (local time start of day to end of day)
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+    const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).toISOString();
+    
+    // 3. Query transactions
+    const { data: txns, error: txnError } = await supabase
+        .from('transactions')
+        .select('amount, type')
+        .eq('accountId', treasuryId)
+        .gte('date', startOfDay)
+        .lte('date', endOfDay);
+    
+    if (txnError || !txns) return { deposits: 0, withdrawals: 0 };
+    
+    let deposits = 0;
+    let withdrawals = 0;
+    
+    txns.forEach(t => {
+        if (t.type === 'Deposit') deposits += t.amount;
+        else if (t.type === 'Withdrawal') withdrawals += t.amount;
+    });
+    
+    return { deposits, withdrawals };
+};
+
 export const api = {
     login, signupTeacher, loginTeacher, requestRecoveryCode, verifyRecoveryCode, resetTeacherPassword, checkTeacherExists,
     loginWithPassword, verifyAdminPassword, changePassword, resetPassword, loginWithQrToken, getUsersByRole,
@@ -943,5 +982,5 @@ export const api = {
     joinSavings, cancelSavings, processSavingsMaturity, addSavingsProduct, deleteSavingsProducts, getSavingsEnrollees,
     getJobs, addJob, updateJob, deleteJob, manageJobAssignment, updateJobIncentive, payJobSalary, payAllSalaries,
     getTaxes, createTax, deleteTax, getMyUnpaidTaxes, payTax, getFunds, createFund, deleteFund, joinFund, settleFund, getMyFundInvestments,
-    getFundInvestors, issueCurrency, deleteTeacherAccount
+    getFundInvestors, issueCurrency, deleteTeacherAccount, getDailyTreasuryTotals
 };
