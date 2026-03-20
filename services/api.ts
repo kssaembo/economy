@@ -807,12 +807,12 @@ const deleteTax = async (taxId: string): Promise<string> => {
 const getMyUnpaidTaxes = async (userId: string): Promise<{ recipientId: string, taxId: string, name: string, amount: number, dueDate: string }[]> => {
     const { data, error } = await supabase.from('tax_recipients').select('*, tax_items(*)').eq('student_user_id', userId).eq('is_paid', false);
     handleSupabaseError(error, 'getMyUnpaidTaxes');
-    return data.map((r: any) => ({
+    return (data || []).map((r: any) => ({
         recipientId: r.id,
-        taxId: r.tax_id,
-        name: r.tax_items.name,
-        amount: r.tax_items.amount,
-        dueDate: r.tax_items.due_date
+        taxId: r.tax_id || r.tax_items?.id, // r.tax_id가 없을 경우 조인된 테이블의 id를 참조하도록 보완
+        name: r.tax_items?.name,
+        amount: r.tax_items?.amount,
+        dueDate: r.tax_items?.due_date
     }));
 };
 
