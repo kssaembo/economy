@@ -183,17 +183,17 @@ const DailyCashModal: React.FC<{ onClose: () => void, unit: string }> = ({ onClo
                     <div className="space-y-4">
                         <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
                             <span className="text-gray-600 font-medium text-sm">오늘의 입금내역</span>
-                            <span className="text-blue-700 font-bold">{(data?.deposits ?? 0).toLocaleString()}{unit}</span>
+                            <span className="text-blue-700 font-bold">{(data?.deposits ?? 0).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</span>
                         </div>
                         <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg">
                             <span className="text-gray-600 font-medium text-sm">오늘의 출금내역</span>
-                            <span className="text-red-700 font-bold">{(data?.withdrawals ?? 0).toLocaleString()}{unit}</span>
+                            <span className="text-red-700 font-bold">{(data?.withdrawals ?? 0).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</span>
                         </div>
                         <div className="pt-2 border-t border-dashed border-gray-300">
                             <div className="flex justify-between items-center p-3 bg-gray-100 rounded-lg">
                                 <span className="text-gray-800 font-bold text-sm">오늘의 시재</span>
                                 <span className={`text-lg font-black ${cashBalance >= 0 ? 'text-indigo-600' : 'text-red-600'}`}>
-                                    {cashBalance.toLocaleString()}{unit}
+                                    {cashBalance.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}
                                 </span>
                             </div>
                         </div>
@@ -242,8 +242,8 @@ const TransactionModal: React.FC<{ student: User & { account: Account | null }, 
                     <h3 className="text-xl font-bold">{student.name} 학생 {mode === 'deposit' ? '입금' : '출금'}</h3>
                     <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200"><XIcon className="w-6 h-6 text-gray-600" /></button>
                 </div>
-                 <p className="mb-4">현재 잔액: <span className="font-bold">{(student.account?.balance.toLocaleString() ?? 0)}{unit}</span></p>
-                <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="금액" className="w-full p-3 border rounded-lg"/>
+                 <p className="mb-4">현재 잔액: <span className="font-bold">{(student.account?.balance.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) ?? '0.0')}{unit}</span></p>
+                <input type="number" step="1" value={amount} onChange={e => setAmount(e.target.value)} placeholder="금액" className="w-full p-3 border rounded-lg"/>
                 <button onClick={handleSubmit} disabled={loading} className="mt-6 w-full p-3 bg-indigo-600 text-white font-bold rounded-lg disabled:bg-gray-400">
                     {loading ? '처리 중...' : '실행'}
                 </button>
@@ -360,13 +360,13 @@ const StockExchangeView: React.FC = () => {
                                         {s.name}
                                         {expandedStockId === s.id ? <ArrowUpIcon className="w-3 h-3 ml-1 text-gray-400"/> : <ArrowDownIcon className="w-3 h-3 ml-1 text-gray-400"/>}
                                     </td>
-                                    <td className="p-3 text-right font-mono">{s.currentPrice.toLocaleString()}{unit}</td>
+                                    <td className="p-3 text-right font-mono">{s.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</td>
                                     <td className="p-3 text-right font-mono">
                                          <button onClick={() => handleOpenHoldersModal(s)} className="hover:underline" disabled={s.totalQuantity === 0}>
                                             {s.totalQuantity.toLocaleString()}주
-                                        </button>
+                                         </button>
                                     </td>
-                                    <td className="p-3 text-right font-mono">{s.valuation.toLocaleString()}{unit}</td>
+                                    <td className="p-3 text-right font-mono">{s.valuation.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</td>
                                     <td className="p-3 text-center">
                                         <button onClick={() => { setSelectedStock(s); setShowModal('price'); }} className="px-3 py-1 bg-gray-200 text-gray-800 text-[8px] font-semibold rounded-md hover:bg-gray-300 whitespace-nowrap">입력</button>
                                     </td>
@@ -384,7 +384,7 @@ const StockExchangeView: React.FC = () => {
                                                             <YAxis domain={['auto', 'auto']} />
                                                             <Tooltip 
                                                                 labelFormatter={(label) => new Date(label).toLocaleString()}
-                                                                formatter={(value: number) => [`${value.toLocaleString()}${unit}`, '가격']}
+                                                                formatter={(value: number) => [`${value.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}`, '가격']}
                                                             />
                                                             <Line type="monotone" dataKey="price" stroke="#4F46E5" strokeWidth={2} dot={false} />
                                                         </LineChart>
@@ -439,7 +439,7 @@ const AddStockModal: React.FC<{onClose: ()=>void, onComplete: ()=>void}> = ({onC
             <div className="bg-white rounded-xl shadow-2xl p-6 max-sm">
                 <h3 className="text-xl font-bold mb-4">새 주식 종목 추가</h3>
                 <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="종목명" className="w-full p-3 border rounded-lg mb-2"/>
-                <input type="number" value={price} onChange={e => setPrice(e.target.value)} placeholder="초기 가격" className="w-full p-3 border rounded-lg"/>
+                <input type="number" step="1" value={price} onChange={e => setPrice(e.target.value)} placeholder="초기 가격" className="w-full p-3 border rounded-lg"/>
                 <button onClick={handleSubmit} disabled={loading} className="mt-4 w-full p-3 bg-indigo-600 text-white font-bold rounded-lg">추가하기</button>
                 {result && <p className={`mt-2 text-sm text-center ${result.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>{result.text}</p>}
                 <button onClick={onClose} className="mt-2 w-full p-2 text-gray-600">닫기</button>
@@ -467,7 +467,7 @@ const UpdatePriceModal: React.FC<{stock: StockProduct, onClose: ()=>void, onComp
          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-xl shadow-2xl p-6 max-sm">
                 <h3 className="text-xl font-bold mb-4">{stock.name} 가격 변경</h3>
-                <input type="number" value={price} onChange={e => setPrice(e.target.value)} placeholder="새로운 가격" className="w-full p-3 border rounded-lg"/>
+                <input type="number" step="1" value={price} onChange={e => setPrice(e.target.value)} placeholder="새로운 가격" className="w-full p-3 border rounded-lg"/>
                 <button onClick={handleSubmit} disabled={loading} className="mt-4 w-full p-3 bg-indigo-600 text-white font-bold rounded-lg">변경하기</button>
                  {result && <p className={`mt-2 text-sm text-center ${result.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>{result.text}</p>}
                 <button onClick={onClose} className="mt-2 w-full p-2 text-gray-600">닫기</button>
@@ -524,7 +524,7 @@ const StockHoldersModal: React.FC<{ stock: StockProductWithDetails, onClose: () 
                                 <tr key={h.studentName} className="border-b">
                                     <td className="p-2">{h.studentName}</td>
                                     <td className="p-2 text-right font-mono">{h.quantity.toLocaleString()}주</td>
-                                    <td className="p-2 text-right font-mono">{stock.totalQuantity > 0 ? ((h.quantity / stock.totalQuantity) * 100).toFixed(2) : 0}%</td>
+                                    <td className="p-2 text-right font-mono">{stock.totalQuantity > 0 ? ((h.quantity / stock.totalQuantity) * 100).toFixed(1) : 0}%</td>
                                 </tr>
                             ))}
                         </tbody>
@@ -738,18 +738,18 @@ const AddSavingModal: React.FC<{onClose: ()=>void, onComplete: ()=>void}> = ({on
                     </label>
                     <div className="grid grid-cols-2 gap-2">
                         <label className="block font-medium text-gray-700">만기(일)
-                          <input type="number" name="maturityDays" value={product.maturityDays} onChange={handleChange} placeholder="30" className="w-full p-2 border rounded mt-1"/>
+                          <input type="number" step="1" name="maturityDays" value={product.maturityDays} onChange={handleChange} placeholder="30" className="w-full p-2 border rounded mt-1"/>
                         </label>
                          <label className="block font-medium text-gray-700">최대 가입금액
-                          <input type="number" name="maxAmount" value={product.maxAmount} onChange={handleChange} placeholder="10000" className="w-full p-2 border rounded mt-1"/>
+                          <input type="number" step="1" name="maxAmount" value={product.maxAmount} onChange={handleChange} placeholder="10000" className="w-full p-2 border rounded mt-1"/>
                         </label>
                     </div>
                      <div className="grid grid-cols-2 gap-2">
                         <label className="block font-medium text-gray-700">이자율(%)
-                          <input type="number" name="rate" value={product.rate} onChange={handleChange} className="w-full p-2 border rounded mt-1"/>
+                          <input type="number" step="0.1" name="rate" value={product.rate} onChange={handleChange} className="w-full p-2 border rounded mt-1"/>
                         </label>
                         <label className="block font-medium text-gray-700">해지이율(%)
-                          <input type="number" name="cancellationRate" value={product.cancellationRate} onChange={handleChange} className="w-full p-2 border rounded mt-1"/>
+                          <input type="number" step="0.1" name="cancellationRate" value={product.cancellationRate} onChange={handleChange} className="w-full p-2 border rounded mt-1"/>
                         </label>
                     </div>
                 </div>
@@ -820,7 +820,7 @@ const SavingEnrolleesModal: React.FC<{ product: SavingsProduct, onClose: () => v
                                     return (
                                         <tr key={e.studentName} className="border-b">
                                             <td className="p-2">{e.studentName}</td>
-                                            <td className="p-2 text-right font-mono">{e.amount.toLocaleString()}{unit}</td>
+                                            <td className="p-2 text-right font-mono">{e.amount.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</td>
                                             <td className="p-2 text-right font-mono text-red-500 text-xs">{new Date(possibleTime).toLocaleDateString()}</td>
                                             <td className="p-2 text-right font-mono">{new Date(e.maturityDate).toLocaleDateString()}</td>
                                         </tr>

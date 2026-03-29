@@ -224,7 +224,7 @@ const PosView: React.FC<{currentUser: User | null}> = ({currentUser}) => {
                         <StudentIcon className="w-8 h-8 text-gray-500 mb-2" />
                         <span className="font-bold text-gray-800 text-sm">{s.name}</span>
                         <span className="font-mono text-gray-500 text-xs mt-1">
-                            {(s.account?.balance ?? 0).toLocaleString()}{unit}
+                            {(s.account?.balance ?? 0).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}
                         </span>
                     </button>
                 ))}
@@ -266,14 +266,14 @@ const PaymentView: React.FC<{
                 </button>
                 <div className="text-right">
                     <p className="font-bold text-lg">{student.name}</p>
-                    <p className="text-sm text-gray-500">잔액: {(student.account?.balance ?? 0).toLocaleString()}{unit}</p>
+                    <p className="text-sm text-gray-500">잔액: {(student.account?.balance ?? 0).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</p>
                 </div>
             </div>
 
             <div className="flex-grow flex flex-col md:flex-row md:gap-8 justify-between">
                 <div className="flex-grow flex items-center justify-center text-center p-4">
                      <p className="text-5xl font-mono font-bold tracking-tight text-gray-800 break-all sm:text-6xl">
-                        {parseInt(amount || '0').toLocaleString()}
+                        {parseInt(amount || '0').toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                         <span className="text-3xl ml-2 font-sans font-medium">{unit}</span>
                      </p>
                 </div>
@@ -363,7 +363,7 @@ const TransferView: React.FC<{ martAccount: Account, refreshAccount: () => void 
                 <h2 className="text-2xl font-bold mb-4">송금하기</h2>
                 <div className="mb-4">
                     <p className="text-sm text-gray-500">마트 계좌 잔액</p>
-                    <p className="text-2xl font-bold">{martAccount.balance.toLocaleString()}{unit}</p>
+                    <p className="text-2xl font-bold">{martAccount.balance.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</p>
                 </div>
 
                 <div className="flex bg-gray-100 p-1 rounded-lg mb-6">
@@ -402,7 +402,7 @@ const TransferView: React.FC<{ martAccount: Account, refreshAccount: () => void 
 
                     <div>
                         <label className="font-semibold text-gray-700">보낼 금액</label>
-                        <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0" className="w-full p-3 border rounded-lg mt-1" />
+                        <input type="number" step="1" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0" className="w-full p-3 border rounded-lg mt-1" />
                     </div>
                 </div>
                 
@@ -456,7 +456,7 @@ const HistoryView: React.FC<{ martAccount: Account }> = ({ martAccount }) => {
                                 <p className="text-sm text-gray-500">{new Date(t.date).toLocaleString()}</p>
                             </div>
                             <p className={`font-bold ${t.amount > 0 ? 'text-blue-600' : 'text-red-600'}`}>
-                                {t.amount > 0 ? '+' : ''}{t.amount.toLocaleString()}{unit}
+                                {t.amount > 0 ? '+' : ''}{t.amount.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}
                             </p>
                         </li>
                     ))}

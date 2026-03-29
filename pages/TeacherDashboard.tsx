@@ -310,7 +310,7 @@ const AddJobModal: React.FC<{ onClose: () => void, onComplete: () => void }> = (
                 <div className="space-y-4">
                     <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="직업명" className="w-full p-3 border rounded-lg" />
                     <textarea value={desc} onChange={e => setDesc(e.target.value)} placeholder="설명" className="w-full p-3 border rounded-lg" rows={3} />
-                    <input type="number" value={salary} onChange={e => setSalary(e.target.value)} placeholder="월급" className="w-full p-3 border rounded-lg" />
+                    <input type="number" step="1" value={salary} onChange={e => setSalary(e.target.value)} placeholder="월급" className="w-full p-3 border rounded-lg" />
                     <button onClick={handleSubmit} disabled={loading} className="w-full py-3 bg-[#2B548F] text-white font-bold rounded-lg disabled:bg-gray-300">
                         {loading ? '추가 중...' : '추가하기'}
                     </button>
@@ -391,7 +391,7 @@ const AddTaxModal: React.FC<{ students: User[], onClose: () => void, onComplete:
                 <h3 className="text-xl font-bold mb-4">세금 고지</h3>
                 <div className="space-y-4 mb-4">
                     <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="세금 명칭 (예: 건강보험)" className="w-full p-3 border rounded-lg" />
-                    <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="금액" className="w-full p-3 border rounded-lg" />
+                    <input type="number" step="1" value={amount} onChange={e => setAmount(e.target.value)} placeholder="금액" className="w-full p-3 border rounded-lg" />
                     <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="w-full p-3 border rounded-lg" />
                 </div>
                 <div className="flex-grow overflow-y-auto border rounded-lg p-2 mb-4">
@@ -479,21 +479,21 @@ const AddFundModal: React.FC<{ students: User[], onClose: () => void, onComplete
                     <div className="grid grid-cols-2 gap-2">
                         <div>
                             <label className="text-xs text-gray-500 ml-1">1좌당 가격 ({unit})</label>
-                            <input type="number" value={unitPrice} onChange={e => setUnitPrice(e.target.value)} className="w-full p-2.5 border rounded-lg" />
+                            <input type="number" step="1" value={unitPrice} onChange={e => setUnitPrice(e.target.value)} className="w-full p-2.5 border rounded-lg" />
                         </div>
                         <div>
                             <label className="text-xs text-gray-500 ml-1">목표 금액 ({unit})</label>
-                            <input type="number" value={targetAmount} onChange={e => setTargetAmount(e.target.value)} className="w-full p-2.5 border rounded-lg" />
+                            <input type="number" step="1" value={targetAmount} onChange={e => setTargetAmount(e.target.value)} className="w-full p-2.5 border rounded-lg" />
                         </div>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                         <div>
                             <label className="text-xs text-gray-500 ml-1 font-bold text-blue-600">기본 배당금 ({unit})</label>
-                            <input type="number" value={baseReward} onChange={e => setBaseReward(e.target.value)} placeholder="예: 11" className="w-full p-2.5 border-2 border-blue-100 rounded-lg focus:border-blue-500 outline-none" />
+                            <input type="number" step="1" value={baseReward} onChange={e => setBaseReward(e.target.value)} placeholder="예: 11" className="w-full p-2.5 border-2 border-blue-100 rounded-lg focus:border-blue-500 outline-none" />
                         </div>
                         <div>
                             <label className="text-xs text-gray-500 ml-1 font-bold text-indigo-600">추가 인센티브 ({unit})</label>
-                            <input type="number" value={incentiveReward} onChange={e => setIncentiveReward(e.target.value)} placeholder="예: 1" className="w-full p-2.5 border-2 border-indigo-100 rounded-lg focus:border-indigo-500 outline-none" />
+                            <input type="number" step="1" value={incentiveReward} onChange={e => setIncentiveReward(e.target.value)} placeholder="예: 1" className="w-full p-2.5 border-2 border-indigo-100 rounded-lg focus:border-indigo-500 outline-none" />
                         </div>
                     </div>
                     <div>
@@ -541,7 +541,7 @@ const IssueCurrencyModal: React.FC<{ onClose: () => void, onComplete: () => void
                 <p className="text-xs text-gray-500 mb-6 leading-relaxed">입력한 금액만큼 무(無)에서 화폐를 생성하여<br/><span className="text-indigo-600 font-bold">국고 계좌</span>로 즉시 입금합니다.</p>
                 <div className="space-y-4">
                     <div className="relative">
-                        <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0" className="w-full p-4 pr-12 border-2 border-indigo-100 rounded-xl outline-none focus:border-indigo-500 text-2xl font-black" />
+                        <input type="number" step="1" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0" className="w-full p-4 pr-12 border-2 border-indigo-100 rounded-xl outline-none focus:border-indigo-500 text-2xl font-black" />
                         <span className="absolute right-4 top-5 font-bold text-gray-400">{unit}</span>
                     </div>
                     <button onClick={handleSubmit} disabled={loading || !amount} className="w-full py-4 bg-indigo-600 text-white font-black rounded-xl shadow-lg shadow-indigo-100 active:scale-95 transition-all disabled:bg-gray-300">
@@ -587,7 +587,7 @@ const MartTransferModal: React.FC<{ onClose: () => void, onComplete: () => void 
                 <p className="text-xs text-gray-500 mb-6 leading-relaxed">국고 계좌에서 <span className="font-bold text-gray-700">마트 계좌</span>로 자금을 이체합니다.</p>
                 <div className="space-y-4">
                     <div className="relative">
-                        <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0" className="w-full p-4 pr-12 border-2 border-indigo-100 rounded-xl outline-none focus:border-indigo-500 text-2xl font-black" />
+                        <input type="number" step="1" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0" className="w-full p-4 pr-12 border-2 border-indigo-100 rounded-xl outline-none focus:border-indigo-500 text-2xl font-black" />
                         <span className="absolute right-4 top-5 font-bold text-gray-400">{unit}</span>
                     </div>
                     <button onClick={handleSubmit} disabled={loading || !amount} className="w-full py-4 bg-indigo-600 text-white font-black rounded-xl shadow-lg shadow-indigo-100 active:scale-95 transition-all disabled:bg-gray-300">
@@ -698,7 +698,7 @@ const FundInvestorsModal: React.FC<{ fund: Fund, onClose: () => void }> = ({ fun
                                     <tr key={i} className="hover:bg-gray-50">
                                         <td className="p-2 font-medium">{inv.student_name}</td>
                                         <td className="p-2 text-right">{inv.units}좌</td>
-                                        <td className="p-2 text-right font-bold text-indigo-600">{Number(inv.invested_amount).toLocaleString()}{unit}</td>
+                                        <td className="p-2 text-right font-bold text-indigo-600">{Number(inv.invested_amount).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -806,7 +806,7 @@ const DashboardView: React.FC<{ students: (User & { account: Account | null })[]
                                         id: `large-tx-${t.transactionId}`,
                                         type: 'info',
                                         category: '고액거래',
-                                        message: `${s.name} 학생: ${Math.abs(t.amount).toLocaleString()}${unit} 고액 거래 발생 (${t.description})`,
+                                        message: `${s.name} 학생: ${Math.abs(t.amount).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}${unit} 고액 거래 발생 (${t.description})`,
                                         date: new Date(t.date)
                                     });
                                 }
@@ -856,7 +856,7 @@ const DashboardView: React.FC<{ students: (User & { account: Account | null })[]
                         <div className="flex justify-between items-start">
                             <div>
                                 <h3 className="font-medium text-blue-200 text-sm mb-1">{alias} 지갑 (국고)</h3>
-                                <p className="text-5xl font-black">{teacherAccount?.balance.toLocaleString() ?? 0}{unit}</p>
+                                <p className="text-5xl font-black">{teacherAccount?.balance.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) ?? '0.0'}{unit}</p>
                             </div>
                             <div className="flex flex-col gap-2">
                                 <button 
@@ -882,11 +882,11 @@ const DashboardView: React.FC<{ students: (User & { account: Account | null })[]
                 <div className="flex flex-col gap-4">
                     <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
                         <h3 className="text-gray-500 font-bold text-sm">총 통화량</h3>
-                        <p className="text-xl font-black text-indigo-600">{totalAssets.toLocaleString()}{unit}</p>
+                        <p className="text-xl font-black text-indigo-600">{totalAssets.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</p>
                     </div>
                     <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
                         <h3 className="text-gray-500 font-bold text-sm">평균 자산</h3>
-                        <p className="text-xl font-black text-green-600">{avgAssets.toLocaleString()}{unit}</p>
+                        <p className="text-xl font-black text-green-600">{avgAssets.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</p>
                     </div>
                     <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
                         <h3 className="text-gray-500 font-bold text-sm">등록 학생</h3>
@@ -961,7 +961,7 @@ const DashboardView: React.FC<{ students: (User & { account: Account | null })[]
                                      </div>
                                  </div>
                                  <div className="text-right">
-                                    <span className="block font-mono font-bold text-indigo-600">{(s.account?.balance || 0).toLocaleString()}{unit}</span>
+                                    <span className="block font-mono font-bold text-indigo-600">{(s.account?.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</span>
                                     <span className="text-[10px] text-gray-400">활동 {studentActivities[s.userId] || 0}회</span>
                                  </div>
                              </li>
@@ -988,7 +988,7 @@ const DashboardView: React.FC<{ students: (User & { account: Account | null })[]
                                  <div className="flex justify-between items-start mb-1">
                                      <span className="font-medium text-sm text-gray-800">{t.description}</span>
                                      <span className={`font-bold text-sm ${t.amount > 0 ? 'text-blue-600' : 'text-red-600'}`}>
-                                         {t.amount > 0 ? '+' : ''}{t.amount.toLocaleString()}
+                                         {t.amount > 0 ? '+' : ''}{t.amount.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                                      </span>
                                  </div>
                                  <div className="text-xs text-gray-400 text-right">
@@ -1031,7 +1031,7 @@ const DashboardView: React.FC<{ students: (User & { account: Account | null })[]
                                                     <p className="text-xs text-gray-400 mt-1">{new Date(t.date).toLocaleString()}</p>
                                                 </div>
                                                 <p className={`font-extrabold text-base ${t.amount > 0 ? 'text-blue-600' : 'text-red-500'}`}>
-                                                    {t.amount > 0 ? '+' : ''}{t.amount.toLocaleString()}<span className="text-xs ml-0.5 font-normal">{unit}</span>
+                                                    {t.amount > 0 ? '+' : ''}{t.amount.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}<span className="text-xs ml-0.5 font-normal">{unit}</span>
                                                 </p>
                                             </li>
                                         ))}
@@ -1168,7 +1168,7 @@ const StudentManagementView: React.FC<{ students: (User & { account: Account | n
                                 <td className="p-3 font-medium text-gray-600">{s.number}</td>
                                 <td className="p-3 font-bold text-gray-900">{s.name}</td>
                                 <td className="p-3 text-right px-6">
-                                    <span className="font-bold text-indigo-600">{(s.account?.balance || 0).toLocaleString()}<span className="text-[10px] ml-0.5 font-black text-black">{unit}</span></span>
+                                    <span className="font-bold text-indigo-600">{(s.account?.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}<span className="text-[10px] ml-0.5 font-black text-black">{unit}</span></span>
                                 </td>
                                 <td className="p-3 font-mono text-xs text-gray-800 font-bold">
                                     {s.account ? (
@@ -1335,7 +1335,7 @@ const JobManagementView: React.FC<{ refresh: () => void }> = ({ refresh }) => {
                         <div className="bg-gray-50 p-3 rounded-lg text-sm mb-3 space-y-2">
                             <div className="flex justify-between items-center">
                                 <span className="text-gray-500">기본 월급</span>
-                                <span className="font-bold">{job.salary.toLocaleString()}{unit}</span>
+                                <span className="font-bold">{job.salary.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</span>
                             </div>
                             <div className="flex justify-between items-center">
                                 <span className="text-gray-500">인센티브</span>
@@ -1348,7 +1348,7 @@ const JobManagementView: React.FC<{ refresh: () => void }> = ({ refresh }) => {
                             </div>
                             <div className="border-t pt-2 flex justify-between items-center font-bold text-indigo-600">
                                 <span>총 지급액</span>
-                                <span>{(job.salary + (job.incentive || 0)).toLocaleString()}{unit}</span>
+                                <span>{(job.salary + (job.incentive || 0)).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</span>
                             </div>
                         </div>
                         <div className="mt-auto">
@@ -1449,7 +1449,7 @@ const TaxView: React.FC<{ students: User[] }> = ({ students }) => {
                                     <p className="text-sm text-gray-500">납부 기한: {new Date(tax.dueDate).toLocaleDateString()}</p>
                                 </div>
                                 <div className="text-right">
-                                    <span className="block font-bold text-lg text-red-600">{tax.amount.toLocaleString()}{unit}</span>
+                                    <span className="block font-bold text-lg text-red-600">{tax.amount.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</span>
                                     <button onClick={() => setConfirmAction({ type: 'delete', data: tax.id })} className="text-xs text-gray-400 hover:text-red-500 underline mt-1">삭제</button>
                                 </div>
                             </div>
@@ -1595,15 +1595,15 @@ const FundManagementView: React.FC<{ students: User[] }> = ({ students }) => {
                                 <div className="bg-gray-50 p-3 rounded-lg text-xs mb-4 space-y-2">
                                     <div className="flex justify-between">
                                         <span className="text-gray-900 font-black">목표 / 모집액</span>
-                                        <span className="font-black text-black">{(f.targetAmount || 0).toLocaleString()}{unit} / <span className="text-indigo-700">{(f.totalInvestedAmount || 0).toLocaleString()}{unit}</span></span>
+                                        <span className="font-black text-black">{(f.targetAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit} / <span className="text-indigo-700">{(f.totalInvestedAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</span></span>
                                     </div>
                                     <div className="flex justify-between border-t border-gray-200 pt-2 mt-1">
                                         <span className="text-gray-900 font-black">기본 배당금</span>
-                                        <span className="font-black text-blue-700">{(f.baseReward || 0).toLocaleString()}{unit}</span>
+                                        <span className="font-black text-blue-700">{(f.baseReward || 0).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-gray-900 font-black">추가 인센티브</span>
-                                        <span className="font-black text-indigo-700">+{(f.incentiveReward || 0).toLocaleString()}{unit}</span>
+                                        <span className="font-black text-indigo-700">+{(f.incentiveReward || 0).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</span>
                                     </div>
                                     <div className="w-full bg-gray-200 h-1.5 rounded-full mt-2">
                                         <div 

@@ -119,21 +119,21 @@ const HomeView: React.FC<{ account: Account, currentUser: User, refreshAccount: 
             <div className="bg-white p-8 rounded-[32px] shadow-sm border border-gray-100">
                 <p className="text-gray-800 mb-2 font-black text-sm">내 총 자산</p>
                 <h2 className="text-4xl font-black text-gray-900 tracking-tight">
-                    {Math.floor(totalAssets).toLocaleString()}<span className="text-2xl ml-1 font-black text-gray-800">{unit}</span>
+                    {totalAssets.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}<span className="text-2xl ml-1 font-black text-gray-800">{unit}</span>
                 </h2>
                 
                 <div className="grid grid-cols-3 gap-4 mt-8 pt-8 border-t border-gray-100">
                     <div className="text-center">
                         <div className="text-xs text-gray-800 font-black mb-1">현금</div>
-                        <div className="font-black text-gray-900 text-lg">{account.balance.toLocaleString()}</div>
+                        <div className="font-black text-gray-900 text-lg">{account.balance.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</div>
                     </div>
                     <div className="text-center border-l border-gray-100">
                         <div className="text-xs text-gray-800 font-black mb-1">주식</div>
-                        <div className="font-black text-blue-700 text-lg">{Math.floor(stockValue).toLocaleString()}</div>
+                        <div className="font-black text-blue-700 text-lg">{stockValue.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</div>
                     </div>
                      <div className="text-center border-l border-gray-100">
                         <div className="text-xs text-gray-800 font-black mb-1">예금</div>
-                        <div className="font-black text-green-700 text-lg">{savingsValue.toLocaleString()}</div>
+                        <div className="font-black text-green-700 text-lg">{savingsValue.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</div>
                     </div>
                 </div>
             </div>
@@ -151,7 +151,7 @@ const HomeView: React.FC<{ account: Account, currentUser: User, refreshAccount: 
                                     <span className="text-xs text-gray-700 ml-2 font-bold">~{new Date(tax.dueDate).toLocaleDateString()}</span>
                                 </div>
                                 <div className="flex items-center gap-4">
-                                    <span className="font-black text-red-600">{tax.amount.toLocaleString()}{unit}</span>
+                                    <span className="font-black text-red-600">{tax.amount.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</span>
                                     <button 
                                         onClick={() => setTaxToPay({ taxId: tax.taxId, amount: tax.amount, name: tax.name })} 
                                         className="px-4 py-2 bg-red-600 text-white text-xs rounded-full font-bold hover:bg-red-700 active:scale-95 transition-all shadow-md shadow-red-100"
@@ -175,7 +175,7 @@ const HomeView: React.FC<{ account: Account, currentUser: User, refreshAccount: 
                                 <div className="text-[11px] text-gray-700 font-bold mt-1 uppercase">{new Date(t.date).toLocaleString()}</div>
                             </div>
                             <div className={`font-black text-lg ${t.amount > 0 ? 'text-blue-600' : 'text-red-500'}`}>
-                                {t.amount > 0 ? '+' : ''}{t.amount.toLocaleString()}
+                                {t.amount > 0 ? '+' : ''}{t.amount.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                             </div>
                         </div>
                     ))}
@@ -194,7 +194,7 @@ const HomeView: React.FC<{ account: Account, currentUser: User, refreshAccount: 
             <ConfirmModal 
                 isOpen={!!taxToPay}
                 title="세금 납부"
-                message={`'${taxToPay?.name}' 세금 ${taxToPay?.amount.toLocaleString()}${unit}을 납부하시겠습니까?`}
+                message={`'${taxToPay?.name}' 세금 ${taxToPay?.amount.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}${unit}을 납부하시겠습니까?`}
                 onConfirm={handleConfirmPayment}
                 onCancel={() => setTaxToPay(null)}
                 confirmText="납부하기"
@@ -314,10 +314,10 @@ const TransferView: React.FC<{ currentUser: User, account: Account, refreshAccou
                 <div>
                     <label className="block text-xs font-black text-gray-800 mb-2 ml-1 uppercase">보낼 금액</label>
                     <div className="relative">
-                        <input type="number" value={amount} onChange={e => setAmount(e.target.value)} className="w-full p-5 pr-12 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-indigo-50/50 outline-none font-black text-2xl tracking-tight text-gray-900" placeholder="0" />
+                        <input type="number" step="1" value={amount} onChange={e => setAmount(e.target.value)} className="w-full p-5 pr-12 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-indigo-50/50 outline-none font-black text-2xl tracking-tight text-gray-900" placeholder="0" />
                         <span className="absolute right-5 top-5 text-gray-800 font-black text-lg">{unit}</span>
                     </div>
-                    <div className="mt-2 text-[11px] text-gray-800 font-black text-right">내 잔액: {account.balance.toLocaleString()}{unit}</div>
+                    <div className="mt-2 text-[11px] text-gray-800 font-black text-right">내 잔액: {account.balance.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</div>
                 </div>
 
                 <div>
@@ -415,7 +415,7 @@ const StockTransactionModal: React.FC<{
                         </div>
                         <div className="border-t border-gray-300 pt-5 flex justify-between items-center">
                             <span className="text-gray-700 font-bold">평균 체결 예상가</span>
-                            <span className="font-black text-gray-900">{calcTrade.execPrice.toFixed(2)}{unit}</span>
+                            <span className="font-black text-gray-900">{calcTrade.execPrice.toFixed(1)}{unit}</span>
                         </div>
                         {mode === 'sell' && (
                             <>
@@ -453,13 +453,14 @@ const StockTransactionModal: React.FC<{
                 )}
 
                 <div className="text-gray-700 font-black mb-2 uppercase tracking-widest">{stock.name}</div>
-                <div className="text-4xl font-black mb-12 text-gray-900">{stock.currentPrice.toLocaleString()}{unit}</div>
+                <div className="text-4xl font-black mb-12 text-gray-900">{stock.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</div>
                 
                 <div className="flex items-center gap-8 mb-12">
                     <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-14 h-14 rounded-2xl bg-gray-50 flex items-center justify-center hover:bg-gray-100 active:scale-[0.9] transition-all"><MinusIcon className="w-7 h-7 text-gray-600"/></button>
                     <div className="relative">
                         <input 
                             type="number" 
+                            step="1"
                             value={quantity} 
                             onChange={e => setQuantity(Math.max(1, parseInt(e.target.value) || 1))} 
                             className="w-24 text-center font-black text-5xl bg-transparent outline-none border-b-4 border-indigo-100 focus:border-indigo-500 transition-colors text-gray-900"
@@ -473,22 +474,22 @@ const StockTransactionModal: React.FC<{
                     {mode === 'buy' ? (
                         <div className="text-center p-6 bg-gray-50 rounded-[28px] border border-gray-100">
                             <div className="text-xs text-gray-700 font-black mb-2 uppercase">총 구매 예정 금액</div>
-                            <div className="text-3xl font-black text-gray-900">{calcTrade.finalAmount.toLocaleString()}{unit}</div>
+                            <div className="text-3xl font-black text-gray-900">{calcTrade.finalAmount.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</div>
                             <div className="text-[10px] text-indigo-600 mt-3 font-bold">* 소수점 올림 정산이 포함된 금액입니다.</div>
                         </div>
                     ) : (
                         <div className="p-6 bg-gray-50 rounded-[28px] space-y-3 border border-gray-100">
                              <div className="flex justify-between items-center text-sm">
                                 <span className="text-gray-700 font-bold">예상 체결가</span>
-                                <span className="font-black text-red-600">{calcTrade.execPrice.toFixed(2)}{unit}</span>
+                                <span className="font-black text-red-600">{calcTrade.execPrice.toFixed(1)}{unit}</span>
                             </div>
                              <div className="flex justify-between items-center text-sm">
                                 <span className="text-gray-700 font-bold">예상 수수료 ({calcTrade.feeRate}%)</span>
-                                <span className="font-black text-gray-800">-{calcTrade.feeAmount.toLocaleString()}{unit}</span>
+                                <span className="font-black text-gray-800">-{calcTrade.feeAmount.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</span>
                             </div>
                              <div className="flex justify-between items-center pt-3 border-t border-gray-200">
                                 <span className="font-black text-gray-900">입금 예정액</span>
-                                <span className="font-black text-indigo-600 text-xl">{calcTrade.finalAmount.toLocaleString()}{unit}</span>
+                                <span className="font-black text-indigo-600 text-xl">{calcTrade.finalAmount.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</span>
                             </div>
                         </div>
                     )}
@@ -561,7 +562,7 @@ const StocksView: React.FC<{ currentUser: User, refreshAccount: () => void, show
                         <button key={s.id} onClick={() => handleStockClick(s)} className="w-full bg-white p-5 rounded-3xl shadow-sm border border-gray-100 hover:shadow-md transition-all flex justify-between items-center group">
                             <span className="font-black text-gray-900 group-hover:text-indigo-600 transition-colors">{s.name}</span>
                             <div className="text-right">
-                                <div className="font-black text-lg text-gray-900">{s.currentPrice.toLocaleString()}{unit}</div>
+                                <div className="font-black text-lg text-gray-900">{s.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</div>
                                 <div className="text-[10px] text-gray-700 font-bold uppercase">현재가</div>
                             </div>
                         </button>
@@ -582,12 +583,12 @@ const StocksView: React.FC<{ currentUser: User, refreshAccount: () => void, show
                                     <div>
                                         <div className="text-[10px] text-gray-700 font-black uppercase mb-1">평가손익</div>
                                         <div className={`font-black text-lg ${profit >= 0 ? 'text-red-600' : 'text-blue-700'}`}>
-                                            {profit > 0 ? '+' : ''}{profit.toLocaleString()} ({profitRate.toFixed(2)}%)
+                                            {profit > 0 ? '+' : ''}{profit.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} ({profitRate.toFixed(1)}%)
                                         </div>
                                     </div>
                                     <div className="text-right">
                                         <div className="text-[10px] text-gray-700 font-black uppercase mb-1">평가금액</div>
-                                        <div className="font-black text-2xl text-gray-900">{currentVal.toLocaleString()}{unit}</div>
+                                        <div className="font-black text-2xl text-gray-900">{currentVal.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</div>
                                     </div>
                                 </div>
                             </button>
@@ -613,7 +614,7 @@ const StocksView: React.FC<{ currentUser: User, refreshAccount: () => void, show
                                 <LineChart data={history}>
                                     <XAxis dataKey="createdAt" hide />
                                     <YAxis domain={['auto', 'auto']} hide />
-                                    <Tooltip labelFormatter={() => ''} formatter={(val: number) => [`${val.toLocaleString()}${unit}`, '가격']} />
+                                    <Tooltip labelFormatter={() => ''} formatter={(val: number) => [`${val.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}`, '가격']} />
                                     <Line type="monotone" dataKey="price" stroke="#4F46E5" strokeWidth={3} dot={false} />
                                 </LineChart>
                             </ResponsiveContainer>
@@ -622,7 +623,7 @@ const StocksView: React.FC<{ currentUser: User, refreshAccount: () => void, show
                         <div className="p-8 bg-white space-y-6">
                             <div className="flex justify-between items-center">
                                 <span className="text-gray-700 font-black uppercase text-sm">현재가</span>
-                                <span className="text-3xl font-black text-gray-900">{selectedStock.currentPrice.toLocaleString()}{unit}</span>
+                                <span className="text-3xl font-black text-gray-900">{selectedStock.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</span>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4 pt-4">
@@ -681,11 +682,12 @@ const JoinSavingsModal: React.FC<{
                     <NewPiggyBankIcon className="w-10 h-10" />
                 </div>
                 <h3 className="text-2xl font-black text-gray-900 mb-2">{product.name} 가입</h3>
-                <p className="text-gray-700 text-sm font-bold mb-8">얼마를 가입할까요? (최대 {product.maxAmount.toLocaleString()}{unit})</p>
+                <p className="text-gray-700 text-sm font-bold mb-8">얼마를 가입할까요? (최대 {product.maxAmount.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit})</p>
                 
                 <div className="relative mb-8">
                     <input 
                         type="number" 
+                        step="1"
                         value={amount} 
                         onChange={e => setAmount(e.target.value)} 
                         placeholder="금액 입력"
@@ -701,7 +703,7 @@ const JoinSavingsModal: React.FC<{
                             if (val > 0 && val <= product.maxAmount) {
                                 onJoin(val);
                             } else {
-                                alert(`최대 ${product.maxAmount.toLocaleString()}${unit}까지 가능합니다.`);
+                                alert(`최대 ${product.maxAmount.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}${unit}까지 가능합니다.`);
                             }
                         }} 
                         className="py-4 bg-green-600 text-white font-black rounded-2xl shadow-xl shadow-green-100 hover:bg-green-700 transition-all active:scale-[0.98]"
@@ -731,13 +733,14 @@ const JoinFundModal: React.FC<{
                     <NewFundIcon className="w-10 h-10" />
                 </div>
                 <h3 className="text-2xl font-black text-gray-900 mb-2">{fund.name} 투자</h3>
-                <p className="text-gray-700 text-sm font-bold mb-6">투자할 구좌 수를 선택하세요.<br/>(1구좌당 {fund.unitPrice.toLocaleString()}{unit})</p>
+                <p className="text-gray-700 text-sm font-bold mb-6">투자할 구좌 수를 선택하세요.<br/>(1구좌당 {fund.unitPrice.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit})</p>
                 
                 <div className="flex items-center justify-center gap-6 mb-8">
                     <button onClick={() => setUnits(Math.max(1, units - 1))} className="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center hover:bg-gray-100 active:scale-[0.9] transition-all"><MinusIcon className="w-6 h-6 text-gray-700"/></button>
                     <div className="relative">
                         <input 
                             type="number" 
+                            step="1"
                             value={units} 
                             onChange={e => setUnits(Math.max(1, parseInt(e.target.value) || 1))} 
                             className="w-20 text-center font-black text-4xl bg-transparent outline-none border-b-2 border-indigo-100 focus:border-indigo-500 transition-colors text-gray-900"
@@ -749,7 +752,7 @@ const JoinFundModal: React.FC<{
 
                 <div className="bg-gray-50 p-6 rounded-3xl mb-8 border border-gray-100">
                     <div className="text-[10px] text-gray-700 font-black uppercase mb-1">총 결제 예정 금액</div>
-                    <div className="text-2xl font-black text-indigo-700">{totalCost.toLocaleString()}{unit}</div>
+                    <div className="text-2xl font-black text-indigo-700">{totalCost.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -872,7 +875,7 @@ const SavingsView: React.FC<{ currentUser: User, refreshAccount: () => void, sho
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="p-4 bg-gray-50 rounded-2xl">
                                             <div className="text-[10px] text-gray-700 font-black uppercase mb-1">가입 원금</div>
-                                            <div className="font-black text-gray-900 text-lg">{s.amount.toLocaleString()}{unit}</div>
+                                            <div className="font-black text-gray-900 text-lg">{s.amount.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</div>
                                         </div>
                                         <div className={`p-4 rounded-2xl ${isMatured ? 'bg-indigo-50 border border-indigo-100' : 'bg-indigo-50'}`}>
                                             <div className={`text-[10px] font-black uppercase mb-1 ${isMatured ? 'text-indigo-600' : 'text-indigo-700'}`}>만기 예정일</div>
@@ -880,18 +883,18 @@ const SavingsView: React.FC<{ currentUser: User, refreshAccount: () => void, sho
                                         </div>
                                         <div className="p-4 bg-green-50 rounded-2xl">
                                             <div className="text-[10px] text-green-700 font-black uppercase mb-1">만기 시 예상 이자</div>
-                                            <div className="font-black text-green-800 text-lg">+{maturityInterest.toLocaleString()}{unit}</div>
+                                            <div className="font-black text-green-800 text-lg">+{maturityInterest.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</div>
                                         </div>
                                         {!isMatured ? (
                                             <div className="p-4 bg-orange-50 rounded-2xl relative">
                                                 <div className="text-[10px] text-orange-700 font-black uppercase mb-1">중도 해지 환급액</div>
-                                                <div className="font-black text-orange-800 text-lg">{cancelRefund.toLocaleString()}{unit}</div>
+                                                <div className="font-black text-orange-800 text-lg">{cancelRefund.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</div>
                                                 {!canCancel && <span className="absolute bottom-1 right-2 text-[8px] font-bold text-red-600 tracking-tighter">해지 제한: {possibleDateStr}~</span>}
                                             </div>
                                         ) : (
                                             <div className="p-4 bg-indigo-600 rounded-2xl flex flex-col justify-center items-center text-white">
                                                 <div className="text-[10px] font-black uppercase mb-0.5 opacity-80">최종 수령액</div>
-                                                <div className="font-black text-xl">{(s.amount + maturityInterest).toLocaleString()}{unit}</div>
+                                                <div className="font-black text-xl">{(s.amount + maturityInterest).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</div>
                                             </div>
                                         )}
                                     </div>
@@ -1013,7 +1016,7 @@ const FundView: React.FC<{ currentUser: User, refreshAccount: () => void, showNo
                                 </div>
                                 <div className="flex justify-between text-sm">
                                     <span className="text-gray-700 font-bold">투자 원금</span>
-                                    <span className="font-black text-indigo-700">{(inv.units * (inv.fund?.unitPrice || 0)).toLocaleString()}{unit}</span>
+                                    <span className="font-black text-indigo-700">{(inv.units * (inv.fund?.unitPrice || 0)).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</span>
                                 </div>
                             </div>
                         ))}
@@ -1036,11 +1039,11 @@ const FundView: React.FC<{ currentUser: User, refreshAccount: () => void, showNo
                             <div className="bg-gray-50 p-6 rounded-3xl grid grid-cols-2 gap-4 mb-6 border border-gray-100">
                                 <div>
                                     <div className="text-[10px] text-gray-700 font-black uppercase mb-1">1좌당 가격</div>
-                                    <div className="font-black text-lg text-gray-900">{f.unitPrice.toLocaleString()}{unit}</div>
+                                    <div className="font-black text-lg text-gray-900">{f.unitPrice.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</div>
                                 </div>
                                 <div>
                                     <div className="text-[10px] text-gray-700 font-black uppercase mb-1">목표 금액</div>
-                                    <div className="font-black text-lg text-gray-900">{f.targetAmount.toLocaleString()}{unit}</div>
+                                    <div className="font-black text-lg text-gray-900">{f.targetAmount.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</div>
                                 </div>
                             </div>
                             <button 
