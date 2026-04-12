@@ -359,10 +359,10 @@ const StockTransactionModal: React.FC<{
         if (mode === 'buy') {
             const newP = oldP * Math.exp(vol * quantity);
             const execP = (oldP + newP) / 2;
-            const finalCost = Math.ceil(execP * quantity);
+            const finalCost = execP * quantity;
             return { execPrice: execP, feeRate: 0, feeAmount: 0, finalAmount: finalCost };
         } else {
-            const newP = Math.max(1, oldP * Math.exp(-vol * quantity));
+            const newP = Math.max(0.1, oldP * Math.exp(-vol * quantity));
             const execP = (oldP + newP) / 2;
             const impactPct = ((oldP - newP) / oldP) * 100;
             
@@ -371,8 +371,8 @@ const StockTransactionModal: React.FC<{
             if (feeRate > 33.5) feeRate = 33.5;
             
             const grossVal = execP * quantity;
-            const feeAmt = Math.ceil(grossVal * (feeRate / 100));
-            const finalPayout = Math.floor(grossVal - feeAmt);
+            const feeAmt = grossVal * (feeRate / 100);
+            const finalPayout = grossVal - feeAmt;
             
             return { execPrice: execP, feeRate: parseFloat(feeRate.toFixed(1)), feeAmount: feeAmt, finalAmount: finalPayout };
         }
@@ -399,10 +399,10 @@ const StockTransactionModal: React.FC<{
             <div className="absolute inset-0 bg-white z-[110] flex flex-col animate-fadeIn rounded-[40px]">
                 <div className="flex-grow overflow-y-auto p-8 pt-12 flex flex-col">
                     <h3 className="text-2xl font-black mb-2 text-center text-gray-900">주식 {mode === 'buy' ? '매수' : '매도'} 확인</h3>
-                    <p className="text-red-600 text-xs font-bold mb-8 text-center leading-tight">
+                    <p className="text-indigo-600 text-xs font-bold mb-8 text-center leading-tight">
                         {mode === 'buy' 
-                            ? '* 체결 과정에서 발생하는 소수점 금액은 "올림" 처리되어 인출됩니다.' 
-                            : '* 체결 과정에서 발생하는 소수점 금액은 "버림" 처리되어 입금됩니다.'}
+                            ? '* 체결 과정에서 발생하는 소수점 금액은 그대로 인출됩니다.' 
+                            : '* 체결 과정에서 발생하는 소수점 금액은 그대로 입금됩니다.'}
                     </p>
                     <div className="bg-gray-50 p-8 rounded-[32px] space-y-5 border border-gray-200">
                         <div className="flex justify-between items-center">
@@ -427,7 +427,7 @@ const StockTransactionModal: React.FC<{
                         )}
                         <div className="border-t border-gray-300 pt-5 flex justify-between items-center">
                             <span className="text-gray-900 font-black text-lg">최종 {mode === 'buy' ? '결제' : '입금'} 예정액</span>
-                            <span className="text-3xl font-black text-indigo-600">{calcTrade.finalAmount.toLocaleString()}{unit}</span>
+                            <span className="text-3xl font-black text-indigo-600">{calcTrade.finalAmount.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</span>
                         </div>
                     </div>
                 </div>
@@ -475,7 +475,7 @@ const StockTransactionModal: React.FC<{
                         <div className="text-center p-6 bg-gray-50 rounded-[28px] border border-gray-100">
                             <div className="text-xs text-gray-700 font-black mb-2 uppercase">총 구매 예정 금액</div>
                             <div className="text-3xl font-black text-gray-900">{calcTrade.finalAmount.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</div>
-                            <div className="text-[10px] text-indigo-600 mt-3 font-bold">* 소수점 올림 정산이 포함된 금액입니다.</div>
+                            <div className="text-[10px] text-indigo-600 mt-3 font-bold">* 소수점 단위까지 정확하게 정산됩니다.</div>
                         </div>
                     ) : (
                         <div className="p-6 bg-gray-50 rounded-[28px] space-y-3 border border-gray-100">
@@ -614,7 +614,7 @@ const StocksView: React.FC<{ currentUser: User, refreshAccount: () => void, show
                                 <LineChart data={history}>
                                     <XAxis dataKey="createdAt" hide />
                                     <YAxis domain={['auto', 'auto']} hide />
-                                    <Tooltip labelFormatter={() => ''} formatter={(val: number) => [`${val.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}`, '가격']} />
+                                    <Tooltip labelFormatter={() => ''} formatter={(val: number) => [`${val.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}${unit}`, '가격']} />
                                     <Line type="monotone" dataKey="price" stroke="#4F46E5" strokeWidth={3} dot={false} />
                                 </LineChart>
                             </ResponsiveContainer>
