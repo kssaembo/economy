@@ -3,12 +3,13 @@ import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
 import { 
     Account, Transaction, StockProduct, StudentStock, SavingsProduct, 
-    StudentSaving, User, Role, StockHistory, Fund, FundInvestment, FundStatus 
+    StudentSaving, User, Role, StockHistory, Fund, FundInvestment, FundStatus,
+    Donation
 } from '../types';
 import { 
     HomeIcon, TransferIcon, NewStockIcon, NewPiggyBankIcon, BackIcon, 
     XIcon, CheckIcon, ErrorIcon, PlusIcon, MinusIcon, NewTaxIcon, 
-    LogoutIcon, NewFundIcon, NewspaperIcon, StudentIcon 
+    LogoutIcon, NewFundIcon, NewspaperIcon, StudentIcon, HeartIcon 
 } from '../components/icons';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -1072,9 +1073,196 @@ const FundView: React.FC<{ currentUser: User, refreshAccount: () => void, showNo
 
 // --- Main StudentPage Component ---
 
+const DonationModal: React.FC<{ 
+    isOpen: boolean, 
+    onClose: () => void,
+    currentUser: User, 
+    account: Account, 
+    refreshAccount: () => void, 
+    showNotification: (type: 'success' | 'error', text: string) => void 
+}> = ({ isOpen, onClose, currentUser, account, refreshAccount, showNotification }) => {
+    const unit = currentUser?.currencyUnit || '권';
+    const [donations, setDonations] = useState<Donation[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [selectedDonation, setSelectedDonation] = useState<Donation | null>(null);
+    const [donateAmount, setDonateAmount] = useState('');
+    const [isDonating, setIsDonating] = useState(false);
+
+    const fetchDonations = useCallback(async () => {
+        setLoading(true);
+        try {
+            const data = await api.getDonations(currentUser.teacher_id || '');
+            // 학생은 'ongoing'인 기부만 볼 수 있음
+            setDonations(data.filter(d => d.status === 'ongoing'));
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+        }
+    }, [currentUser.teacher_id]);
+
+    useEffect(() => { 
+        if (isOpen) {
+            fetchDonations(); 
+        }
+    }, [isOpen, fetchDonations]);
+
+    const handleDonate = async () => {
+        if (!selectedDonation || !donateAmount || parseFloat(donateAmount) <= 0) return;
+        setIsDonating(true);
+        try {
+            await api.donate(currentUser.userId, selectedDonation.id, parseFloat(donateAmount));
+            showNotification('success', '기부가 완료되었습니다. 따뜻한 마음 감사합니다!');
+            setSelectedDonation(null);
+            setDonateAmount('');
+            refreshAccount();
+            fetchDonations();
+        } catch (e: any) {
+            showNotification('error', e.message);
+        } finally {
+            setIsDonating(false);
+        }
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-[100] p-4 animate-fadeIn" onClick={onClose}>
+            <div className="bg-[#F2F4F7] w-full max-w-4xl rounded-[40px] overflow-hidden shadow-2xl flex flex-col max-h-[90vh] relative" onClick={e => e.stopPropagation()}>
+                <div className="p-6 bg-white border-b flex justify-between items-center sticky top-0 z-10">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-pink-50 rounded-xl flex items-center justify-center">
+                            <HeartIcon className="w-6 h-6 text-pink-500" />
+                        </div>
+                        <h3 className="font-black text-xl text-gray-900 tracking-tight">나는야 기부왕!</h3>
+                    </div>
+                    <button onClick={onClose} className="p-2 bg-gray-50 rounded-full hover:bg-gray-100 transition-colors">
+                        <XIcon className="w-6 h-6 text-gray-600" />
+                    </button>
+                </div>
+
+                <div className="flex-grow overflow-y-auto p-6 md:p-10">
+                    <div className="bg-white p-8 rounded-[32px] border border-pink-100 flex flex-col md:flex-row items-center gap-6 mb-8">
+                        <div className="w-20 h-20 bg-pink-50 rounded-[28px] shadow-lg shadow-pink-100 flex items-center justify-center shrink-0">
+                            <HeartIcon className="w-12 h-12 text-pink-500 animate-pulse" />
+                        </div>
+                        <div>
+                            <h2 className="text-2xl font-black text-gray-900 tracking-tight mb-1">따뜻한 나눔의 시작</h2>
+                            <p className="text-sm text-pink-700 font-bold leading-snug">
+                                여러분의 작은 정성이 모여 큰 희망이 됩니다.<br />
+                                도움이 필요한 곳에 따뜻한 마음을 전해주세요.
+                            </p>
+                        </div>
+                    </div>
+
+                    {loading ? (
+                        <div className="flex items-center justify-center py-20">
+                            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-pink-500"></div>
+                        </div>
+                    ) : donations.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {donations.map(d => (
+                                <div key={d.id} className="bg-white rounded-[32px] shadow-sm border border-gray-100 overflow-hidden flex flex-col hover:shadow-md transition-all">
+                                    {d.imageUrl && (
+                                        <img src={d.imageUrl} alt={d.title} className="w-full h-48 object-cover" referrerPolicy="no-referrer" />
+                                    )}
+                                    <div className="p-6 flex flex-col flex-grow">
+                                        <h3 className="font-black text-xl text-gray-900 mb-2">{d.title}</h3>
+                                        <p className="text-sm text-gray-600 mb-6 leading-relaxed whitespace-pre-wrap">{d.content}</p>
+                                        
+                                        {d.url && (
+                                            <a 
+                                                href={d.url} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer" 
+                                                className="text-xs text-indigo-600 font-bold hover:underline mb-4 block"
+                                            >
+                                                본문 확인 →
+                                            </a>
+                                        )}
+
+                                        <div className="mt-auto space-y-4">
+                                            <div className="bg-gray-50 p-4 rounded-2xl">
+                                                <div className="flex justify-between text-xs mb-2">
+                                                    <span className="text-gray-500 font-bold">현재 모금액</span>
+                                                    <span className="font-black text-pink-600">{(d.current_amount || 0).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</span>
+                                                </div>
+                                                <div className="w-full bg-gray-200 h-2 rounded-full">
+                                                    <div className="bg-pink-500 h-2 rounded-full w-full"></div>
+                                                </div>
+                                            </div>
+                                            
+                                            <button 
+                                                onClick={() => setSelectedDonation(d)}
+                                                className="w-full py-4 bg-pink-600 text-white rounded-2xl text-sm font-black hover:bg-pink-700 transition-all active:scale-[0.98] shadow-lg shadow-pink-100"
+                                            >
+                                                기부하기
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="bg-white p-20 rounded-[40px] border-2 border-dashed border-gray-100 text-center">
+                            <HeartIcon className="w-16 h-16 mx-auto mb-4 opacity-10 text-pink-600" />
+                            <p className="text-gray-400 font-black">현재 진행 중인 기부 캠페인이 없습니다.</p>
+                        </div>
+                    )}
+                </div>
+
+                {/* Inner Donation Modal */}
+                {selectedDonation && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[120] p-4" onClick={() => setSelectedDonation(null)}>
+                        <div className="bg-white rounded-[40px] shadow-2xl p-8 w-full max-w-sm animate-fadeIn" onClick={e => e.stopPropagation()}>
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="text-xl font-black text-gray-900">기부하기</h3>
+                                <button onClick={() => setSelectedDonation(null)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                                    <XIcon className="w-6 h-6 text-gray-400" />
+                                </button>
+                            </div>
+                            
+                            <div className="mb-8">
+                                <p className="text-xs text-gray-500 font-bold mb-1 uppercase">캠페인</p>
+                                <p className="font-black text-gray-900 text-lg">{selectedDonation.title}</p>
+                            </div>
+
+                            <div className="space-y-6">
+                                <div>
+                                    <label className="block text-xs font-black text-gray-800 mb-2 ml-1 uppercase">기부할 금액</label>
+                                    <div className="relative">
+                                        <input 
+                                            type="number" 
+                                            value={donateAmount} 
+                                            onChange={e => setDonateAmount(e.target.value)} 
+                                            className="w-full p-5 pr-12 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-pink-50/50 outline-none font-black text-2xl tracking-tight text-gray-900" 
+                                            placeholder="0" 
+                                        />
+                                        <span className="absolute right-5 top-5 text-gray-800 font-black text-lg">{unit}</span>
+                                    </div>
+                                    <div className="mt-2 text-[11px] text-gray-800 font-black text-right">내 잔액: {account.balance.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</div>
+                                </div>
+
+                                <button 
+                                    onClick={handleDonate}
+                                    disabled={isDonating || !donateAmount || parseFloat(donateAmount) <= 0}
+                                    className="w-full p-5 bg-pink-600 text-white font-black rounded-2xl shadow-xl shadow-pink-100 hover:bg-pink-700 disabled:bg-gray-100 disabled:text-gray-400 disabled:shadow-none transition-all active:scale-[0.98] text-lg"
+                                >
+                                    {isDonating ? '보내는 중...' : '기부 확정하기'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
 const StudentPage: React.FC<StudentPageProps> = ({ initialView, onBackToMenu }) => {
     const { currentUser, logout } = useContext(AuthContext);
     const [view, setView] = useState<View>((initialView as View) || 'transfer');
+    const [showDonationModal, setShowDonationModal] = useState(false);
     const [account, setAccount] = useState<Account | null>(null);
     const [notification, setNotification] = useState<NotificationType | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -1178,6 +1366,9 @@ const StudentPage: React.FC<StudentPageProps> = ({ initialView, onBackToMenu }) 
                 )}
 
                 <div className="mt-auto space-y-4">
+                    <button onClick={() => setShowDonationModal(true)} className="w-full flex items-center gap-3 p-4 bg-pink-50 text-pink-700 rounded-2xl font-black text-sm hover:bg-pink-100 transition-all group">
+                        <HeartIcon className="w-5 h-5 group-hover:scale-110 transition-transform" /> 기부왕
+                    </button>
                     <a href={newsUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-4 bg-indigo-50 text-indigo-700 rounded-2xl font-black text-sm hover:bg-indigo-100 transition-all group">
                         <NewspaperIcon className="w-5 h-5 group-hover:rotate-12 transition-transform" /> 경제뉴스
                     </a>
@@ -1207,7 +1398,7 @@ const StudentPage: React.FC<StudentPageProps> = ({ initialView, onBackToMenu }) 
                 </main>
 
                 {(activeStudent || currentUser.role === Role.STUDENT) && (
-                    <nav className="md:hidden bg-white/90 backdrop-blur-2xl border-t border-gray-100 flex justify-around p-2.5 fixed bottom-0 left-0 right-0 z-40 shadow-[0_-10px_30px_rgba(0,0,0,0.03)]">
+                    <nav className="md:hidden bg-white/90 backdrop-blur-2xl border-t border-gray-100 grid grid-cols-5 p-2.5 fixed bottom-0 left-0 right-0 z-40 shadow-[0_-10px_30px_rgba(0,0,0,0.03)]">
                         <MobileNavBtn icon={HomeIcon} label="홈" active={view === 'home'} onClick={() => setView('home')} />
                         <MobileNavBtn icon={TransferIcon} label="송금" active={view === 'transfer'} onClick={() => setView('transfer')} />
                         <MobileNavBtn icon={NewStockIcon} label="주식" active={view === 'stocks'} onClick={() => setView('stocks')} />
@@ -1216,6 +1407,15 @@ const StudentPage: React.FC<StudentPageProps> = ({ initialView, onBackToMenu }) 
                     </nav>
                 )}
             </div>
+
+            <DonationModal 
+                isOpen={showDonationModal}
+                onClose={() => setShowDonationModal(false)}
+                currentUser={{...effectiveUser, currencyUnit: currentUnit}}
+                account={account!}
+                refreshAccount={refreshAccount}
+                showNotification={(type, text) => setNotification({type, text})}
+            />
 
             {notification && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-[200] p-4 animate-fadeIn" onClick={() => setNotification(null)}>

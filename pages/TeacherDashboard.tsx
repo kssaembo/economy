@@ -2,8 +2,8 @@
 import { api } from '../services/api';
 import React, { useState, useContext, useEffect, useCallback, useMemo, useRef } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
-import { User, Role, Account, Transaction, Job, AssignedStudent, TransactionType, TaxItemWithRecipients, Fund, FundStatus } from '../types';
-import { LogoutIcon, QrCodeIcon, UserAddIcon, XIcon, CheckIcon, ErrorIcon, BackIcon, NewDashboardIcon, NewBriefcaseIcon, NewManageAccountsIcon, ManageIcon, NewTaxIcon, NewFundIcon, NewStudentIcon, PencilIcon, ArrowDownIcon, ArrowUpIcon, PlusIcon, BellIcon, TransferIcon } from '../components/icons';
+import { User, Role, Account, Transaction, Job, AssignedStudent, TransactionType, TaxItemWithRecipients, Fund, FundStatus, Donation } from '../types';
+import { LogoutIcon, QrCodeIcon, UserAddIcon, XIcon, CheckIcon, ErrorIcon, BackIcon, NewDashboardIcon, NewBriefcaseIcon, NewManageAccountsIcon, ManageIcon, NewTaxIcon, NewFundIcon, NewStudentIcon, PencilIcon, ArrowDownIcon, ArrowUpIcon, PlusIcon, BellIcon, TransferIcon, HeartIcon } from '../components/icons';
 import { QRCodeSVG } from 'qrcode.react';
 
 // --- Helpers ---
@@ -1660,9 +1660,195 @@ const FundManagementView: React.FC<{ students: User[] }> = ({ students }) => {
     );
 };
 
+const AddDonationModal: React.FC<{ onClose: () => void, onComplete: () => void }> = ({ onClose, onComplete }) => {
+    const { currentUser } = useContext(AuthContext);
+    const [title, setTitle] = useState('');
+    const [url, setUrl] = useState('');
+    const [content, setContent] = useState('');
+    const [imageUrl, setImageUrl] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!title || !content || !currentUser) return;
+        setLoading(true);
+        try {
+            await api.createDonation(currentUser.userId, title, url, content, imageUrl);
+            onComplete();
+            onClose();
+        } catch (e: any) {
+            alert(e.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={onClose}>
+            <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-xl font-black text-gray-900">새 기부 캠페인 등록</h3>
+                    <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-full transition-colors">
+                        <XIcon className="w-6 h-6 text-gray-400" />
+                    </button>
+                </div>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                        <label className="block text-xs font-black text-gray-700 mb-1 uppercase">기부명</label>
+                        <input 
+                            type="text" 
+                            required 
+                            value={title} 
+                            onChange={e => setTitle(e.target.value)} 
+                            className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-200 outline-none font-bold" 
+                            placeholder="예: 연말 불우이웃 돕기"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-black text-gray-700 mb-1 uppercase">기부 URL (선택)</label>
+                        <input 
+                            type="url" 
+                            value={url} 
+                            onChange={e => setUrl(e.target.value)} 
+                            className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-200 outline-none font-bold" 
+                            placeholder="https://..."
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-black text-gray-700 mb-1 uppercase">내용</label>
+                        <textarea 
+                            required 
+                            value={content} 
+                            onChange={e => setContent(e.target.value)} 
+                            className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-200 outline-none font-bold h-32 resize-none" 
+                            placeholder="기부 캠페인에 대한 설명을 입력하세요."
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-black text-gray-700 mb-1 uppercase">이미지 URL (선택)</label>
+                        <input 
+                            type="url" 
+                            value={imageUrl} 
+                            onChange={e => setImageUrl(e.target.value)} 
+                            className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-200 outline-none font-bold" 
+                            placeholder="https://... (이미지 주소)"
+                        />
+                    </div>
+                    <button 
+                        type="submit" 
+                        disabled={loading}
+                        className="w-full py-4 bg-pink-600 text-white font-black rounded-xl shadow-lg shadow-pink-100 hover:bg-pink-700 transition-all active:scale-95 disabled:bg-gray-200"
+                    >
+                        {loading ? '등록 중...' : '캠페인 등록하기'}
+                    </button>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+const DonationManagementView: React.FC = () => {
+    const { currentUser } = useContext(AuthContext);
+    const unit = currentUser?.currencyUnit || '권';
+    const [donations, setDonations] = useState<Donation[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
+    const fetchDonations = useCallback(async () => {
+        setLoading(true);
+        try {
+            const data = await api.getDonations(currentUser?.userId || '');
+            setDonations(data);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+        }
+    }, [currentUser?.userId]);
+
+    useEffect(() => { fetchDonations(); }, [fetchDonations]);
+
+    const handleCloseDonation = async (donationId: string) => {
+        try {
+            await api.closeDonation(donationId);
+            setMessage({ type: 'success', text: '기부가 종료되었습니다.' });
+            fetchDonations();
+        } catch (e: any) {
+            setMessage({ type: 'error', text: e.message });
+        }
+    };
+
+    return (
+        <div className="h-full flex flex-col">
+            <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-bold text-gray-800">기부 관리</h2>
+                <button onClick={() => setShowAddModal(true)} className="px-3 py-2 bg-pink-600 text-white rounded-lg text-sm font-bold shadow hover:bg-pink-700 transition-all">
+                    + 기부 등록
+                </button>
+            </div>
+
+            {loading ? (
+                <div className="flex items-center justify-center py-20">
+                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-pink-600"></div>
+                </div>
+            ) : donations.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 overflow-y-auto">
+                    {donations.map(d => (
+                        <div key={d.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
+                            {d.imageUrl && (
+                                <img src={d.imageUrl} alt={d.title} className="w-full h-40 object-cover" referrerPolicy="no-referrer" />
+                            )}
+                            <div className="p-5 flex flex-col flex-grow">
+                                <div className="flex justify-between items-start mb-2">
+                                    <h3 className="font-black text-lg text-black">{d.title}</h3>
+                                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-black ${d.status === 'ongoing' ? 'bg-pink-100 text-pink-700' : 'bg-gray-100 text-gray-700'}`}>
+                                        {d.status === 'ongoing' ? '기부 중' : '기부 완료'}
+                                    </span>
+                                </div>
+                                <p className="text-xs text-gray-600 mb-4 line-clamp-3">{d.content}</p>
+                                
+                                <div className="mt-auto space-y-3">
+                                    <div className="bg-gray-50 p-3 rounded-lg">
+                                        <div className="flex justify-between text-xs mb-1">
+                                            <span className="text-gray-500 font-bold">현재 모금액</span>
+                                            <span className="font-black text-pink-600">{(d.current_amount || 0).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</span>
+                                        </div>
+                                        <div className="w-full bg-gray-200 h-1.5 rounded-full">
+                                            <div className="bg-pink-500 h-1.5 rounded-full w-full"></div>
+                                        </div>
+                                    </div>
+                                    
+                                    {d.status === 'ongoing' && (
+                                        <button 
+                                            onClick={() => handleCloseDonation(d.id)}
+                                            className="w-full py-2 bg-gray-800 text-white rounded-lg text-xs font-bold hover:bg-black transition-colors"
+                                        >
+                                            기부 종료하기
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <div className="bg-white p-16 rounded-xl border-2 border-dashed border-gray-100 text-center">
+                    <HeartIcon className="w-8 h-8 mx-auto mb-4 opacity-20 text-pink-600" />
+                    <p className="text-gray-400 font-medium">등록된 기부 캠페인이 없습니다.</p>
+                    <p className="text-gray-300 text-xs mt-1">상단의 '+ 기부 등록' 버튼을 눌러 캠페인을 추가하세요.</p>
+                </div>
+            )}
+
+            {showAddModal && <AddDonationModal onClose={() => setShowAddModal(false)} onComplete={fetchDonations} />}
+            {message && <MessageModal isOpen={true} type={message.type} message={message.text} onClose={() => setMessage(null)} />}
+        </div>
+    );
+};
+
 const TeacherDashboard: React.FC<{ onBackToMenu?: () => void }> = ({ onBackToMenu }) => {
     const { currentUser, logout } = useContext(AuthContext);
-    const [view, setView] = useState<'dashboard' | 'students' | 'jobs' | 'tax' | 'funds'>('dashboard');
+    const [view, setView] = useState<'dashboard' | 'students' | 'jobs' | 'tax' | 'funds' | 'donations'>('dashboard');
     const [students, setStudents] = useState<(User & { account: Account | null })[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -1706,19 +1892,26 @@ const TeacherDashboard: React.FC<{ onBackToMenu?: () => void }> = ({ onBackToMen
             case 'jobs': return <JobManagementView refresh={fetchData} />;
             case 'tax': return <TaxView students={students} />;
             case 'funds': return <FundManagementView students={students} />;
+            case 'donations': return <DonationManagementView />;
             default: return <DashboardView students={students} refresh={fetchData} />;
         }
     };
 
     const NavButton = ({ id, label, Icon }: { id: typeof view, label: string, Icon: React.FC<any> }) => (
         <button onClick={() => setView(id)} className={`w-full flex items-center p-3 text-sm font-semibold rounded-lg transition-colors ${view === id ? 'bg-[#2B548F] text-white' : 'text-gray-600 hover:bg-gray-100'}`}>
-            <Icon className="w-10 h-10 mr-3" /> {label}
+            <div className="w-10 h-10 mr-3 flex items-center justify-center">
+                <Icon className={id === 'donations' ? 'w-5 h-5' : 'w-10 h-10'} />
+            </div>
+            {label}
         </button>
     );
 
     const MobileNavButton = ({ id, label, Icon }: { id: typeof view, label: string, Icon: React.FC<any> }) => (
         <button onClick={() => setView(id)} className={`flex flex-col items-center justify-center w-full py-2 ${view === id ? 'text-[#2B548F]' : 'text-gray-400'}`}>
-            <Icon className="w-12 h-12 mb-1" /> <span className="text-[10px]">{label}</span>
+            <div className="w-12 h-12 mb-1 flex items-center justify-center">
+                <Icon className={id === 'donations' ? 'w-6 h-6' : 'w-12 h-12'} />
+            </div>
+            <span className="text-[10px]">{label}</span>
         </button>
     );
 
@@ -1738,6 +1931,7 @@ const TeacherDashboard: React.FC<{ onBackToMenu?: () => void }> = ({ onBackToMen
                     <NavButton id="jobs" label="직업 관리" Icon={NewBriefcaseIcon} />
                     <NavButton id="tax" label="세금 관리" Icon={NewTaxIcon} />
                     <NavButton id="funds" label="펀드 관리" Icon={NewFundIcon} />
+                    <NavButton id="donations" label="기부 관리" Icon={HeartIcon} />
                 </nav>
                 <button onClick={handleLogout} className="w-full flex items-center p-3 text-sm text-gray-600 rounded-lg hover:bg-gray-100 mt-auto">
                     <LogoutIcon className="w-10 h-10 mr-3" /> {onBackToMenu ? '메뉴로' : '로그아웃'}
@@ -1754,12 +1948,13 @@ const TeacherDashboard: React.FC<{ onBackToMenu?: () => void }> = ({ onBackToMen
                 <main className="flex-grow p-4 md:p-8 overflow-y-auto bg-[#F3F4F6]">
                     {loading ? <div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2B548F]"></div></div> : renderContent()}
                 </main>
-                <nav className="md:hidden bg-white border-t grid grid-cols-5 pb-safe">
+                <nav className="md:hidden bg-white border-t grid grid-cols-6 pb-safe">
                     <MobileNavButton id="dashboard" label="대시보드" Icon={NewDashboardIcon} />
                     <MobileNavButton id="students" label="학생" Icon={NewManageAccountsIcon} />
                     <MobileNavButton id="jobs" label="직업" Icon={NewBriefcaseIcon} />
                     <MobileNavButton id="tax" label="세금" Icon={NewTaxIcon} />
                     <MobileNavButton id="funds" label="펀드" Icon={NewFundIcon} />
+                    <MobileNavButton id="donations" label="기부" Icon={HeartIcon} />
                 </nav>
             </div>
         </div>

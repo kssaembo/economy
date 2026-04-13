@@ -52,6 +52,7 @@ export enum TransactionType {
   TAX = 'Tax',
   FUND_JOIN = 'FundJoin',
   FUND_PAYOUT = 'FundPayout',
+  DONATION = 'Donation',
 }
 
 export interface Transaction {
@@ -188,4 +189,25 @@ export interface FundInvestment {
   units: number;
   investedAt: string;
   fund?: Fund;
+}
+
+export interface Donation {
+  id: string;
+  title: string;
+  url?: string;
+  content: string;
+  imageUrl?: string;
+  current_amount: number;
+  status: 'ongoing' | 'completed';
+  teacher_id: string;
+  created_at: string;
+}
+
+export interface DonationRecord {
+  id: string;
+  donation_id: string;
+  user_id: string;
+  amount: number;
+  created_at: string;
+  teacher_id: string;
 }

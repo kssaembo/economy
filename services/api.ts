@@ -1,7 +1,7 @@
 
 import { supabase } from './supabaseClient';
 // Added missing FundInvestment import
-import { Role, User, Account, StockProduct, StockProductWithDetails, StudentStock, SavingsProduct, StudentSaving, Job, TaxItemWithRecipients, StockHistory, Fund, FundStatus, FundInvestment } from '../types';
+import { Role, User, Account, StockProduct, StockProductWithDetails, StudentStock, SavingsProduct, StudentSaving, Job, TaxItemWithRecipients, StockHistory, Fund, FundStatus, FundInvestment, Donation } from '../types';
 
 // Helper function to handle Supabase errors
 const handleSupabaseError = (error: any, context: string) => {
@@ -972,6 +972,46 @@ const getDailyTreasuryTotals = async (teacherId: string): Promise<{ deposits: nu
     return { deposits, withdrawals };
 };
 
+async function getDonations(teacherId: string): Promise<Donation[]> {
+    const { data, error } = await supabase
+        .from('donations')
+        .select('*')
+        .eq('teacher_id', teacherId)
+        .order('created_at', { ascending: false });
+    handleSupabaseError(error, 'getDonations');
+    return (data || []).map(d => ({
+        ...d,
+        imageUrl: d.image_url
+    }));
+}
+
+async function createDonation(teacherId: string, title: string, url: string, content: string, imageUrl: string): Promise<void> {
+    const { error } = await supabase.rpc('create_donation', {
+        p_title: title,
+        p_url: url,
+        p_content: content,
+        p_image_url: imageUrl,
+        p_teacher_id: teacherId
+    });
+    handleSupabaseError(error, 'createDonation');
+}
+
+async function closeDonation(donationId: string): Promise<void> {
+    const { error } = await supabase.rpc('close_donation', {
+        p_donation_id: donationId
+    });
+    handleSupabaseError(error, 'closeDonation');
+}
+
+async function donate(userId: string, donationId: string, amount: number): Promise<void> {
+    const { error } = await supabase.rpc('donate', {
+        p_user_id: userId,
+        p_donation_id: donationId,
+        p_amount: amount
+    });
+    handleSupabaseError(error, 'donate');
+}
+
 export const api = {
     login, signupTeacher, loginTeacher, requestRecoveryCode, verifyRecoveryCode, resetTeacherPassword, checkTeacherExists,
     loginWithPassword, verifyAdminPassword, changePassword, resetPassword, loginWithQrToken, getUsersByRole,
@@ -982,5 +1022,6 @@ export const api = {
     joinSavings, cancelSavings, processSavingsMaturity, addSavingsProduct, deleteSavingsProducts, getSavingsEnrollees,
     getJobs, addJob, updateJob, deleteJob, manageJobAssignment, updateJobIncentive, payJobSalary, payAllSalaries,
     getTaxes, createTax, deleteTax, getMyUnpaidTaxes, payTax, getFunds, createFund, deleteFund, joinFund, settleFund, getMyFundInvestments,
-    getFundInvestors, issueCurrency, deleteTeacherAccount, getDailyTreasuryTotals
+    getFundInvestors, issueCurrency, deleteTeacherAccount, getDailyTreasuryTotals,
+    getDonations, createDonation, closeDonation, donate
 };

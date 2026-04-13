@@ -3,7 +3,7 @@ import React, { useContext, useState, useEffect } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
 import { Role, Account } from '../types';
-import { MainAdminIcon, MainBankIcon, MainMartIcon, StudentIcon, LogoutIcon, NewspaperIcon } from '../components/icons';
+import { MainAdminIcon, MainBankIcon, MainMartIcon, StudentIcon, LogoutIcon, NewspaperIcon, HeartIcon } from '../components/icons';
 
 interface RoleSelectionPageProps {
   onSelect: (view: 'admin' | 'banker' | 'mart' | 'student') => void;
@@ -110,13 +110,13 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
           ))}
         </div>
 
-        {/* 경제 뉴스 버튼 추가 - 동적 링크 적용 */}
-        <div className="mt-8 flex justify-center">
+        {/* 경제 뉴스 버튼 추가 */}
+        <div className="mt-8 flex flex-col md:flex-row justify-center gap-4">
           <a
             href={newsUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="group flex items-center gap-3 px-8 py-5 bg-white rounded-[30px] shadow-[0_8px_25px_rgba(0,0,0,0.03)] border border-white hover:shadow-[0_15px_35px_rgba(0,0,0,0.06)] hover:scale-[1.02] hover:border-indigo-100 transition-all active:scale-95 w-full md:w-auto md:min-w-[320px] justify-center"
+            className="group flex items-center gap-3 px-8 py-5 bg-white rounded-[30px] shadow-[0_8px_25px_rgba(0,0,0,0.03)] border border-white hover:shadow-[0_15px_35px_rgba(0,0,0,0.06)] hover:scale-[1.02] hover:border-indigo-100 transition-all active:scale-95 w-full md:w-auto md:min-w-[280px] justify-center"
           >
             <div className="w-10 h-10 bg-indigo-50 rounded-2xl flex items-center justify-center group-hover:bg-indigo-100 transition-colors">
               <NewspaperIcon className="w-6 h-6 text-indigo-600" />

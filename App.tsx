@@ -19,7 +19,7 @@ const AppContent: React.FC = () => {
   const [requestedView, setRequestedView] = useState<string | undefined>(undefined);
   
   // 선생님 계정일 때 현재 보고 있는 화면 모드 상태
-  const [teacherActiveView, setTeacherActiveView] = useState<'admin' | 'banker' | 'mart' | 'student' | null>(null);
+  const [teacherActiveView, setTeacherActiveView] = useState<'admin' | 'banker' | 'mart' | 'student' | 'donation' | null>(null);
 
   useEffect(() => {
     const handleTokenLogin = async () => {
@@ -111,6 +111,7 @@ const AppContent: React.FC = () => {
                   {teacherActiveView === 'banker' && <BankerPage onBackToMenu={() => setTeacherActiveView(null)} />}
                   {teacherActiveView === 'mart' && <MartPage onBackToMenu={() => setTeacherActiveView(null)} />}
                   {teacherActiveView === 'student' && <StudentPage initialView={requestedView} onBackToMenu={() => setTeacherActiveView(null)} />}
+                  {teacherActiveView === 'donation' && <StudentPage initialView="donation" onBackToMenu={() => setTeacherActiveView(null)} />}
               </div>
           </div>
       );
