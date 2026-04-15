@@ -1003,13 +1003,59 @@ async function closeDonation(donationId: string): Promise<void> {
     handleSupabaseError(error, 'closeDonation');
 }
 
-async function donate(userId: string, donationId: string, amount: number): Promise<void> {
+async function donate(userId: string, donationId: string, amount: number, units: number = 1): Promise<void> {
     const { error } = await supabase.rpc('donate', {
         p_user_id: userId,
         p_donation_id: donationId,
-        p_amount: amount
+        p_amount: amount,
+        p_units: units
     });
     handleSupabaseError(error, 'donate');
+}
+
+async function updateDonation(donationId: string, title: string, url: string, content: string, imageUrl: string): Promise<void> {
+    const { error } = await supabase
+        .from('donations')
+        .update({
+            title,
+            url,
+            content,
+            image_url: imageUrl
+        })
+        .eq('id', donationId);
+    handleSupabaseError(error, 'updateDonation');
+}
+
+async function getDonationLogs(donationId: string): Promise<any[]> {
+    const { data, error } = await supabase
+        .from('donation_logs')
+        .select(`
+            id,
+            amount,
+            units,
+            created_at,
+            user:users(name, number)
+        `)
+        .eq('donation_id', donationId)
+        .order('created_at', { ascending: false });
+    handleSupabaseError(error, 'getDonationLogs');
+    return data || [];
+}
+
+async function getStockTransactions(teacherId: string): Promise<any[]> {
+    const { data, error } = await supabase.rpc('get_stock_transactions', {
+        p_teacher_id: teacherId
+    });
+    handleSupabaseError(error, 'getStockTransactions');
+    return data || [];
+}
+
+async function deleteDonation(donationId: string): Promise<void> {
+    const { error } = await supabase
+        .from('donations')
+        .delete()
+        .eq('id', donationId);
+    handleSupabaseError(error, 'deleteDonation');
 }
 
 export const api = {
@@ -1023,5 +1069,5 @@ export const api = {
     getJobs, addJob, updateJob, deleteJob, manageJobAssignment, updateJobIncentive, payJobSalary, payAllSalaries,
     getTaxes, createTax, deleteTax, getMyUnpaidTaxes, payTax, getFunds, createFund, deleteFund, joinFund, settleFund, getMyFundInvestments,
     getFundInvestors, issueCurrency, deleteTeacherAccount, getDailyTreasuryTotals,
-    getDonations, createDonation, closeDonation, donate
+    getDonations, createDonation, closeDonation, donate, updateDonation, getDonationLogs, getStockTransactions, deleteDonation
 };

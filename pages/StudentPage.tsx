@@ -175,8 +175,8 @@ const HomeView: React.FC<{ account: Account, currentUser: User, refreshAccount: 
                                 <div className="font-black text-gray-900 text-sm">{t.description}</div>
                                 <div className="text-[11px] text-gray-700 font-bold mt-1 uppercase">{new Date(t.date).toLocaleString()}</div>
                             </div>
-                            <div className={`font-black text-lg ${t.amount > 0 ? 'text-blue-600' : 'text-red-500'}`}>
-                                {t.amount > 0 ? '+' : ''}{t.amount.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                            <div className={`font-black text-lg ${['Deposit', 'Salary', 'StockSell', 'SavingsMaturity', 'FundSettle'].includes(t.type) ? 'text-blue-600' : 'text-red-500'}`}>
+                                {['Deposit', 'Salary', 'StockSell', 'SavingsMaturity', 'FundSettle'].includes(t.type) ? '+' : '-'}{Math.abs(t.amount).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                             </div>
                         </div>
                     ))}
@@ -1111,7 +1111,7 @@ const DonationModal: React.FC<{
         if (!selectedDonation || !donateAmount || parseFloat(donateAmount) <= 0) return;
         setIsDonating(true);
         try {
-            await api.donate(currentUser.userId, selectedDonation.id, parseFloat(donateAmount));
+            await api.donate(currentUser.userId, selectedDonation.id, parseFloat(donateAmount), 1);
             showNotification('success', '기부가 완료되었습니다. 따뜻한 마음 감사합니다!');
             setSelectedDonation(null);
             setDonateAmount('');
@@ -1160,7 +1160,7 @@ const DonationModal: React.FC<{
                             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-pink-500"></div>
                         </div>
                     ) : donations.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 gap-6 max-w-2xl mx-auto">
                             {donations.map(d => (
                                 <div key={d.id} className="bg-white rounded-[32px] shadow-sm border border-gray-100 overflow-hidden flex flex-col hover:shadow-md transition-all">
                                     {d.imageUrl && (
@@ -1240,7 +1240,7 @@ const DonationModal: React.FC<{
                                         />
                                         <span className="absolute right-5 top-5 text-gray-800 font-black text-lg">{unit}</span>
                                     </div>
-                                    <div className="mt-2 text-[11px] text-gray-800 font-black text-right">내 잔액: {account.balance.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</div>
+                                    <div className="mt-2 text-[11px] text-gray-800 font-black text-right">내 잔액: {account?.balance?.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) || 0}{unit}</div>
                                 </div>
 
                                 <button 

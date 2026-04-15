@@ -424,7 +424,7 @@ const AddStockModal: React.FC<{onClose: ()=>void, onComplete: ()=>void}> = ({onC
             const teacherId = currentUser.role === Role.TEACHER ? currentUser.userId : currentUser.teacher_id;
             if (!teacherId) throw new Error("선생님 정보를 찾을 수 없습니다.");
 
-            const message = await api.addStockProduct(name, parseInt(price), teacherId);
+            const message = await api.addStockProduct(name, parseFloat(price), teacherId);
             setResult({type: 'success', text: message});
             setTimeout(() => { onComplete(); onClose(); }, 1500);
         } catch(err: any) { 
@@ -439,7 +439,7 @@ const AddStockModal: React.FC<{onClose: ()=>void, onComplete: ()=>void}> = ({onC
             <div className="bg-white rounded-xl shadow-2xl p-6 max-sm">
                 <h3 className="text-xl font-bold mb-4">새 주식 종목 추가</h3>
                 <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="종목명" className="w-full p-3 border rounded-lg mb-2"/>
-                <input type="number" step="1" value={price} onChange={e => setPrice(e.target.value)} placeholder="초기 가격" className="w-full p-3 border rounded-lg"/>
+                <input type="number" step="0.1" value={price} onChange={e => setPrice(e.target.value)} placeholder="초기 가격" className="w-full p-3 border rounded-lg"/>
                 <button onClick={handleSubmit} disabled={loading} className="mt-4 w-full p-3 bg-indigo-600 text-white font-bold rounded-lg">추가하기</button>
                 {result && <p className={`mt-2 text-sm text-center ${result.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>{result.text}</p>}
                 <button onClick={onClose} className="mt-2 w-full p-2 text-gray-600">닫기</button>
@@ -456,7 +456,7 @@ const UpdatePriceModal: React.FC<{stock: StockProduct, onClose: ()=>void, onComp
     const handleSubmit = async () => {
         setLoading(true);
         try {
-            const message = await api.updateStockPrice(stock.id, parseInt(price));
+            const message = await api.updateStockPrice(stock.id, parseFloat(price));
             setResult({type: 'success', text: message});
             setTimeout(() => { onComplete(); onClose(); }, 1500);
         } catch(err: any) { setResult({type: 'error', text: err.message}); }
@@ -467,7 +467,7 @@ const UpdatePriceModal: React.FC<{stock: StockProduct, onClose: ()=>void, onComp
          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-xl shadow-2xl p-6 max-sm">
                 <h3 className="text-xl font-bold mb-4">{stock.name} 가격 변경</h3>
-                <input type="number" step="1" value={price} onChange={e => setPrice(e.target.value)} placeholder="새로운 가격" className="w-full p-3 border rounded-lg"/>
+                <input type="number" step="0.1" value={price} onChange={e => setPrice(e.target.value)} placeholder="새로운 가격" className="w-full p-3 border rounded-lg"/>
                 <button onClick={handleSubmit} disabled={loading} className="mt-4 w-full p-3 bg-indigo-600 text-white font-bold rounded-lg">변경하기</button>
                  {result && <p className={`mt-2 text-sm text-center ${result.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>{result.text}</p>}
                 <button onClick={onClose} className="mt-2 w-full p-2 text-gray-600">닫기</button>
