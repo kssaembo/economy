@@ -1028,18 +1028,21 @@ async function updateDonation(donationId: string, title: string, url: string, co
 
 async function getDonationLogs(donationId: string): Promise<any[]> {
     const { data, error } = await supabase
-        .from('donation_logs')
-        .select(`
-            id,
-            amount,
-            units,
-            created_at,
-            user:users(name, number)
-        `)
-        .eq('donation_id', donationId)
-        .order('created_at', { ascending: false });
-    handleSupabaseError(error, 'getDonationLogs');
-    return data || [];
+        .rpc('get_donation_participants', { arg_donation_id: donationId });
+    
+    if (error) {
+        console.error('RPC Error fetching donation logs:', error);
+        handleSupabaseError(error, 'getDonationLogs');
+    }
+
+    // RPC 결과는 평탄화(Flat)된 필드로 오므로, 기존 UI 프롭스(user.name)와 호환되도록 매핑합니다.
+    return (data || []).map((item: any) => ({
+        ...item,
+        user: {
+            name: item.user_name,
+            number: item.user_number
+        }
+    }));
 }
 
 async function getStockTransactions(teacherId: string): Promise<any[]> {
