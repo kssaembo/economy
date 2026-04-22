@@ -632,6 +632,12 @@ const getStockHolders = async (stockId: string): Promise<{ studentName: string, 
     return data || [];
 };
 
+const getStockTradeCounts = async (userId: string): Promise<{ buy: number, sell: number }> => {
+    const { data, error } = await supabase.rpc('get_stock_trade_counts', { p_user_id: userId.toString() });
+    handleSupabaseError(error, 'getStockTradeCounts');
+    return data || { buy: 0, sell: 0 };
+};
+
 const getSavingsProducts = async (teacherId: string): Promise<SavingsProduct[]> => {
     const { data, error } = await supabase
         .from('savings_products')
@@ -1066,7 +1072,7 @@ export const api = {
     loginWithPassword, verifyAdminPassword, changePassword, resetPassword, loginWithQrToken, getUsersByRole,
     addStudent, updateStudent, deleteStudents, getStudentAccountByUserId, getTeacherAccount, getMartAccountByTeacherId, getTransactionsByAccountId,
     getRecipientDetailsByAccountId, transfer, studentWithdraw, bankerDeposit, bankerWithdraw, martTransfer,
-    getStockProducts, getStudentStocks, getStockHistory, buyStock, sellStock, addStockProduct, updateStockPrice,
+    getStockProducts, getStudentStocks, getStockHistory, getStockTradeCounts, buyStock, sellStock, addStockProduct, updateStockPrice,
     updateStockVolatility, deleteStockProducts, getStockHolders, getSavingsProducts, getStudentSavings,
     joinSavings, cancelSavings, processSavingsMaturity, addSavingsProduct, deleteSavingsProducts, getSavingsEnrollees,
     getJobs, addJob, updateJob, deleteJob, manageJobAssignment, updateJobIncentive, payJobSalary, payAllSalaries,

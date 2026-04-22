@@ -354,14 +354,14 @@ const StockTransactionModal: React.FC<{
     const [showConfirm, setShowConfirm] = useState(false);
 
     const calcTrade = useMemo(() => {
-        const vol = stock.volatility || 0.01;
+        const vol = stock.volatility || 0.005;
         const oldP = stock.currentPrice;
         
         if (mode === 'buy') {
             const newP = oldP * Math.exp(vol * quantity);
-            const execP = (oldP + newP) / 2;
+            const execP = newP; // [수정] 변동 후 가격(Slippage) 적용
             const finalCost = execP * quantity;
-            return { execPrice: execP, feeRate: 0, feeAmount: 0, finalAmount: finalCost };
+            return { execPrice: execP, feeRate: 0, feeAmount: 0, finalAmount: finalCost, impact: ((newP - oldP) / oldP) * 100 };
         } else {
             const newP = Math.max(0.1, oldP * Math.exp(-vol * quantity));
             const execP = (oldP + newP) / 2;
@@ -375,7 +375,7 @@ const StockTransactionModal: React.FC<{
             const feeAmt = grossVal * (feeRate / 100);
             const finalPayout = grossVal - feeAmt;
             
-            return { execPrice: execP, feeRate: parseFloat(feeRate.toFixed(1)), feeAmount: feeAmt, finalAmount: finalPayout };
+            return { execPrice: execP, feeRate: parseFloat(feeRate.toFixed(1)), feeAmount: feeAmt, finalAmount: finalPayout, impact: impactPct };
         }
     }, [mode, stock, quantity]);
 
@@ -415,8 +415,12 @@ const StockTransactionModal: React.FC<{
                             <span className="font-black text-gray-900">{quantity}주</span>
                         </div>
                         <div className="border-t border-gray-300 pt-5 flex justify-between items-center">
-                            <span className="text-gray-700 font-bold">평균 체결 예상가</span>
+                            <span className="text-gray-700 font-bold">{mode === 'buy' ? '체결 예상가 (시장가)' : '평균 체결 예상가'}</span>
                             <span className="font-black text-gray-900">{calcTrade.execPrice.toFixed(1)}{unit}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs">
+                            <span className="text-gray-500 font-bold">시장 영향도</span>
+                            <span className={`font-black ${mode === 'buy' ? 'text-red-500' : 'text-blue-500'}`}>{mode === 'buy' ? '+' : '-'}{calcTrade.impact.toFixed(2)}%</span>
                         </div>
                         {mode === 'sell' && (
                             <>
@@ -476,7 +480,10 @@ const StockTransactionModal: React.FC<{
                         <div className="text-center p-6 bg-gray-50 rounded-[28px] border border-gray-100">
                             <div className="text-xs text-gray-700 font-black mb-2 uppercase">총 구매 예정 금액</div>
                             <div className="text-3xl font-black text-gray-900">{calcTrade.finalAmount.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</div>
-                            <div className="text-[10px] text-indigo-600 mt-3 font-bold">* 소수점 단위까지 정확하게 정산됩니다.</div>
+                            <div className="text-[10px] text-indigo-600 mt-3 font-bold">
+                                * 대량 구매 시 시장 가격이 올라가 더 비싸게 체결됩니다.<br/>
+                                (예상 체결가: {calcTrade.execPrice.toFixed(1)}{unit})
+                            </div>
                         </div>
                     ) : (
                         <div className="p-6 bg-gray-50 rounded-[28px] space-y-3 border border-gray-100">
@@ -529,12 +536,17 @@ const StocksView: React.FC<{ currentUser: User, refreshAccount: () => void, show
     const [selectedStock, setSelectedStock] = useState<(StockProduct & { mode?: 'buy' | 'sell' }) | null>(null);
     const [history, setHistory] = useState<StockHistory[]>([]);
     const [viewMode, setViewMode] = useState<'list' | 'my'>('list');
+    const [tradeCounts, setTradeCounts] = useState<{ buy: number, sell: number }>({ buy: 0, sell: 0 });
 
     const fetchData = useCallback(async () => {
-        const stockList = await api.getStockProducts(currentUser.teacher_id || '');
+        const [stockList, myStockList, counts] = await Promise.all([
+            api.getStockProducts(currentUser.teacher_id || ''),
+            api.getStudentStocks(currentUser.userId),
+            api.getStockTradeCounts(currentUser.userId)
+        ]);
         setStocks(stockList);
-        const myStockList = await api.getStudentStocks(currentUser.userId);
         setMyStocks(myStockList);
+        setTradeCounts(counts);
     }, [currentUser.teacher_id, currentUser.userId]);
 
     useEffect(() => { fetchData(); }, [fetchData]);
@@ -552,6 +564,29 @@ const StocksView: React.FC<{ currentUser: User, refreshAccount: () => void, show
 
     return (
         <div className="h-full flex flex-col space-y-4">
+            {/* 거래 한도 위젯 */}
+            <div className="bg-white p-4 rounded-3xl shadow-sm border border-gray-100 flex justify-around items-center">
+                <div className="text-center">
+                    <div className="text-[10px] text-gray-500 font-black uppercase mb-1">매수 한도</div>
+                    <div className="flex gap-1 justify-center">
+                        {[1, 2, 3].map(i => (
+                            <div key={i} className={`w-3 h-3 rounded-full ${i <= tradeCounts.buy ? 'bg-red-500' : 'bg-gray-200'}`} />
+                        ))}
+                    </div>
+                    <div className="text-[10px] font-bold mt-1 text-gray-600">오늘 {tradeCounts.buy}/3 회</div>
+                </div>
+                <div className="w-px h-8 bg-gray-100" />
+                <div className="text-center">
+                    <div className="text-[10px] text-gray-500 font-black uppercase mb-1">매도 한도</div>
+                    <div className="flex gap-1 justify-center">
+                        {[1, 2, 3].map(i => (
+                            <div key={i} className={`w-3 h-3 rounded-full ${i <= tradeCounts.sell ? 'bg-blue-500' : 'bg-gray-200'}`} />
+                        ))}
+                    </div>
+                    <div className="text-[10px] font-bold mt-1 text-gray-600">오늘 {tradeCounts.sell}/3 회</div>
+                </div>
+            </div>
+
             <div className="flex bg-gray-200 p-1 rounded-2xl flex-shrink-0">
                 <button onClick={() => setViewMode('list')} className={`flex-1 py-3 text-sm font-black rounded-xl transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-800'}`}>주식 시장</button>
                 <button onClick={() => setViewMode('my')} className={`flex-1 py-3 text-sm font-black rounded-xl transition-all ${viewMode === 'my' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-800'}`}>내 주식</button>
@@ -696,6 +731,13 @@ const JoinSavingsModal: React.FC<{
                     />
                 </div>
 
+                {Number(amount) > 0 && (
+                    <div className="bg-green-50 p-6 rounded-3xl mb-8 border border-green-100 animate-fadeIn">
+                        <div className="text-[10px] text-green-700 font-black uppercase mb-1">만기 시 예상 이자</div>
+                        <div className="text-2xl font-black text-green-800">+{(Number(amount) * product.rate).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</div>
+                    </div>
+                )}
+
                 <div className="grid grid-cols-2 gap-3">
                     <button onClick={onClose} className="py-4 bg-gray-100 text-gray-700 font-black rounded-2xl hover:bg-gray-200 transition-all">취소</button>
                     <button 
@@ -823,9 +865,9 @@ const SavingsView: React.FC<{ currentUser: User, refreshAccount: () => void, sho
                         {mySavings.map(s => {
                             const rate = s.product?.rate || 0;
                             const cancelRate = s.product?.cancellationRate || 0;
-                            const maturityInterest = Math.floor(s.amount * rate);
+                            const maturityInterest = s.amount * rate;
                             // [수정] 중도 해지 환급액 표시 로직을 '원금 + 이자'로 수정
-                            const cancelRefund = Math.floor(s.amount + (s.amount * cancelRate));
+                            const cancelRefund = s.amount + (s.amount * cancelRate);
                             
                             const joinTime = new Date(s.joinDate).getTime();
                             const maturityTime = new Date(s.maturityDate).getTime();
