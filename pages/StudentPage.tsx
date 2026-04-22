@@ -951,21 +951,32 @@ const SavingsView: React.FC<{ currentUser: User, refreshAccount: () => void, sho
             <div>
                 <h3 className="text-lg font-black text-gray-900 mb-4 ml-1 tracking-tight">추천 예금 상품</h3>
                 <div className="grid grid-cols-1 gap-4">
-                    {products.map(p => (
-                        <button key={p.id} onClick={() => setSelectedProduct(p)} className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 text-left hover:scale-[1.02] transition-all group">
-                            <div className="font-black text-xl text-gray-900 mb-4 group-hover:text-green-700 transition-colors">{p.name}</div>
-                            <div className="flex justify-between items-end">
-                                <div>
-                                    <div className="text-[10px] text-gray-700 font-black uppercase mb-1">연 이자율</div>
-                                    <div className="font-black text-2xl text-green-700">{(p.rate * 100).toFixed(1)}%</div>
+                    {products.map(p => {
+                        const isJoined = mySavings.some(ms => ms.productId === p.id);
+                        return (
+                            <button 
+                                key={p.id} 
+                                onClick={() => !isJoined && setSelectedProduct(p)} 
+                                disabled={isJoined}
+                                className={`bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 text-left transition-all group ${isJoined ? 'opacity-60 grayscale-[0.5] cursor-not-allowed' : 'hover:scale-[1.02]'}`}
+                            >
+                                <div className="flex justify-between items-start mb-4">
+                                    <div className={`font-black text-xl transition-colors ${isJoined ? 'text-gray-500' : 'text-gray-900 group-hover:text-green-700'}`}>{p.name}</div>
+                                    {isJoined && <span className="bg-gray-100 text-gray-500 text-[10px] font-black px-2 py-1 rounded-full border border-gray-200 uppercase">이미 가입됨</span>}
                                 </div>
-                                <div className="text-right">
-                                    <div className="text-[10px] text-gray-700 font-black uppercase mb-1">가입 기간</div>
-                                    <div className="font-black text-xl text-gray-900">{p.maturityDays}일</div>
+                                <div className="flex justify-between items-end">
+                                    <div>
+                                        <div className="text-[10px] text-gray-700 font-black uppercase mb-1">연 이자율</div>
+                                        <div className={`font-black text-2xl ${isJoined ? 'text-gray-500' : 'text-green-700'}`}>{(p.rate * 100).toFixed(1)}%</div>
+                                    </div>
+                                    <div className="text-right">
+                                        <div className="text-[10px] text-gray-700 font-black uppercase mb-1">가입 기간</div>
+                                        <div className={`font-black text-xl ${isJoined ? 'text-gray-500' : 'text-gray-900'}`}>{p.maturityDays}일</div>
+                                    </div>
                                 </div>
-                            </div>
-                        </button>
-                    ))}
+                            </button>
+                        );
+                    })}
                 </div>
             </div>
 

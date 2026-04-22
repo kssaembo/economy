@@ -662,6 +662,17 @@ const getStudentSavings = async (userId: string): Promise<StudentSaving[]> => {
 };
 
 const joinSavings = async (userId: string, productId: string, amount: number): Promise<string> => {
+    // 이미 가입된 예금인지 확인
+    const { data: existing, error: checkError } = await supabase
+        .from('student_savings')
+        .select('savingId')
+        .eq('userId', userId)
+        .eq('productId', productId)
+        .maybeSingle();
+    
+    if (checkError) handleSupabaseError(checkError, 'joinSavings (subscription check)');
+    if (existing) throw new Error('이미 가입된 예금 상품입니다. 동일한 예금은 하나만 가입할 수 있습니다.');
+
     const { error } = await supabase.rpc('join_savings', { p_user_id: userId.toString(), p_product_id: productId.toString(), p_amount: amount });
     handleSupabaseError(error, 'joinSavings');
     return '예금에 성공적으로 가입했습니다.';
