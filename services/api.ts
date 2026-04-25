@@ -638,6 +638,33 @@ const getStockTradeCounts = async (userId: string): Promise<{ buy: number, sell:
     return data || { buy: 0, sell: 0 };
 };
 
+const getSuspiciousTrading = async (teacherId: string, startDate: string, endDate: string): Promise<any> => {
+    const { data, error } = await supabase.rpc('get_suspicious_trading', {
+        p_teacher_id: teacherId,
+        p_start_date: startDate,
+        p_end_date: endDate
+    });
+    handleSupabaseError(error, 'getSuspiciousTrading');
+    return data;
+};
+
+const getLastStockTradeTime = async (userId: string): Promise<string | null> => {
+    const { data, error } = await supabase
+        .from('transactions')
+        .select('date')
+        .eq('userId', userId)
+        .in('type', ['StockBuy', 'StockSell'])
+        .order('date', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+    
+    if (error) {
+        console.error("Error fetching last stock trade time:", error);
+        return null;
+    }
+    return data?.date || null;
+};
+
 const getSavingsProducts = async (teacherId: string): Promise<SavingsProduct[]> => {
     const { data, error } = await supabase
         .from('savings_products')
@@ -1083,8 +1110,8 @@ export const api = {
     loginWithPassword, verifyAdminPassword, changePassword, resetPassword, loginWithQrToken, getUsersByRole,
     addStudent, updateStudent, deleteStudents, getStudentAccountByUserId, getTeacherAccount, getMartAccountByTeacherId, getTransactionsByAccountId,
     getRecipientDetailsByAccountId, transfer, studentWithdraw, bankerDeposit, bankerWithdraw, martTransfer,
-    getStockProducts, getStudentStocks, getStockHistory, getStockTradeCounts, buyStock, sellStock, addStockProduct, updateStockPrice,
-    updateStockVolatility, deleteStockProducts, getStockHolders, getSavingsProducts, getStudentSavings,
+    getStockProducts, getStudentStocks, getStockHistory, getStockTradeCounts, getSuspiciousTrading, buyStock, sellStock, addStockProduct, updateStockPrice,
+    updateStockVolatility, deleteStockProducts, getStockHolders, getLastStockTradeTime, getSavingsProducts, getStudentSavings,
     joinSavings, cancelSavings, processSavingsMaturity, addSavingsProduct, deleteSavingsProducts, getSavingsEnrollees,
     getJobs, addJob, updateJob, deleteJob, manageJobAssignment, updateJobIncentive, payJobSalary, payAllSalaries,
     getTaxes, createTax, deleteTax, getMyUnpaidTaxes, payTax, getFunds, createFund, deleteFund, joinFund, settleFund, getMyFundInvestments,

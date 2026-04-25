@@ -537,17 +537,43 @@ const StocksView: React.FC<{ currentUser: User, refreshAccount: () => void, show
     const [history, setHistory] = useState<StockHistory[]>([]);
     const [viewMode, setViewMode] = useState<'list' | 'my'>('list');
     const [tradeCounts, setTradeCounts] = useState<{ buy: number, sell: number }>({ buy: 0, sell: 0 });
+    const [lastTradeTime, setLastTradeTime] = useState<string | null>(null);
+    const [remainingSeconds, setRemainingSeconds] = useState(0);
 
     const fetchData = useCallback(async () => {
-        const [stockList, myStockList, counts] = await Promise.all([
+        const [stockList, myStockList, counts, lastTime] = await Promise.all([
             api.getStockProducts(currentUser.teacher_id || ''),
             api.getStudentStocks(currentUser.userId),
-            api.getStockTradeCounts(currentUser.userId)
+            api.getStockTradeCounts(currentUser.userId),
+            api.getLastStockTradeTime(currentUser.userId)
         ]);
         setStocks(stockList);
         setMyStocks(myStockList);
         setTradeCounts(counts);
+        setLastTradeTime(lastTime);
     }, [currentUser.teacher_id, currentUser.userId]);
+
+    useEffect(() => {
+        if (!lastTradeTime) return;
+        
+        const COOLDOWN_MS = 10 * 60 * 1000;
+        
+        const updateTimer = () => {
+            const now = Date.now();
+            const last = new Date(lastTradeTime).getTime();
+            const diff = now - last;
+            
+            if (diff < COOLDOWN_MS) {
+                setRemainingSeconds(Math.ceil((COOLDOWN_MS - diff) / 1000));
+            } else {
+                setRemainingSeconds(0);
+            }
+        };
+
+        updateTimer();
+        const timer = setInterval(updateTimer, 1000);
+        return () => clearInterval(timer);
+    }, [lastTradeTime]);
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -665,16 +691,17 @@ const StocksView: React.FC<{ currentUser: User, refreshAccount: () => void, show
                             <div className="grid grid-cols-2 gap-4 pt-4">
                                 <button 
                                     onClick={() => setSelectedStock({ ...selectedStock, mode: 'buy' })}
-                                    className="py-5 bg-red-50 text-red-700 font-black rounded-3xl hover:bg-red-100 transition-all active:scale-[0.98] text-lg"
+                                    disabled={remainingSeconds > 0}
+                                    className={`py-5 font-black rounded-3xl transition-all active:scale-[0.98] text-lg ${remainingSeconds > 0 ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-red-50 text-red-700 hover:bg-red-100'}`}
                                 >
-                                    주식 매수 (사기)
+                                    {remainingSeconds > 0 ? `${Math.floor(remainingSeconds / 60)}분 ${remainingSeconds % 60}초 대기` : '주식 매수 (사기)'}
                                 </button>
                                 <button 
                                     onClick={() => setSelectedStock({ ...selectedStock, mode: 'sell' })}
-                                    disabled={currentOwned === 0}
-                                    className="py-5 bg-blue-50 text-blue-700 font-black rounded-3xl hover:bg-blue-100 transition-all active:scale-[0.98] text-lg disabled:opacity-50 disabled:bg-gray-50 disabled:text-gray-500"
+                                    disabled={currentOwned === 0 || remainingSeconds > 0}
+                                    className={`py-5 font-black rounded-3xl transition-all active:scale-[0.98] text-lg disabled:opacity-50 disabled:bg-gray-50 disabled:text-gray-500 ${remainingSeconds > 0 ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-blue-50 text-blue-700 hover:bg-blue-100'}`}
                                 >
-                                    주식 매도 (팔기)
+                                    {remainingSeconds > 0 ? `${Math.floor(remainingSeconds / 60)}분 ${remainingSeconds % 60}초 대기` : '주식 매도 (팔기)'}
                                 </button>
                             </div>
                         </div>

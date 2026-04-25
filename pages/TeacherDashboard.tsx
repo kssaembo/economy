@@ -395,7 +395,22 @@ const AddTaxModal: React.FC<{ students: User[], onClose: () => void, onComplete:
                     <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="w-full p-3 border rounded-lg" />
                 </div>
                 <div className="flex-grow overflow-y-auto border rounded-lg p-2 mb-4">
-                    <p className="text-xs font-bold text-gray-400 mb-2 uppercase px-2">대상 학생 선택</p>
+                    <div className="flex justify-between items-center px-2 mb-2">
+                        <p className="text-xs font-bold text-gray-400 uppercase">대상 학생 선택</p>
+                        <button 
+                            onClick={(e) => {
+                                e.preventDefault();
+                                if (selectedIds.length === students.length) {
+                                    setSelectedIds([]);
+                                } else {
+                                    setSelectedIds(students.map(s => s.userId));
+                                }
+                            }}
+                            className="text-[10px] font-bold text-indigo-600 hover:underline"
+                        >
+                            {selectedIds.length === students.length ? '전체 해제' : '전체 선택'}
+                        </button>
+                    </div>
                     {students.map(s => (
                         <label key={s.userId} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded cursor-pointer">
                             <input type="checkbox" checked={selectedIds.includes(s.userId)} onChange={() => setSelectedIds(prev => prev.includes(s.userId) ? prev.filter(i => i !== s.userId) : [...prev, s.userId])} className="w-5 h-5 text-indigo-600 rounded" />
@@ -2095,10 +2110,19 @@ const StockTransactionsModal: React.FC<{ onClose: () => void }> = ({ onClose }) 
     const { currentUser } = useContext(AuthContext);
     const [transactions, setTransactions] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [monitoringData, setMonitoringData] = useState<any>(null);
+    const [isAnalysisMode, setIsAnalysisMode] = useState(false);
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    
+    // 분석 기간 (기본값: 최근 1주일)
+    const [startDate, setStartDate] = useState(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+    const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
+
     const unit = currentUser?.currencyUnit || '권';
 
-    useEffect(() => {
+    const fetchTransactions = useCallback(() => {
         if (currentUser?.userId) {
+            setLoading(true);
             api.getStockTransactions(currentUser.userId).then(data => {
                 setTransactions(data);
                 setLoading(false);
@@ -2106,46 +2130,200 @@ const StockTransactionsModal: React.FC<{ onClose: () => void }> = ({ onClose }) 
         }
     }, [currentUser?.userId]);
 
+    useEffect(() => {
+        fetchTransactions();
+    }, [fetchTransactions]);
+
+    const handleAnalyzeAbuse = async () => {
+        if (!currentUser?.userId) return;
+        setIsAnalyzing(true);
+        try {
+            const data = await api.getSuspiciousTrading(currentUser.userId, startDate + ' 00:00:00', endDate + ' 23:59:59');
+            setMonitoringData(data);
+            setIsAnalysisMode(true);
+        } catch (e: any) {
+            alert(e.message || '분석 중 오류가 발생했습니다.');
+        } finally {
+            setIsAnalyzing(false);
+        }
+    };
+
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
-            <div className="bg-white w-full max-w-2xl rounded-2xl p-6 shadow-2xl flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
-                <div className="flex justify-between items-center mb-6">
-                    <div>
-                        <h3 className="text-xl font-black text-gray-900">주식 거래 세부 내역</h3>
-                        <p className="text-xs text-gray-500 font-bold">학생들의 모든 주식 매수/매도 기록입니다.</p>
+            <div className="bg-white w-full max-w-2xl rounded-2xl p-6 shadow-2xl flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center mb-4">
+                    <div className="flex items-center gap-3">
+                        <button 
+                            onClick={() => setIsAnalysisMode(false)}
+                            className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${!isAnalysisMode ? 'bg-[#2B548F] text-white' : 'text-gray-400 hover:bg-gray-100'}`}
+                        >
+                            거래 내역
+                        </button>
+                        <button 
+                            onClick={() => setIsAnalysisMode(true)}
+                            className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${isAnalysisMode ? 'bg-red-600 text-white' : 'text-gray-400 hover:bg-gray-100'}`}
+                        >
+                            이상 거래 탐지
+                        </button>
                     </div>
                     <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
                         <XIcon className="w-6 h-6 text-gray-400" />
                     </button>
                 </div>
 
+                {isAnalysisMode && (
+                    <div className="mb-4 p-4 bg-red-50 rounded-xl border border-red-100">
+                        <div className="flex flex-wrap items-end gap-3">
+                            <div className="flex-1 min-w-[120px]">
+                                <label className="text-[10px] font-bold text-red-500 mb-1 block">시작일</label>
+                                <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full p-2 text-xs border rounded-lg" />
+                            </div>
+                            <div className="flex-1 min-w-[120px]">
+                                <label className="text-[10px] font-bold text-red-500 mb-1 block">종료일</label>
+                                <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full p-2 text-xs border rounded-lg" />
+                            </div>
+                            <button 
+                                onClick={handleAnalyzeAbuse}
+                                disabled={isAnalyzing}
+                                className="px-4 py-2 bg-red-600 text-white text-sm font-black rounded-lg hover:bg-red-700 disabled:bg-gray-300 transition-colors"
+                            >
+                                {isAnalyzing ? '분석 중...' : '부당 거래 분석'}
+                            </button>
+                        </div>
+                    </div>
+                )}
+
                 <div className="flex-grow overflow-y-auto">
-                    {loading ? (
-                        <div className="flex justify-center py-10"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div></div>
-                    ) : transactions.length > 0 ? (
-                        <div className="space-y-2">
-                            {transactions.map(t => (
-                                <div key={t.transaction_id} className="flex justify-between items-center p-4 bg-gray-50 rounded-xl border border-gray-100">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-xs font-black text-indigo-600 border border-indigo-50 shadow-sm">
-                                            {t.student_name?.[0]}
+                    {isAnalysisMode ? (
+                        <div className="space-y-6">
+                            {monitoringData ? (
+                                <>
+                                    {/* 세력 및 담합 의심 */}
+                                    <section>
+                                        <h4 className="text-sm font-black text-gray-800 mb-3 flex items-center gap-2">
+                                            <span className="w-2 h-2 bg-red-600 rounded-full"></span>
+                                            세력 및 담합 의심 (Collusion)
+                                        </h4>
+                                        <div className="space-y-2">
+                                            {monitoringData.collusion?.length > 0 ? monitoringData.collusion.map((c: any, i: number) => (
+                                                <div key={i} className="p-3 bg-gray-50 rounded-lg border border-red-50 text-xs">
+                                                    <div className="flex justify-between font-bold mb-1">
+                                                        <span className="text-red-600">{c.stock_name}</span>
+                                                        <span className="text-gray-400">{new Date(c.trade_time).toLocaleString()}</span>
+                                                    </div>
+                                                    <p className="text-gray-600">
+                                                        <span className="font-bold text-gray-900">{c.student1}</span>님과 
+                                                        <span className="font-bold text-gray-900 ml-1">{c.student2}</span>님이 
+                                                        5분 내 유사 거래 포착 (담합 의심)
+                                                    </p>
+                                                </div>
+                                            )) : <p className="text-center py-4 text-gray-400 text-xs">의심 정황이 없습니다.</p>}
                                         </div>
-                                        <div>
-                                            <div className="font-black text-gray-900">{t.student_name}</div>
-                                            <div className="text-[10px] text-gray-500 font-bold">{t.description}</div>
+                                    </section>
+
+                                    {/* 쿨타임 우회 */}
+                                    <section>
+                                        <h4 className="text-sm font-black text-gray-800 mb-3 flex items-center gap-2">
+                                            <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+                                            쿨타임 우회 (Bypass)
+                                        </h4>
+                                        <div className="space-y-2">
+                                            {monitoringData.cooltime?.length > 0 ? monitoringData.cooltime.map((c: any, i: number) => (
+                                                <div key={i} className="p-3 bg-gray-50 rounded-lg border border-orange-50 text-xs">
+                                                    <div className="flex justify-between font-bold mb-1">
+                                                        <span className="text-gray-900">{c.student_name}</span>
+                                                        <span className="text-orange-600">{c.interval_minutes.toFixed(1)}분 간격</span>
+                                                    </div>
+                                                    <p className="text-gray-500 mb-1">{c.trade1} → {c.trade2}</p>
+                                                    <p className="text-right font-black text-indigo-600">추정 차익: {c.profit_estimate.toLocaleString()}{unit}</p>
+                                                </div>
+                                            )) : <p className="text-center py-4 text-gray-400 text-xs">의심 정황이 없습니다.</p>}
                                         </div>
-                                    </div>
-                                    <div className="text-right">
-                                        <div className={`font-black ${t.type === 'StockSell' ? 'text-blue-600' : 'text-red-600'}`}>
-                                            {t.type === 'StockSell' ? '+' : ''}{t.amount.toLocaleString()}{unit}
+                                    </section>
+
+                                    {/* 자전 거래 */}
+                                    <section>
+                                        <h4 className="text-sm font-black text-gray-800 mb-3 flex items-center gap-2">
+                                            <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                                            자전 거래 및 거래 대금 부풀리기
+                                        </h4>
+                                        <div className="space-y-2">
+                                            {monitoringData.wash?.length > 0 ? monitoringData.wash.map((w: any, i: number) => (
+                                                <div key={i} className="p-3 bg-gray-50 rounded-lg border border-blue-50 text-xs">
+                                                    <div className="flex justify-between font-bold mb-1">
+                                                        <span className="text-gray-900">{w.student_name}</span>
+                                                        <span className="text-blue-600">일일 {w.trade_count}회 거래</span>
+                                                    </div>
+                                                    <p className="text-right font-black text-indigo-600">금액 총합: {w.net_cash_flow.toLocaleString()}{unit}</p>
+                                                </div>
+                                            )) : <p className="text-center py-4 text-gray-400 text-xs">의심 정황이 없습니다.</p>}
                                         </div>
-                                        <div className="text-[10px] text-gray-400 font-bold">{new Date(t.date).toLocaleString()}</div>
-                                    </div>
+                                    </section>
+
+                                    {/* 수익률 이상치 */}
+                                    <section>
+                                        <h4 className="text-sm font-black text-gray-800 mb-3 flex items-center gap-2">
+                                            <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
+                                            수익률 이상치 및 급등 계좌
+                                        </h4>
+                                        <div className="space-y-2">
+                                            {monitoringData.abnormal?.length > 0 ? monitoringData.abnormal.map((a: any, i: number) => (
+                                                <div key={i} className="p-3 bg-gray-50 rounded-lg border border-purple-50 text-xs">
+                                                    <div className="flex justify-between font-bold mb-1">
+                                                        <span className="text-gray-900">{a.student_name}</span>
+                                                        <span className="text-purple-600">거래 {a.trade_count}회</span>
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-2 mt-2">
+                                                        <div className="bg-white p-1.5 rounded border border-gray-100">
+                                                            <div className="text-[8px] text-gray-400">총 매수</div>
+                                                            <div className="font-bold">{a.total_buy.toLocaleString()}{unit}</div>
+                                                        </div>
+                                                        <div className="bg-white p-1.5 rounded border border-gray-100">
+                                                            <div className="text-[8px] text-gray-400">총 매도</div>
+                                                            <div className="font-bold">{a.total_sell.toLocaleString()}{unit}</div>
+                                                        </div>
+                                                    </div>
+                                                    <p className="text-right font-black text-indigo-600 mt-2">순수익: {a.profit.toLocaleString()}{unit}</p>
+                                                </div>
+                                            )) : <p className="text-center py-4 text-gray-400 text-xs">의심 정황이 없습니다.</p>}
+                                        </div>
+                                    </section>
+                                </>
+                            ) : (
+                                <div className="text-center py-20">
+                                    <p className="font-bold text-gray-400">분석을 위해 상단의 '부당 거래 분석' 버튼을 눌러주세요.</p>
+                                    <p className="text-[10px] text-gray-300 mt-1">설정된 기간 내의 모든 거래 데이터를 심층 분석합니다.</p>
                                 </div>
-                            ))}
+                            )}
                         </div>
                     ) : (
-                        <div className="text-center py-20 text-gray-400 font-bold">거래 내역이 없습니다.</div>
+                        loading ? (
+                            <div className="flex justify-center py-10"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div></div>
+                        ) : transactions.length > 0 ? (
+                            <div className="space-y-2">
+                                {transactions.map(t => (
+                                    <div key={t.transaction_id} className="flex justify-between items-center p-4 bg-gray-50 rounded-xl border border-gray-100">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-xs font-black text-indigo-600 border border-indigo-50 shadow-sm">
+                                                {t.student_name?.[0]}
+                                            </div>
+                                            <div>
+                                                <div className="font-black text-gray-900">{t.student_name}</div>
+                                                <div className="text-[10px] text-gray-500 font-bold">{t.description}</div>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className={`font-black ${t.type === 'StockSell' ? 'text-blue-600' : 'text-red-600'}`}>
+                                                {t.type === 'StockSell' ? '+' : ''}{t.amount.toLocaleString()}{unit}
+                                            </div>
+                                            <div className="text-[10px] text-gray-400 font-bold">{new Date(t.date).toLocaleString()}</div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center py-20 text-gray-400 font-bold">거래 내역이 없습니다.</div>
+                        )
                     )}
                 </div>
             </div>
