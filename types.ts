@@ -177,6 +177,7 @@ export interface Fund {
   recruitmentDeadline: string;
   maturityDate: string;
   status: FundStatus;
+  executionRate?: number;
   createdAt: string;
   totalInvestedAmount?: number;
   investorCount?: number;

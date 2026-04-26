@@ -728,6 +728,61 @@ const FundInvestorsModal: React.FC<{ fund: Fund, onClose: () => void }> = ({ fun
     );
 };
 
+const FailSettlementModal: React.FC<{ fund: Fund, onClose: () => void, onConfirm: (rate: number) => void }> = ({ fund, onClose, onConfirm }) => {
+    const [rate, setRate] = useState<string>('');
+
+    const handleSubmit = () => {
+        const numRate = parseInt(rate);
+        if (isNaN(numRate) || numRate < 0 || numRate > 100) {
+            alert('0에서 100 사이의 정수를 입력해주세요.');
+            return;
+        }
+        onConfirm(numRate);
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[120] p-4">
+            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
+                <h3 className="text-xl font-bold mb-2">펀드 실패 정산</h3>
+                <p className="text-sm text-gray-600 mb-4 font-medium leading-relaxed">
+                    '{fund.name}' 펀드가 중단되었습니다.<br/>
+                    실행률을 입력하면 그만큼의 원금이 학생들에게 반환됩니다.
+                </p>
+                
+                <div className="space-y-4">
+                    <div>
+                        <label className="text-xs font-bold text-gray-500 mb-1 block">펀드 실행률 (%)</label>
+                        <div className="relative">
+                            <input 
+                                type="number" 
+                                value={rate} 
+                                onChange={e => setRate(e.target.value)} 
+                                placeholder="0 ~ 100" 
+                                className="w-full p-4 pr-12 border-2 border-red-50 rounded-xl outline-none focus:border-red-500 text-2xl font-black" 
+                            />
+                            <span className="absolute right-4 top-5 font-bold text-gray-400">%</span>
+                        </div>
+                        <p className="text-[10px] text-gray-400 mt-2 font-medium">
+                            * 학생이 실천한 펀드 실행률에 따라 원금이 반환됩니다.
+                        </p>
+                    </div>
+
+                    <div className="flex gap-2">
+                        <button onClick={onClose} className="flex-1 py-3 bg-gray-100 text-gray-600 font-bold rounded-xl">취소</button>
+                        <button 
+                            onClick={handleSubmit} 
+                            disabled={rate === ''} 
+                            className="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl disabled:bg-gray-300"
+                        >
+                            원금 반환
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 // --- Sub-Views ---
 
 // Fix: Correctly destructure 'refresh' prop even if not currently used directly, to match type definition and prevent potential errors.
@@ -1527,6 +1582,7 @@ const FundManagementView: React.FC<{ students: User[] }> = ({ students }) => {
     const [loading, setLoading] = useState(true);
     const [showAddModal, setShowAddModal] = useState(false);
     const [selectedFundForInvestors, setSelectedFundForInvestors] = useState<Fund | null>(null);
+    const [selectedFundForFail, setSelectedFundForFail] = useState<Fund | null>(null);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
     const [fundToDelete, setFundToDelete] = useState<string | null>(null); // 삭제 확인용 상태 추가
 
@@ -1544,10 +1600,11 @@ const FundManagementView: React.FC<{ students: User[] }> = ({ students }) => {
 
     useEffect(() => { fetchFunds(); }, [fetchFunds]);
 
-    const handleSettle = async (fundId: string, status: FundStatus) => {
+    const handleSettle = async (fundId: string, status: FundStatus, executionRate?: number) => {
         try {
-            await api.settleFund(fundId, status);
+            await api.settleFund(fundId, status, executionRate);
             setMessage({ type: 'success', text: '펀드 정산이 완료되었습니다.' });
+            setSelectedFundForFail(null);
             fetchFunds();
         } catch (e: any) {
             setMessage({ type: 'error', text: e.message });
@@ -1635,7 +1692,7 @@ const FundManagementView: React.FC<{ students: User[] }> = ({ students }) => {
                                     </div>
                                     {f.status === FundStatus.ONGOING && (
                                         <div className="grid grid-cols-3 gap-1">
-                                            <button onClick={() => handleSettle(f.id, FundStatus.FAIL)} className="py-2 bg-red-500 text-white rounded-lg text-[10px] font-bold hover:bg-red-600 transition-colors">실패</button>
+                                            <button onClick={() => setSelectedFundForFail(f)} className="py-2 bg-red-500 text-white rounded-lg text-[10px] font-bold hover:bg-red-600 transition-colors">실패</button>
                                             <button onClick={() => handleSettle(f.id, FundStatus.SUCCESS)} className="py-2 bg-green-500 text-white rounded-lg text-[10px] font-bold hover:bg-green-600 transition-colors">성공</button>
                                             <button onClick={() => handleSettle(f.id, FundStatus.EXCEED)} className="py-2 bg-indigo-600 text-white rounded-lg text-[10px] font-bold hover:bg-indigo-700 transition-colors">인센티브</button>
                                         </div>
@@ -1644,7 +1701,9 @@ const FundManagementView: React.FC<{ students: User[] }> = ({ students }) => {
                                         <button disabled className="w-full py-2 bg-gray-100 text-gray-400 rounded-lg text-xs font-bold">모집 중...</button>
                                     )}
                                     {f.status !== FundStatus.RECRUITING && f.status !== FundStatus.ONGOING && (
-                                        <div className="w-full py-2 bg-gray-100 text-gray-800 text-center rounded-lg text-[10px] font-black">정산됨: {f.status}</div>
+                                        <div className="w-full py-2 bg-gray-100 text-gray-800 text-center rounded-lg text-[10px] font-black">
+                                            정산됨: {f.status} {f.executionRate !== undefined && `(${f.executionRate}%)`}
+                                        </div>
                                     )}
                                 </div>
                             </div>
@@ -1661,6 +1720,7 @@ const FundManagementView: React.FC<{ students: User[] }> = ({ students }) => {
 
             {showAddModal && <AddFundModal students={students} onClose={() => setShowAddModal(false)} onComplete={fetchFunds} />}
             {selectedFundForInvestors && <FundInvestorsModal fund={selectedFundForInvestors} onClose={() => setSelectedFundForInvestors(null)} />}
+            {selectedFundForFail && <FailSettlementModal fund={selectedFundForFail} onClose={() => setSelectedFundForFail(null)} onConfirm={(rate) => handleSettle(selectedFundForFail.id, FundStatus.FAIL, rate)} />}
             {message && <MessageModal isOpen={true} type={message.type} message={message.text} onClose={() => setMessage(null)} />}
             <ConfirmModal 
                 isOpen={!!fundToDelete}

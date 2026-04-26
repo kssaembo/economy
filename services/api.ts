@@ -934,8 +934,12 @@ const joinFund = async (userId: string, fundId: string, units: number): Promise<
     return typeof data === 'string' ? data : (data.message || '투자가 완료되었습니다.');
 };
 
-const settleFund = async (fundId: string, resultStatus: FundStatus): Promise<string> => {
-    const { data, error = null } = await supabase.rpc('settle_fund', { p_fund_id: fundId.toString(), p_status: resultStatus });
+const settleFund = async (fundId: string, resultStatus: FundStatus, executionRate?: number): Promise<string> => {
+    const { data, error = null } = await supabase.rpc('settle_fund', { 
+        p_fund_id: fundId.toString(), 
+        p_status: resultStatus,
+        p_execution_rate: executionRate
+    });
     handleSupabaseError(error, 'settleFund');
     return data.message;
 };
