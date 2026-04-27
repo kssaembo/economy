@@ -101,6 +101,17 @@ const HomeView: React.FC<{ account: Account, currentUser: User, refreshAccount: 
     const savingsValue = mySavings.reduce((sum, item) => sum + item.amount, 0);
     const totalAssets = account.balance + stockValue + savingsValue;
 
+    const transactionsWithBalance = useMemo(() => {
+        let current = account.balance;
+        const result = [];
+        for (let i = 0; i < transactions.length; i++) {
+            const t = transactions[i];
+            result.push({ ...t, runningBalance: current });
+            current -= t.amount;
+        }
+        return result;
+    }, [transactions, account.balance]);
+
     const handleConfirmPayment = async () => {
         if (!taxToPay) return;
         try {
@@ -169,11 +180,15 @@ const HomeView: React.FC<{ account: Account, currentUser: User, refreshAccount: 
             <div>
                 <h3 className="text-lg font-black text-gray-900 mb-4 ml-1 tracking-tight">최근 활동</h3>
                 <div className="bg-white rounded-3xl shadow-sm overflow-hidden border border-gray-100">
-                    {transactions.slice(0, visibleCount).map(t => (
+                    {transactionsWithBalance.slice(0, visibleCount).map(t => (
                         <div key={t.transactionId} className="p-5 border-b last:border-0 flex justify-between items-center hover:bg-gray-50 transition-colors">
                             <div>
                                 <div className="font-black text-gray-900 text-sm">{t.description}</div>
-                                <div className="text-[11px] text-gray-700 font-bold mt-1 uppercase">{new Date(t.date).toLocaleString()}</div>
+                                <div className="flex items-center gap-1.5 mt-1">
+                                    <div className="text-[10px] text-gray-700 font-bold uppercase">{new Date(t.date).toLocaleString()}</div>
+                                    <div className="w-1 h-1 bg-gray-300 rounded-full"></div>
+                                    <div className="text-[11px] text-indigo-600 font-black">잔액: {t.runningBalance.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</div>
+                                </div>
                             </div>
                             <div className={`font-black text-lg ${['Deposit', 'Salary', 'StockSell', 'SavingsMaturity', 'FundSettle'].includes(t.type) ? 'text-blue-600' : 'text-red-500'}`}>
                                 {['Deposit', 'Salary', 'StockSell', 'SavingsMaturity', 'FundSettle'].includes(t.type) ? '+' : '-'}{Math.abs(t.amount).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
