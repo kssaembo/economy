@@ -4,6 +4,7 @@ import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
 import { Role, Account } from '../types';
 import { MainAdminIcon, MainBankIcon, MainMartIcon, StudentIcon, LogoutIcon, NewspaperIcon, HeartIcon } from '../components/icons';
+import { EconomyReadingModal } from '../components/EconomyReadingModal';
 
 interface RoleSelectionPageProps {
   onSelect: (view: 'admin' | 'banker' | 'mart' | 'student') => void;
@@ -12,6 +13,7 @@ interface RoleSelectionPageProps {
 const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
   const { currentUser, logout } = useContext(AuthContext);
   const [teacherAccount, setTeacherAccount] = useState<Account | null>(null);
+  const [showReadingModal, setShowReadingModal] = useState(false);
 
   // 자동 로그인을 위해 선생님의 국고 계좌(qrToken 포함) 정보를 가져옵니다.
   useEffect(() => {
@@ -110,7 +112,7 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
           ))}
         </div>
 
-        {/* 경제 뉴스 버튼 추가 */}
+        {/* 경제 뉴스 및 경제 상식 알기 버튼 추가 */}
         <div className="mt-8 flex flex-col md:flex-row justify-center gap-4">
           <a
             href={newsUrl}
@@ -123,7 +125,22 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
             </div>
             <span className="text-lg font-black text-gray-800 group-hover:text-indigo-600 transition-colors">경제 뉴스 바로가기</span>
           </a>
+
+          <button
+            onClick={() => setShowReadingModal(true)}
+            className="group flex items-center gap-3 px-8 py-5 bg-white rounded-[30px] shadow-[0_8px_25px_rgba(0,0,0,0.03)] border border-white hover:shadow-[0_15px_35px_rgba(0,0,0,0.06)] hover:scale-[1.02] hover:border-indigo-100 transition-all active:scale-95 w-full md:w-auto md:min-w-[280px] justify-center text-left"
+          >
+            <div className="w-10 h-10 bg-indigo-50 rounded-2xl flex items-center justify-center group-hover:bg-indigo-100 transition-colors">
+              <svg className="w-6 h-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+              </svg>
+            </div>
+            <span className="text-lg font-black text-gray-800 group-hover:text-indigo-600 transition-colors">경제 상식 알기</span>
+          </button>
         </div>
+
+        {/* 경제 상식 알기 모달 */}
+        <EconomyReadingModal isOpen={showReadingModal} onClose={() => setShowReadingModal(false)} />
         
         <footer className="mt-16 text-center text-black">
             <p className="text-sm font-bold mb-1">

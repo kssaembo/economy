@@ -722,6 +722,20 @@ const FundInvestorsModal: React.FC<{ fund: Fund, onClose: () => void }> = ({ fun
                         <div className="p-10 text-center text-gray-400 font-medium">아직 가입한 학생이 없습니다.</div>
                     )}
                 </div>
+
+                {/* 신청자 보상 정보 안내 */}
+                <div className="mt-4 p-4 bg-indigo-50 rounded-xl border border-indigo-100">
+                    <div className="flex justify-between items-center mb-2">
+                        <span className="text-xs font-black text-indigo-700 uppercase">기획자 보상 정책</span>
+                        <span className="text-[10px] bg-indigo-200 text-indigo-800 font-black px-1.5 py-0.5 rounded-full">{fund.creatorName || fund.creatorId?.slice(0,8)}</span>
+                    </div>
+                    <ul className="text-[11px] text-indigo-900 font-bold space-y-1 leading-relaxed">
+                        <li>• 성공: 펀딩액({Number(fund.totalInvestedAmount).toLocaleString()}{unit})의 10% 지급</li>
+                        <li>• 인센티브: 10% 보상 + 추가 인센티브({Number(fund.incentiveReward).toLocaleString()}{unit}) 합산 지급</li>
+                        <li>• 실패: 보상금 없음</li>
+                    </ul>
+                </div>
+
                 <button onClick={onClose} className="w-full py-3 mt-4 bg-gray-100 text-gray-600 font-bold rounded-lg hover:bg-gray-200">닫기</button>
             </div>
         </div>
@@ -764,6 +778,12 @@ const FailSettlementModal: React.FC<{ fund: Fund, onClose: () => void, onConfirm
                         </div>
                         <p className="text-[10px] text-gray-400 mt-2 font-medium">
                             * 학생이 실천한 펀드 실행률에 따라 원금이 반환됩니다.
+                        </p>
+                    </div>
+
+                    <div className="bg-red-50 p-3 rounded-lg border border-red-100">
+                        <p className="text-[10px] text-red-700 font-bold leading-relaxed">
+                            ⚠️ 펀드 실패 시, 신청 학생({fund.creatorName || fund.creatorId?.slice(0,8)})에게는 별도의 보상금이 지급되지 않습니다.
                         </p>
                     </div>
 
@@ -1583,6 +1603,7 @@ const FundManagementView: React.FC<{ students: User[] }> = ({ students }) => {
     const [showAddModal, setShowAddModal] = useState(false);
     const [selectedFundForInvestors, setSelectedFundForInvestors] = useState<Fund | null>(null);
     const [selectedFundForFail, setSelectedFundForFail] = useState<Fund | null>(null);
+    const [fundToSettle, setFundToSettle] = useState<{ fund: Fund, status: FundStatus } | null>(null);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
     const [fundToDelete, setFundToDelete] = useState<string | null>(null); // 삭제 확인용 상태 추가
 
@@ -1693,8 +1714,8 @@ const FundManagementView: React.FC<{ students: User[] }> = ({ students }) => {
                                     {f.status === FundStatus.ONGOING && (
                                         <div className="grid grid-cols-3 gap-1">
                                             <button onClick={() => setSelectedFundForFail(f)} className="py-2 bg-red-500 text-white rounded-lg text-[10px] font-bold hover:bg-red-600 transition-colors">실패</button>
-                                            <button onClick={() => handleSettle(f.id, FundStatus.SUCCESS)} className="py-2 bg-green-500 text-white rounded-lg text-[10px] font-bold hover:bg-green-600 transition-colors">성공</button>
-                                            <button onClick={() => handleSettle(f.id, FundStatus.EXCEED)} className="py-2 bg-indigo-600 text-white rounded-lg text-[10px] font-bold hover:bg-indigo-700 transition-colors">인센티브</button>
+                                            <button onClick={() => setFundToSettle({ fund: f, status: FundStatus.SUCCESS })} className="py-2 bg-green-500 text-white rounded-lg text-[10px] font-bold hover:bg-green-600 transition-colors">성공</button>
+                                            <button onClick={() => setFundToSettle({ fund: f, status: FundStatus.EXCEED })} className="py-2 bg-indigo-600 text-white rounded-lg text-[10px] font-bold hover:bg-indigo-700 transition-colors">인센티브</button>
                                         </div>
                                     )}
                                     {f.status === FundStatus.RECRUITING && (
@@ -1721,6 +1742,26 @@ const FundManagementView: React.FC<{ students: User[] }> = ({ students }) => {
             {showAddModal && <AddFundModal students={students} onClose={() => setShowAddModal(false)} onComplete={fetchFunds} />}
             {selectedFundForInvestors && <FundInvestorsModal fund={selectedFundForInvestors} onClose={() => setSelectedFundForInvestors(null)} />}
             {selectedFundForFail && <FailSettlementModal fund={selectedFundForFail} onClose={() => setSelectedFundForFail(null)} onConfirm={(rate) => handleSettle(selectedFundForFail.id, FundStatus.FAIL, rate)} />}
+            
+            {/* 성공/인센티브 정산 확인 모달 (보상금 안내 포함) */}
+            {fundToSettle && (
+                <ConfirmModal 
+                    isOpen={true}
+                    title="펀드 정산 확인"
+                    message={`'${fundToSettle.fund.name}' 펀드를 정산하시겠습니까?\n\n[정산 결과]: ${fundToSettle.status === FundStatus.SUCCESS ? '성공' : '초과 인센티브'}\n[신청자 보상]: ${
+                        fundToSettle.status === FundStatus.SUCCESS 
+                            ? `${(fundToSettle.fund.totalInvestedAmount || 0) * 0.1}${unit} (10%)`
+                            : `${(fundToSettle.fund.totalInvestedAmount || 0) * 0.1 + (fundToSettle.fund.incentiveReward || 0)}${unit} (10% + 인센티브)`
+                    }\n\n정산 후에는 취소할 수 없습니다.`}
+                    onConfirm={() => {
+                        handleSettle(fundToSettle.fund.id, fundToSettle.status);
+                        setFundToSettle(null);
+                    }}
+                    onCancel={() => setFundToSettle(null)}
+                    confirmText="정산하기"
+                />
+            )}
+            
             {message && <MessageModal isOpen={true} type={message.type} message={message.text} onClose={() => setMessage(null)} />}
             <ConfirmModal 
                 isOpen={!!fundToDelete}

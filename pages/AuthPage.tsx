@@ -298,7 +298,11 @@ const AuthPage: React.FC = () => {
             setRecoveryModalVisible(true);
             setSuccessMessage('회원가입이 완료되었습니다!');
         } catch (err: any) {
-            setError(err.message);
+            if (err.message && (err.message.includes('accounts_pkey') || err.message.includes('duplicate key value violates unique constraint "accounts_pkey"'))) {
+                setError('선생님 별칭이 중복되었습니다. 다른 별칭을 사용해주세요.');
+            } else {
+                setError(err.message);
+            }
         } finally {
             setLoading(false);
         }

@@ -12,6 +12,7 @@ import {
     LogoutIcon, NewFundIcon, NewspaperIcon, StudentIcon, HeartIcon 
 } from '../components/icons';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { EconomyReadingModal } from '../components/EconomyReadingModal';
 
 type View = 'home' | 'transfer' | 'stocks' | 'savings' | 'funds';
 type NotificationType = { type: 'success' | 'error', text: string };
@@ -31,7 +32,8 @@ const ConfirmModal: React.FC<{
     onCancel: () => void;
     confirmText?: string;
     isDangerous?: boolean;
-}> = ({ isOpen, title, message, onConfirm, onCancel, confirmText = "확인", isDangerous = false }) => {
+    extraNotice?: string;
+}> = ({ isOpen, title, message, onConfirm, onCancel, confirmText = "확인", isDangerous = false, extraNotice }) => {
     if (!isOpen) return null;
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -44,6 +46,11 @@ const ConfirmModal: React.FC<{
                         {confirmText}
                     </button>
                 </div>
+                {extraNotice && (
+                    <div className="mt-4 text-center text-xs text-red-500 font-bold">
+                        {extraNotice}
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -1054,6 +1061,7 @@ const SavingsView: React.FC<{ currentUser: User, refreshAccount: () => void, sho
                 onConfirm={handleMaturitySettle}
                 onCancel={() => setMaturityTargetId(null)}
                 confirmText="수령하기"
+                extraNotice="영업시간(9:00) 이후에 수령이 가능합니다."
             />
         </div>
     );
@@ -1120,18 +1128,79 @@ const FundView: React.FC<{ currentUser: User, refreshAccount: () => void, showNo
                 </div>
             )}
 
+            {/* 내가 신청한 펀드 정보 표시 */}
+            {funds.some(f => f.creatorId === currentUser.userId) && (
+                <div>
+                    <h3 className="text-lg font-black text-indigo-700 mb-4 ml-1 tracking-tight">내가 신청한 펀드</h3>
+                    <div className="space-y-4">
+                        {funds.filter(f => f.creatorId === currentUser.userId).map(f => {
+                             const isOngoing = f.status === FundStatus.ONGOING;
+                             const isRecruiting = f.status === FundStatus.RECRUITING;
+                             const successReward = (f.totalInvestedAmount || 0) * 0.1;
+                             const incentiveReward = successReward + (f.incentiveReward || 0);
+
+                             return (
+                                <div key={f.id} className="bg-indigo-600 p-6 rounded-[32px] shadow-xl text-white relative overflow-hidden ring-4 ring-indigo-100">
+                                    <div className="flex justify-between items-start mb-6">
+                                        <div>
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <h4 className="font-black text-2xl">{f.name}</h4>
+                                                <span className="bg-white text-indigo-600 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">기획자</span>
+                                            </div>
+                                            <div className="text-[10px] opacity-80 font-bold uppercase tracking-widest">{f.status} status</div>
+                                        </div>
+                                        {getStatusBadge(f.status)}
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4 mb-6">
+                                        <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl">
+                                            <div className="text-[10px] opacity-70 font-black uppercase mb-1">성공 보상금 (예상)</div>
+                                            <div className="text-2xl font-black">{successReward.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</div>
+                                        </div>
+                                        <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl">
+                                            <div className="text-[10px] opacity-70 font-black uppercase mb-1">인센티브 합산 (예상)</div>
+                                            <div className="text-2xl font-black">{incentiveReward.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <p className="text-[11px] font-bold leading-relaxed bg-black/20 p-3 rounded-xl border border-white/20">
+                                        💡 펀드 정산 시, 성공 또는 인센티브 달성 시 위 보상금이 국고에서 지급됩니다. 실패 시 보상금은 지급되지 않습니다.
+                                    </p>
+                                </div>
+                             );
+                        })}
+                    </div>
+                </div>
+            )}
+
             <div>
                 <h3 className="text-lg font-black text-gray-900 mb-4 ml-1 tracking-tight">진행 중인 펀드</h3>
                 <div className="grid grid-cols-1 gap-4">
                     {funds.map(f => (
                         <div key={f.id} className="bg-white p-8 rounded-[40px] shadow-sm border border-gray-100">
-                            <div className="flex justify-between items-start mb-6">
+                            <div className="flex justify-between items-start mb-4">
                                 <div>
-                                    <h4 className="font-black text-2xl text-gray-900 mb-2">{f.name}</h4>
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <h4 className="font-black text-2xl text-gray-900">{f.name}</h4>
+                                        {f.creatorId === currentUser.userId && <span className="bg-indigo-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase">MY</span>}
+                                    </div>
+                                    <p className="text-[11px] text-indigo-700 font-bold mb-2">신청자: {f.creatorName || f.creatorId?.slice(0,8)}</p>
                                     <p className="text-sm text-gray-800 font-bold line-clamp-2">{f.description}</p>
                                 </div>
                                 {getStatusBadge(f.status)}
                             </div>
+
+                            {/* 기획자 보상 안내 (모든 학생에게 노출) */}
+                            <div className="bg-indigo-50 p-4 rounded-2xl mb-6 border border-indigo-100">
+                                <div className="text-[10px] text-indigo-700 font-black mb-1 flex justify-between">
+                                    <span>기획자 보상 규칙</span>
+                                    <span>성공 시 모집액의 10% 지급</span>
+                                </div>
+                                <div className="w-full bg-indigo-200 h-1 rounded-full overflow-hidden">
+                                    <div className="bg-indigo-500 h-full w-[10%]"></div>
+                                </div>
+                            </div>
+
                             <div className="bg-gray-50 p-6 rounded-3xl grid grid-cols-2 gap-4 mb-6 border border-gray-100">
                                 <div>
                                     <div className="text-[10px] text-gray-700 font-black uppercase mb-1">1좌당 가격</div>
@@ -1358,6 +1427,7 @@ const StudentPage: React.FC<StudentPageProps> = ({ initialView, onBackToMenu }) 
     const { currentUser, logout } = useContext(AuthContext);
     const [view, setView] = useState<View>((initialView as View) || 'transfer');
     const [showDonationModal, setShowDonationModal] = useState(false);
+    const [showReadingModal, setShowReadingModal] = useState(false);
     const [account, setAccount] = useState<Account | null>(null);
     const [notification, setNotification] = useState<NotificationType | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -1461,6 +1531,12 @@ const StudentPage: React.FC<StudentPageProps> = ({ initialView, onBackToMenu }) 
                 )}
 
                 <div className="mt-auto space-y-4">
+                    <button onClick={() => setShowReadingModal(true)} className="w-full flex items-center gap-3 p-4 bg-indigo-50 text-indigo-700 rounded-2xl font-black text-sm hover:bg-indigo-100 transition-all group">
+                        <svg className="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                        </svg>
+                        경제 상식 알기
+                    </button>
                     <button onClick={() => setShowDonationModal(true)} className="w-full flex items-center gap-3 p-4 bg-pink-50 text-pink-700 rounded-2xl font-black text-sm hover:bg-pink-100 transition-all group">
                         <HeartIcon className="w-5 h-5 group-hover:scale-110 transition-transform" /> 기부왕
                     </button>
@@ -1485,7 +1561,14 @@ const StudentPage: React.FC<StudentPageProps> = ({ initialView, onBackToMenu }) 
                             </h1>
                         </div>
                     </div>
-                    <a href={newsUrl} target="_blank" rel="noopener noreferrer" className="p-2.5 bg-indigo-50 text-indigo-700 rounded-2xl shadow-sm border border-indigo-100 transition-all active:scale-90"><NewspaperIcon className="w-6 h-6" /></a>
+                    <div className="flex gap-2">
+                        <button onClick={() => setShowReadingModal(true)} className="p-2.5 bg-indigo-50 text-indigo-700 rounded-2xl shadow-sm border border-indigo-100 transition-all active:scale-90" title="경제 상식 알기">
+                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                            </svg>
+                        </button>
+                        <a href={newsUrl} target="_blank" rel="noopener noreferrer" className="p-2.5 bg-indigo-50 text-indigo-700 rounded-2xl shadow-sm border border-indigo-100 transition-all active:scale-90" title="경제 뉴스"><NewspaperIcon className="w-6 h-6" /></a>
+                    </div>
                 </header>
 
                 <main className="flex-grow overflow-y-auto p-4 md:p-10 pb-28 md:pb-10">
@@ -1510,6 +1593,11 @@ const StudentPage: React.FC<StudentPageProps> = ({ initialView, onBackToMenu }) 
                 account={account!}
                 refreshAccount={refreshAccount}
                 showNotification={(type, text) => setNotification({type, text})}
+            />
+
+            <EconomyReadingModal 
+                isOpen={showReadingModal}
+                onClose={() => setShowReadingModal(false)}
             />
 
             {notification && (
