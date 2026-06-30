@@ -13,6 +13,7 @@ import {
 } from '../components/icons';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { EconomyReadingModal } from '../components/EconomyReadingModal';
+import { EconomyTypingModal } from '../components/EconomyTypingModal';
 
 type View = 'home' | 'transfer' | 'stocks' | 'savings' | 'funds';
 type NotificationType = { type: 'success' | 'error', text: string };
@@ -1428,6 +1429,7 @@ const StudentPage: React.FC<StudentPageProps> = ({ initialView, onBackToMenu }) 
     const [view, setView] = useState<View>((initialView as View) || 'transfer');
     const [showDonationModal, setShowDonationModal] = useState(false);
     const [showReadingModal, setShowReadingModal] = useState(false);
+    const [showTypingModal, setShowTypingModal] = useState(false);
     const [account, setAccount] = useState<Account | null>(null);
     const [notification, setNotification] = useState<NotificationType | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -1530,21 +1532,39 @@ const StudentPage: React.FC<StudentPageProps> = ({ initialView, onBackToMenu }) 
                     </nav>
                 )}
 
-                <div className="mt-auto space-y-4">
-                    <button onClick={() => setShowReadingModal(true)} className="w-full flex items-center gap-3 p-4 bg-indigo-50 text-indigo-700 rounded-2xl font-black text-sm hover:bg-indigo-100 transition-all group">
-                        <svg className="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                        </svg>
-                        경제 상식 알기
-                    </button>
-                    <button onClick={() => setShowDonationModal(true)} className="w-full flex items-center gap-3 p-4 bg-pink-50 text-pink-700 rounded-2xl font-black text-sm hover:bg-pink-100 transition-all group">
-                        <HeartIcon className="w-5 h-5 group-hover:scale-110 transition-transform" /> 기부왕
-                    </button>
-                    <a href={newsUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-4 bg-indigo-50 text-indigo-700 rounded-2xl font-black text-sm hover:bg-indigo-100 transition-all group">
-                        <NewspaperIcon className="w-5 h-5 group-hover:rotate-12 transition-transform" /> 경제뉴스
-                    </a>
-                    <button onClick={handleLogout} className="w-full flex items-center gap-3 p-4 text-gray-600 hover:text-red-600 font-black text-sm rounded-2xl hover:bg-red-50 transition-all">
-                        <LogoutIcon className="w-5 h-5" /> {onBackToMenu ? '메뉴로' : '로그아웃'}
+                <div className="mt-auto space-y-3">
+                    <div className="grid grid-cols-2 gap-2">
+                        <button 
+                            onClick={() => setShowReadingModal(true)} 
+                            className="flex items-center justify-center p-3.5 bg-indigo-50 text-indigo-700 rounded-2xl font-black text-xs hover:bg-indigo-100 hover:scale-[1.02] active:scale-95 transition-all text-center"
+                        >
+                            경제상식
+                        </button>
+                        <button 
+                            onClick={() => setShowTypingModal(true)} 
+                            className="flex items-center justify-center p-3.5 bg-amber-50 text-amber-700 rounded-2xl font-black text-xs hover:bg-amber-100 hover:scale-[1.02] active:scale-95 transition-all text-center"
+                        >
+                            경제자판
+                        </button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                        <button 
+                            onClick={() => setShowDonationModal(true)} 
+                            className="flex items-center justify-center p-3.5 bg-pink-50 text-pink-700 rounded-2xl font-black text-xs hover:bg-pink-100 hover:scale-[1.02] active:scale-95 transition-all text-center"
+                        >
+                            기부왕
+                        </button>
+                        <a 
+                            href={newsUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="flex items-center justify-center p-3.5 bg-sky-50 text-sky-700 rounded-2xl font-black text-xs hover:bg-sky-100 hover:scale-[1.02] active:scale-95 transition-all text-center"
+                        >
+                            경제뉴스
+                        </a>
+                    </div>
+                    <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 p-3.5 text-gray-600 hover:text-red-600 font-black text-xs rounded-2xl hover:bg-red-50 transition-all">
+                        <LogoutIcon className="w-4 h-4" /> {onBackToMenu ? '메뉴로' : '로그아웃'}
                     </button>
                 </div>
             </aside>
@@ -1563,11 +1583,16 @@ const StudentPage: React.FC<StudentPageProps> = ({ initialView, onBackToMenu }) 
                     </div>
                     <div className="flex gap-2">
                         <button onClick={() => setShowReadingModal(true)} className="p-2.5 bg-indigo-50 text-indigo-700 rounded-2xl shadow-sm border border-indigo-100 transition-all active:scale-90" title="경제 상식 알기">
-                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                             </svg>
                         </button>
-                        <a href={newsUrl} target="_blank" rel="noopener noreferrer" className="p-2.5 bg-indigo-50 text-indigo-700 rounded-2xl shadow-sm border border-indigo-100 transition-all active:scale-90" title="경제 뉴스"><NewspaperIcon className="w-6 h-6" /></a>
+                        <button onClick={() => setShowTypingModal(true)} className="p-2.5 bg-amber-50 text-amber-700 rounded-2xl shadow-sm border border-amber-100 transition-all active:scale-90" title="경제 자판 연습">
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                        </button>
+                        <a href={newsUrl} target="_blank" rel="noopener noreferrer" className="p-2.5 bg-sky-50 text-sky-700 rounded-2xl shadow-sm border border-sky-100 transition-all active:scale-90" title="경제 뉴스"><NewspaperIcon className="w-5 h-5" /></a>
                     </div>
                 </header>
 
@@ -1598,6 +1623,11 @@ const StudentPage: React.FC<StudentPageProps> = ({ initialView, onBackToMenu }) 
             <EconomyReadingModal 
                 isOpen={showReadingModal}
                 onClose={() => setShowReadingModal(false)}
+            />
+
+            <EconomyTypingModal 
+                isOpen={showTypingModal}
+                onClose={() => setShowTypingModal(false)}
             />
 
             {notification && (

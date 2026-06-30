@@ -5,6 +5,7 @@ import { api } from '../services/api';
 import { Role, Account } from '../types';
 import { MainAdminIcon, MainBankIcon, MainMartIcon, StudentIcon, LogoutIcon, NewspaperIcon, HeartIcon } from '../components/icons';
 import { EconomyReadingModal } from '../components/EconomyReadingModal';
+import { EconomyTypingModal } from '../components/EconomyTypingModal';
 
 interface RoleSelectionPageProps {
   onSelect: (view: 'admin' | 'banker' | 'mart' | 'student') => void;
@@ -14,6 +15,7 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
   const { currentUser, logout } = useContext(AuthContext);
   const [teacherAccount, setTeacherAccount] = useState<Account | null>(null);
   const [showReadingModal, setShowReadingModal] = useState(false);
+  const [showTypingModal, setShowTypingModal] = useState(false);
 
   // 자동 로그인을 위해 선생님의 국고 계좌(qrToken 포함) 정보를 가져옵니다.
   useEffect(() => {
@@ -112,8 +114,8 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
           ))}
         </div>
 
-        {/* 경제 뉴스 및 경제 상식 알기 버튼 추가 */}
-        <div className="mt-8 flex flex-col md:flex-row justify-center gap-4">
+        {/* 경제 뉴스 및 경제 상식 알기, 경제 자판 연습 버튼 추가 */}
+        <div className="mt-8 flex flex-col md:flex-row justify-center gap-4 flex-wrap">
           <a
             href={newsUrl}
             target="_blank"
@@ -137,10 +139,25 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
             </div>
             <span className="text-lg font-black text-gray-800 group-hover:text-indigo-600 transition-colors">경제 상식 알기</span>
           </button>
+
+          <button
+            onClick={() => setShowTypingModal(true)}
+            className="group flex items-center gap-3 px-8 py-5 bg-white rounded-[30px] shadow-[0_8px_25px_rgba(0,0,0,0.03)] border border-white hover:shadow-[0_15px_35px_rgba(0,0,0,0.06)] hover:scale-[1.02] hover:border-amber-100 transition-all active:scale-95 w-full md:w-auto md:min-w-[280px] justify-center text-left"
+          >
+            <div className="w-10 h-10 bg-amber-50 rounded-2xl flex items-center justify-center group-hover:bg-amber-100 transition-colors">
+              <svg className="w-6 h-6 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <span className="text-lg font-black text-gray-800 group-hover:text-amber-600 transition-colors">경제 자판 연습</span>
+          </button>
         </div>
 
         {/* 경제 상식 알기 모달 */}
         <EconomyReadingModal isOpen={showReadingModal} onClose={() => setShowReadingModal(false)} />
+        
+        {/* 경제 자판 연습 모달 */}
+        <EconomyTypingModal isOpen={showTypingModal} onClose={() => setShowTypingModal(false)} />
         
         <footer className="mt-16 text-center text-black">
             <p className="text-sm font-bold mb-1">
