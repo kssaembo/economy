@@ -41,15 +41,15 @@ const BADGES: Badge[] = [
   { id: 'bill_passport', name: '타노', tier: 'banknote', icon: '🌐', description: '전 세계의 다양한 경제와 문화를 폭넓게 이해하는 글로벌 경제 주니어.' },
   
   // 보석 등급 (Jewel Tier)
-  { id: 'jewel_ruby', name: '쿼츠', tier: 'jewel', icon: '❤️', description: '주식과 분산투자의 긴 글 문맥을 마스터하여 기업가 정신을 일깨운 배지.' },
-  { id: 'jewel_sapphire', name: '토파즈', tier: 'jewel', icon: '💙', description: '환율과 기축통화의 흐름을 날카롭게 이해하고 긴 글을 정복한 금융 엘리트.' },
-  { id: 'jewel_emerald', name: '제이드', tier: 'jewel', icon: '💚', description: '부동산과 신용, 장기적인 자산 계획의 진정한 가치를 정복한 경제 거장.' },
-  { id: 'jewel_topaz', name: '애미', tier: 'jewel', icon: '💛', description: '세상을 바꿀 멋진 아이디어로 새로운 비즈니스를 개척해 나가는 개척가 배지.' },
-  { id: 'jewel_amethyst', name: '오팔', tier: 'jewel', icon: '💜', description: '복잡한 거시경제 지표와 정책을 깊이 있게 이해하고 정독한 기획가.' },
-  { id: 'jewel_garnet', name: '진주', tier: 'jewel', icon: '🤎', description: '사회적 책임을 다하며 공동체와 나누는 가치를 배운 따뜻한 기업가 배지.' },
-  { id: 'jewel_pearl', name: '루비', tier: 'jewel', icon: '⚪', description: '한 방울의 물방울이 모여 진주가 되듯, 오랜 노력을 인정받은 저축 마스터.' },
-  { id: 'jewel_crown', name: '사파이어', tier: 'jewel', icon: '👑', description: '교실 경제 크래프트의 모든 지혜를 다스릴 수 있는 영광스러운 왕관.' },
-  { id: 'jewel_trophy', name: '에매랄드', tier: 'jewel', icon: '🏆', description: '끈기와 열정으로 타자 연습 대장정을 끝내고 한 손에 쥐게 된 명예로운 트로피.' },
+  { id: 'jewel_ruby', name: '루비', tier: 'jewel', icon: '❤️', description: '주식과 분산투자의 긴 글 문맥을 마스터하여 기업가 정신을 일깨운 배지.' },
+  { id: 'jewel_sapphire', name: '사파이어', tier: 'jewel', icon: '💙', description: '환율과 기축통화의 흐름을 날카롭게 이해하고 긴 글을 정복한 금융 엘리트.' },
+  { id: 'jewel_emerald', name: '에매랄드', tier: 'jewel', icon: '💚', description: '부동산과 신용, 장기적인 자산 계획의 진정한 가치를 정복한 경제 거장.' },
+  { id: 'jewel_topaz', name: '토파즈', tier: 'jewel', icon: '💛', description: '세상을 바꿀 멋진 아이디어로 새로운 비즈니스를 개척해 나가는 개척가 배지.' },
+  { id: 'jewel_amethyst', name: '애미', tier: 'jewel', icon: '💜', description: '복잡한 거시경제 지표와 정책을 깊이 있게 이해하고 정독한 기획가.' },
+  { id: 'jewel_garnet', name: '오팔', tier: 'jewel', icon: '🤎', description: '사회적 책임을 다하며 공동체와 나누는 가치를 배운 따뜻한 기업가 배지.' },
+  { id: 'jewel_pearl', name: '진주', tier: 'jewel', icon: '⚪', description: '한 방울의 물방울이 모여 진주가 되듯, 오랜 노력을 인정받은 저축 마스터.' },
+  { id: 'jewel_crown', name: '왕관', tier: 'jewel', icon: '👑', description: '교실 경제 크래프트의 모든 지혜를 다스릴 수 있는 영광스러운 왕관.' },
+  { id: 'jewel_trophy', name: '트로피', tier: 'jewel', icon: '🏆', description: '끈기와 열정으로 타자 연습 대장정을 끝내고 한 손에 쥐게 된 명예로운 트로피.' },
   { id: 'jewel_diamond', name: '다이아', tier: 'jewel', icon: '💎', description: '최고 등급의 모든 경제 장문을 오타 없이 완벽히 정독하여 정복한 최고 존엄.' }
 ];
 
