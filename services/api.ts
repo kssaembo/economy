@@ -2,6 +2,7 @@
 import { supabase } from './supabaseClient';
 // Added missing FundInvestment import
 import { Role, User, Account, StockProduct, StockProductWithDetails, StudentStock, SavingsProduct, StudentSaving, Job, TaxItemWithRecipients, StockHistory, Fund, FundStatus, FundInvestment, Donation } from '../types';
+import { isGuestSession, guestDb } from './guestDb';
 
 // Helper function to handle Supabase errors
 const handleSupabaseError = (error: any, context: string) => {
@@ -1109,7 +1110,7 @@ async function deleteDonation(donationId: string): Promise<void> {
     handleSupabaseError(error, 'deleteDonation');
 }
 
-export const api = {
+const baseApi = {
     login, signupTeacher, loginTeacher, requestRecoveryCode, verifyRecoveryCode, resetTeacherPassword, checkTeacherExists,
     loginWithPassword, verifyAdminPassword, changePassword, resetPassword, loginWithQrToken, getUsersByRole,
     addStudent, updateStudent, deleteStudents, getStudentAccountByUserId, getTeacherAccount, getMartAccountByTeacherId, getTransactionsByAccountId,
@@ -1122,3 +1123,6 @@ export const api = {
     getFundInvestors, issueCurrency, deleteTeacherAccount, getDailyTreasuryTotals,
     getDonations, createDonation, closeDonation, donate, updateDonation, getDonationLogs, getStockTransactions, deleteDonation
 };
+
+export const api = baseApi;
+

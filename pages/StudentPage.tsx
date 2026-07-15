@@ -14,6 +14,7 @@ import {
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { EconomyReadingModal } from '../components/EconomyReadingModal';
 import { EconomyTypingModal } from '../components/EconomyTypingModal';
+import { EconomyTutorialLauncher } from '../components/EconomyTutorialModal';
 
 type View = 'home' | 'transfer' | 'stocks' | 'savings' | 'funds';
 type NotificationType = { type: 'success' | 'error', text: string };
@@ -1570,6 +1571,10 @@ const StudentPage: React.FC<StudentPageProps> = ({ initialView, onBackToMenu }) 
             </aside>
 
             <div className="flex-1 flex flex-col h-full relative">
+                {/* Desktop Economy Expedition Launcher - Top Right */}
+                <div className="absolute top-6 right-10 z-30 hidden md:block">
+                    <EconomyTutorialLauncher userId={effectiveUser.userId} userName={effectiveUser.name} />
+                </div>
                 <header className="md:hidden bg-white/80 backdrop-blur-xl px-6 py-4 flex justify-between items-center border-b border-gray-100 sticky top-0 z-40">
                     <div className="flex items-center">
                         {currentUser.role === Role.TEACHER && activeStudent && (
@@ -1582,6 +1587,7 @@ const StudentPage: React.FC<StudentPageProps> = ({ initialView, onBackToMenu }) 
                         </div>
                     </div>
                     <div className="flex gap-2">
+                        <EconomyTutorialLauncher userId={effectiveUser.userId} userName={effectiveUser.name} isMobile />
                         <button onClick={() => setShowReadingModal(true)} className="p-2.5 bg-indigo-50 text-indigo-700 rounded-2xl shadow-sm border border-indigo-100 transition-all active:scale-90" title="경제 상식 알기">
                             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />

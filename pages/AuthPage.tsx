@@ -3,6 +3,8 @@ import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
 import { Role, User } from '../types';
 import { StudentIcon, MainAdminIcon, MainBankIcon, MainMartIcon, CheckIcon, ErrorIcon, BackIcon, XIcon, NewspaperIcon } from '../components/icons';
+import { guestDb } from '../services/guestDb';
+import { replicateMasterData } from '../services/guestReplication';
 
 type AuthMode = 'login' | 'signup' | 'recovery' | 'recovery-reset' | 'student-login' | 'student-password-change';
 
@@ -43,6 +45,72 @@ const LegalModal: React.FC<{ title: string; content: React.ReactNode; isOpen: bo
     );
 };
 
+const GuestSelectionModal: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    onSelect: (role: 'teacher' | 'student') => void;
+    onReset: () => void;
+    isReplicating: boolean;
+}> = ({ isOpen, onClose, onSelect, onReset, isReplicating }) => {
+    if (!isOpen) return null;
+    return (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[300] flex items-center justify-center p-4 animate-fadeIn">
+            <div className="bg-white rounded-[32px] w-full max-w-md p-8 flex flex-col shadow-2xl relative">
+                {isReplicating ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <div className="animate-spin rounded-full h-14 w-14 border-4 border-t-indigo-600 border-indigo-100 mb-6"></div>
+                        <h3 className="text-xl font-black text-gray-900 mb-2">게스트 체험 공간으로 입장 중...</h3>
+                        <p className="text-xs text-gray-400 font-semibold leading-relaxed max-w-[280px]">
+                            잠시만 기다려 주세요.
+                        </p>
+                    </div>
+                ) : (
+                    <>
+                        <button onClick={onClose} className="absolute top-5 right-5 p-2 hover:bg-gray-100 rounded-full transition-colors">
+                            <XIcon className="w-5 h-5 text-gray-400" />
+                        </button>
+                        <div className="text-center mb-6">
+                            <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                                <svg className="w-6 h-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                </svg>
+                            </div>
+                            <h3 className="text-xl font-black text-gray-900">클래스뱅크 게스트 체험 🏦</h3>
+                            <p className="text-xs text-gray-400 mt-1 font-semibold">로그인 없이 모든 기능을 직접 체험해 보세요!</p>
+                        </div>
+                        
+                        <div className="space-y-3.5">
+                            <button 
+                                onClick={() => onSelect('teacher')}
+                                className="w-full p-4 bg-gray-50 hover:bg-indigo-50 border border-gray-100 hover:border-indigo-100 rounded-2xl text-left transition-all active:scale-[0.98] group flex gap-3 items-start"
+                            >
+                                <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center font-bold shrink-0 mt-0.5">교사</div>
+                                <div>
+                                    <p className="font-bold text-gray-900 text-sm group-hover:text-indigo-600 transition-colors">교사 모드 체험하기 (추천)</p>
+                                    <p className="text-[11px] text-gray-500 mt-0.5 leading-relaxed">교사관리자, 은행, 마트 등 다양한 역할 뿐만 아니라 학생 개별 화면까지 모두 체험할 수 있습니다.</p>
+                                </div>
+                            </button>
+                            
+                            <button 
+                                onClick={() => onSelect('student')}
+                                className="w-full p-4 bg-gray-50 hover:bg-emerald-50 border border-gray-100 hover:border-emerald-100 rounded-2xl text-left transition-all active:scale-[0.98] group flex gap-3 items-start"
+                            >
+                                <div className="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center font-bold shrink-0 mt-0.5">학생</div>
+                                <div>
+                                    <p className="font-bold text-gray-900 text-sm group-hover:text-emerald-600 transition-colors">학생 모드 체험하기</p>
+                                    <p className="text-[11px] text-gray-500 mt-0.5 leading-relaxed">게스트 교사 모드와 연동된 학생 페이지를 체험합니다. 교사 모드 체험하기-학생 페이지에서 동일하게 학생 모드를 체험할 수 있습니다.</p>
+                                </div>
+                            </button>
+                        </div>
+                    </>
+                )}
+            </div>
+        </div>
+    );
+};
+
+
+
 const AuthPage: React.FC = () => {
     const { login } = useContext(AuthContext);
     
@@ -60,6 +128,8 @@ const AuthPage: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
+    const [guestModalOpen, setGuestModalOpen] = useState(false);
+
 
     // Modal State
     const [modalState, setModalState] = useState<{ type: 'terms' | 'privacy' | 'guide' | null }>({ type: null });
@@ -491,6 +561,7 @@ const AuthPage: React.FC = () => {
                         </PrimaryButton>
                         <div className="flex justify-between items-center px-1">
                             <button onClick={() => { resetStates(); setMode('student-password-change'); }} className="text-xs font-bold text-gray-400 hover:text-indigo-600 transition-colors">비밀번호 변경</button>
+                            <button onClick={() => { resetStates(); setMode('login'); setGuestModalOpen(true); }} className="text-xs font-bold text-indigo-600 hover:underline transition-colors">게스트 모드로 시작</button>
                         </div>
                     </div>
                 </div>
@@ -608,6 +679,24 @@ const AuthPage: React.FC = () => {
         );
     }
 
+    const [isReplicating, setIsReplicating] = useState(false);
+
+    const handleStartGuestMode = async (role: 'teacher' | 'student') => {
+        try {
+            setIsReplicating(true);
+            const user = await replicateMasterData(role);
+            localStorage.setItem('class_bank_is_guest', 'true');
+            localStorage.setItem('class_bank_user_id', user.userId);
+            login(user);
+            setGuestModalOpen(false);
+        } catch (error: any) {
+            console.error('Guest replication failed', error);
+            alert('게스트 체험 모드 가상 환경 생성 중 오류가 발생했습니다: ' + (error.message || error));
+        } finally {
+            setIsReplicating(false);
+        }
+    };
+
     return (
         <div className="flex flex-col h-full bg-[#F2F4F7] items-center justify-center p-4 transition-all duration-700 overflow-y-auto">
             <div className="w-full max-w-[420px] text-center mb-6 pt-10">
@@ -643,6 +732,13 @@ const AuthPage: React.FC = () => {
                 학생 로그인 페이지로 이동
             </button>
 
+            <button 
+                onClick={() => setGuestModalOpen(true)}
+                className="w-full max-w-[380px] mt-3.5 p-4 bg-gradient-to-r from-[#0066FF]/5 to-[#0066FF]/10 text-[#0066FF] border border-[#0066FF]/20 rounded-[24px] shadow-sm font-black text-base hover:from-[#0066FF]/10 hover:to-[#0066FF]/15 hover:ring-4 hover:ring-blue-50 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+            >
+                체험용 게스트 모드로 둘러보기 👥
+            </button>
+
             <footer className="mt-12 mb-10 text-center">
                 <div className="flex flex-wrap justify-center items-center gap-x-4 gap-y-2 mb-6">
                     <button onClick={() => setModalState({ type: 'terms' })} className="text-[10px] font-bold text-gray-400 hover:text-gray-600 transition-colors underline underline-offset-2">이용약관</button>
@@ -667,6 +763,16 @@ const AuthPage: React.FC = () => {
             <LegalModal title="이용약관" content={TERMS_CONTENT} isOpen={modalState.type === 'terms'} onClose={() => setModalState({ type: null })} />
             <LegalModal title="개인정보처리방침" content={PRIVACY_CONTENT} isOpen={modalState.type === 'privacy'} onClose={() => setModalState({ type: null })} />
             <LegalModal title="클래스뱅크 사용 가이드" content={GUIDE_CONTENT} isOpen={modalState.type === 'guide'} onClose={() => setModalState({ type: null })} />
+            <GuestSelectionModal 
+                isOpen={guestModalOpen} 
+                onClose={() => setGuestModalOpen(false)} 
+                onSelect={handleStartGuestMode} 
+                onReset={() => {
+                    localStorage.removeItem('class_bank_user_id');
+                    localStorage.removeItem('class_bank_is_guest');
+                }} 
+                isReplicating={isReplicating}
+            />
         </div>
     );
 };
