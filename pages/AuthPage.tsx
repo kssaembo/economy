@@ -151,6 +151,7 @@ const AuthPage: React.FC = () => {
     const [num, setNum] = useState('');
     const [appPassword, setAppPassword] = useState('');
     const [newAppPassword, setNewAppPassword] = useState('');
+    const [isReplicating, setIsReplicating] = useState(false);
 
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
@@ -678,8 +679,6 @@ const AuthPage: React.FC = () => {
             </div>
         );
     }
-
-    const [isReplicating, setIsReplicating] = useState(false);
 
     const handleStartGuestMode = async (role: 'teacher' | 'student') => {
         try {
