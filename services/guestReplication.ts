@@ -39,7 +39,7 @@ export const replicateMasterData = async (role: 'teacher' | 'student'): Promise<
             name: teacherUserObj.name || '은하쌤 (체험)',
             role: Role.TEACHER,
             teacherAlias: teacherUserObj.teacherAlias || teacherUserObj.teacher_alias || teacherUserObj.name || '은하쌤 (체험)',
-            currencyUnit: teacherUserObj.currencyUnit || teacherUserObj.currency_unit || '톨',
+            currencyUnit: teacherObj.currencyUnit || teacherObj.currency_unit || '톨',
             classCode: teacherObj.classCode || teacherObj.class_code || '1111',
         };
     } else {
@@ -55,7 +55,7 @@ export const replicateMasterData = async (role: 'teacher' | 'student'): Promise<
             number: studentUserObj.number,
             teacher_id: MASTER_TEACHER_ID,
             teacherAlias: studentUserObj.teacherAlias || studentUserObj.teacher_alias || '은하쌤',
-            currencyUnit: studentUserObj.currencyUnit || studentUserObj.currency_unit || '톨',
+            currencyUnit: teacherObj.currencyUnit || teacherObj.currency_unit || '톨',
             classCode: teacherObj.classCode || teacherObj.class_code || '1111',
         };
     }
