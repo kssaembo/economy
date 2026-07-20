@@ -719,13 +719,24 @@ const AuthPage: React.FC = () => {
                     </div>
                 </div>
 
-                <button 
-                    onClick={() => setStudentGuestModalOpen(true)}
-                    disabled={isReplicating || loading}
-                    className="w-full max-w-[400px] mt-6 p-4 bg-indigo-50 hover:bg-indigo-100/80 text-indigo-700 border-2 border-indigo-500/80 rounded-[24px] shadow-md hover:shadow-lg font-black text-base hover:ring-4 hover:ring-indigo-100/50 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-                >
-                    {isReplicating ? '학생 체험 환경 생성 중...' : '학생 체험용 게스트 모드로 바로 시작 👥'}
-                </button>
+                <div className="flex gap-2.5 w-full max-w-[400px] mt-6">
+                    <button 
+                        onClick={() => setStudentGuestModalOpen(true)}
+                        disabled={isReplicating || loading}
+                        className="flex-[3.5] p-4 bg-indigo-50 hover:bg-indigo-100/80 text-indigo-700 border-2 border-indigo-500/80 rounded-[24px] shadow-md hover:shadow-lg font-black text-sm hover:ring-4 hover:ring-indigo-100/50 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                    >
+                        {isReplicating ? '학생 체험 환경 생성 중...' : '학생 체험용 게스트 모드로 바로 시작 👥'}
+                    </button>
+                    <button 
+                        onClick={() => {
+                            resetStates();
+                            window.location.href = window.location.pathname;
+                        }}
+                        className="flex-1 p-4 bg-white hover:bg-gray-50 text-gray-700 border-2 border-gray-200 rounded-[24px] shadow-md hover:shadow-lg font-black text-sm transition-all active:scale-[0.98] flex items-center justify-center whitespace-nowrap"
+                    >
+                        메인화면
+                    </button>
+                </div>
                 <GuestStudentSelectionModal
                     isOpen={studentGuestModalOpen}
                     onClose={() => setStudentGuestModalOpen(false)}
