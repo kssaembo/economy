@@ -5,6 +5,7 @@ import { Role, User } from '../types';
 import { StudentIcon, MainAdminIcon, MainBankIcon, MainMartIcon, CheckIcon, ErrorIcon, BackIcon, XIcon, NewspaperIcon } from '../components/icons';
 import { guestDb } from '../services/guestDb';
 import { replicateMasterData } from '../services/guestReplication';
+import { supabase } from '../services/supabaseClient';
 
 type AuthMode = 'login' | 'signup' | 'recovery' | 'recovery-reset' | 'student-login' | 'student-password-change';
 
@@ -109,7 +110,77 @@ const GuestSelectionModal: React.FC<{
     );
 };
 
+const GuestStudentSelectionModal: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    onSelect: (student: any) => void;
+    isReplicating: boolean;
+    students: any[];
+    loadingStudents: boolean;
+}> = ({ isOpen, onClose, onSelect, isReplicating, students, loadingStudents }) => {
+    if (!isOpen) return null;
+    return (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[300] flex items-center justify-center p-4 animate-fadeIn">
+            <div className="bg-white rounded-[32px] w-full max-w-lg p-8 flex flex-col shadow-2xl relative max-h-[85vh]">
+                <button onClick={onClose} className="absolute top-5 right-5 p-2 hover:bg-gray-100 rounded-full transition-colors">
+                    <XIcon className="w-5 h-5 text-gray-400" />
+                </button>
+                <div className="text-center mb-6">
+                    <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                        <svg className="w-6 h-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                    </div>
+                    <h3 className="text-xl font-black text-gray-900">체험할 학생 선택 👥</h3>
+                    <p className="text-xs text-gray-400 mt-1 font-semibold">게스트 모드로 접속할 학생을 선택해 주세요.</p>
+                </div>
 
+                {isReplicating ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <div className="animate-spin rounded-full h-14 w-14 border-4 border-t-indigo-600 border-indigo-100 mb-6"></div>
+                        <h3 className="text-lg font-black text-gray-900 mb-1">학생 게스트 모드 생성 중...</h3>
+                        <p className="text-xs text-gray-400 font-semibold">잠시만 기다려 주세요.</p>
+                    </div>
+                ) : loadingStudents ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <div className="animate-spin rounded-full h-10 w-10 border-4 border-t-indigo-600 border-indigo-100 mb-4"></div>
+                        <p className="text-xs text-gray-400 font-semibold">학생 목록을 불러오는 중입니다...</p>
+                    </div>
+                ) : (
+                    <div className="overflow-y-auto flex-1 pr-1 max-h-[50vh] space-y-2.5">
+                        {students.length === 0 ? (
+                            <div className="text-center py-12 text-gray-400 font-semibold text-sm">
+                                개설된 학생 계정이 없습니다.
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-2 gap-3">
+                                {students.map((student) => (
+                                    <button
+                                        key={student.userId || student.user_id}
+                                        onClick={() => onSelect(student)}
+                                        className="p-4 bg-gray-50 hover:bg-indigo-50/50 border border-gray-100 hover:border-indigo-200 rounded-2xl text-left transition-all active:scale-[0.98] flex items-center gap-3 group"
+                                    >
+                                        <div className="w-10 h-10 bg-indigo-100/60 text-indigo-700 rounded-xl flex items-center justify-center font-black text-xs shrink-0 group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                                            {student.number || student.num || '0'}번
+                                        </div>
+                                        <div className="truncate">
+                                            <p className="font-bold text-gray-900 text-sm group-hover:text-indigo-600 transition-colors truncate">
+                                                {student.name}
+                                            </p>
+                                            <p className="text-[10px] text-gray-400 font-medium mt-0.5">
+                                                {student.grade || '1'}학년 {student.class || '1'}반
+                                            </p>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
 
 const AuthPage: React.FC = () => {
     const { login } = useContext(AuthContext);
@@ -153,12 +224,93 @@ const AuthPage: React.FC = () => {
     const [newAppPassword, setNewAppPassword] = useState('');
     const [isReplicating, setIsReplicating] = useState(false);
 
+    const [studentGuestModalOpen, setStudentGuestModalOpen] = useState(false);
+    const [guestStudents, setGuestStudents] = useState<any[]>([]);
+    const [loadingStudents, setLoadingStudents] = useState(false);
+
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         if (params.get('mode') === 'app' && mode !== 'student-login' && mode !== 'student-password-change') {
             setMode('student-login');
         }
     }, [mode]);
+
+    const handleStartGuestMode = async (role: 'teacher' | 'student') => {
+        try {
+            setIsReplicating(true);
+            const user = await replicateMasterData(role);
+            localStorage.setItem('class_bank_is_guest', 'true');
+            localStorage.setItem('class_bank_user_id', user.userId);
+            login(user);
+            setGuestModalOpen(false);
+        } catch (error: any) {
+            console.error('Guest replication failed', error);
+            alert('게스트 체험 모드 가상 환경 생성 중 오류가 발생했습니다: ' + (error.message || error));
+        } finally {
+            setIsReplicating(false);
+        }
+    };
+
+    const handleStartStudentGuestMode = async (studentUserObj: any) => {
+        try {
+            setIsReplicating(true);
+            const { data: teachers, error: teacherErr } = await supabase
+                .from('teachers')
+                .select('*')
+                .eq('id', 'd6172c07-26f3-439f-9b00-d8e60700b8c5');
+
+            if (teacherErr || !teachers || teachers.length === 0) {
+                throw new Error('선생님 데이터를 데이터베이스에서 찾을 수 없습니다.');
+            }
+            const teacherObj = teachers[0];
+
+            const userObj: User = {
+                userId: studentUserObj.userId || studentUserObj.user_id,
+                name: studentUserObj.name,
+                role: Role.STUDENT,
+                grade: studentUserObj.grade,
+                class: studentUserObj.class || studentUserObj.cls,
+                number: studentUserObj.number || studentUserObj.num,
+                teacher_id: 'd6172c07-26f3-439f-9b00-d8e60700b8c5',
+                teacherAlias: studentUserObj.teacherAlias || studentUserObj.teacher_alias || '은하쌤',
+                currencyUnit: teacherObj.currencyUnit || teacherObj.currency_unit || '톨',
+                classCode: teacherObj.classCode || teacherObj.class_code || '1111',
+            };
+
+            localStorage.setItem('class_bank_is_guest', 'true');
+            localStorage.setItem('class_bank_user_id', userObj.userId);
+            login(userObj);
+            setStudentGuestModalOpen(false);
+        } catch (err: any) {
+            console.error('Student guest login failed', err);
+            alert('학생 게스트 로그인 중 오류가 발생했습니다: ' + (err.message || err));
+        } finally {
+            setIsReplicating(false);
+        }
+    };
+
+    useEffect(() => {
+        if (studentGuestModalOpen) {
+            const fetchStudents = async () => {
+                setLoadingStudents(true);
+                try {
+                    const { data, error } = await supabase
+                        .from('users')
+                        .select('*')
+                        .eq('teacher_id', 'd6172c07-26f3-439f-9b00-d8e60700b8c5')
+                        .eq('role', 'student')
+                        .order('number', { ascending: true });
+                    if (error) throw error;
+                    setGuestStudents(data || []);
+                } catch (err) {
+                    console.error('Failed to fetch guest students', err);
+                } finally {
+                    setLoadingStudents(false);
+                }
+            };
+            fetchStudents();
+        }
+    }, [studentGuestModalOpen]);
 
     const TERMS_CONTENT = (
         <div className="whitespace-pre-wrap">
@@ -566,6 +718,22 @@ const AuthPage: React.FC = () => {
                         </div>
                     </div>
                 </div>
+
+                <button 
+                    onClick={() => setStudentGuestModalOpen(true)}
+                    disabled={isReplicating || loading}
+                    className="w-full max-w-[400px] mt-6 p-4 bg-indigo-50 hover:bg-indigo-100/80 text-indigo-700 border-2 border-indigo-500/80 rounded-[24px] shadow-md hover:shadow-lg font-black text-base hover:ring-4 hover:ring-indigo-100/50 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                >
+                    {isReplicating ? '학생 체험 환경 생성 중...' : '학생 체험용 게스트 모드로 바로 시작 👥'}
+                </button>
+                <GuestStudentSelectionModal
+                    isOpen={studentGuestModalOpen}
+                    onClose={() => setStudentGuestModalOpen(false)}
+                    onSelect={handleStartStudentGuestMode}
+                    isReplicating={isReplicating}
+                    students={guestStudents}
+                    loadingStudents={loadingStudents}
+                />
             </div>
         );
     }
@@ -680,21 +848,6 @@ const AuthPage: React.FC = () => {
         );
     }
 
-    const handleStartGuestMode = async (role: 'teacher' | 'student') => {
-        try {
-            setIsReplicating(true);
-            const user = await replicateMasterData(role);
-            localStorage.setItem('class_bank_is_guest', 'true');
-            localStorage.setItem('class_bank_user_id', user.userId);
-            login(user);
-            setGuestModalOpen(false);
-        } catch (error: any) {
-            console.error('Guest replication failed', error);
-            alert('게스트 체험 모드 가상 환경 생성 중 오류가 발생했습니다: ' + (error.message || error));
-        } finally {
-            setIsReplicating(false);
-        }
-    };
 
     return (
         <div className="flex flex-col h-full bg-[#F2F4F7] items-center justify-center p-4 transition-all duration-700 overflow-y-auto">
@@ -771,6 +924,14 @@ const AuthPage: React.FC = () => {
                     localStorage.removeItem('class_bank_is_guest');
                 }} 
                 isReplicating={isReplicating}
+            />
+            <GuestStudentSelectionModal
+                isOpen={studentGuestModalOpen}
+                onClose={() => setStudentGuestModalOpen(false)}
+                onSelect={handleStartStudentGuestMode}
+                isReplicating={isReplicating}
+                students={guestStudents}
+                loadingStudents={loadingStudents}
             />
         </div>
     );
