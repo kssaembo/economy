@@ -236,6 +236,11 @@ const AuthPage: React.FC = () => {
     }, [mode]);
 
     const handleStartGuestMode = async (role: 'teacher' | 'student') => {
+        if (role === 'student') {
+            setGuestModalOpen(false);
+            setStudentGuestModalOpen(true);
+            return;
+        }
         try {
             setIsReplicating(true);
             const user = await replicateMasterData(role);
