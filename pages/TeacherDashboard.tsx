@@ -685,10 +685,13 @@ const DeleteAccountModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     );
 };
 
-const FundInvestorsModal: React.FC<{ fund: Fund, onClose: () => void }> = ({ fund, onClose }) => {
+const FundInvestorsModal: React.FC<{ fund: Fund, students?: User[], onClose: () => void }> = ({ fund, students, onClose }) => {
     const [investors, setInvestors] = useState<{ student_name: string, units: number, invested_amount: number }[]>([]);
     const [loading, setLoading] = useState(true);
     const unit = useContext(AuthContext).currentUser?.currencyUnit || '권';
+
+    const creator = students?.find(s => s.userId === fund.creatorId);
+    const applicantName = fund.creatorName || creator?.name || fund.creatorId?.slice(0, 8) || '미지정';
 
     useEffect(() => {
         api.getFundInvestors(fund.id).then(setInvestors).finally(() => setLoading(false));
@@ -730,17 +733,26 @@ const FundInvestorsModal: React.FC<{ fund: Fund, onClose: () => void }> = ({ fun
                     )}
                 </div>
 
-                {/* 신청자 보상 정보 안내 */}
+                {/* 기획자 보상 정책 */}
                 <div className="mt-4 p-4 bg-indigo-50 rounded-xl border border-indigo-100">
                     <div className="flex justify-between items-center mb-2">
                         <span className="text-xs font-black text-indigo-700 uppercase">기획자 보상 정책</span>
-                        <span className="text-[10px] bg-indigo-200 text-indigo-800 font-black px-1.5 py-0.5 rounded-full">{fund.creatorName || fund.creatorId?.slice(0,8)}</span>
+                        <span className="text-[10px] bg-indigo-200 text-indigo-800 font-black px-2 py-0.5 rounded-full">{applicantName}</span>
                     </div>
                     <ul className="text-[11px] text-indigo-900 font-bold space-y-1 leading-relaxed">
-                        <li>• 성공: 펀딩액({Number(fund.totalInvestedAmount).toLocaleString()}{unit})의 10% 지급</li>
-                        <li>• 인센티브: 10% 보상 + 추가 인센티브({Number(fund.incentiveReward).toLocaleString()}{unit}) 합산 지급</li>
+                        <li>• 성공: 펀딩액({Number(fund.totalInvestedAmount || 0).toLocaleString()}{unit})의 10% 지급</li>
                         <li>• 실패: 보상금 없음</li>
                     </ul>
+                </div>
+
+                {/* 투자자 보상 정책 */}
+                <div className="mt-3 p-4 bg-blue-50 rounded-xl border border-blue-100">
+                    <div className="flex justify-between items-center mb-2">
+                        <span className="text-xs font-black text-blue-700 uppercase">투자자 보상 정책</span>
+                    </div>
+                    <div className="text-[11px] text-blue-900 font-bold leading-relaxed">
+                        • 인센티브({Number(fund.baseReward || 0).toLocaleString()}{unit}) + 추가 인센티브({Number(fund.incentiveReward || 0).toLocaleString()}{unit}) 지급
+                    </div>
                 </div>
 
                 <button onClick={onClose} className="w-full py-3 mt-4 bg-gray-100 text-gray-600 font-bold rounded-lg hover:bg-gray-200">닫기</button>
@@ -1672,7 +1684,7 @@ const FundManagementView: React.FC<{ students: User[] }> = ({ students }) => {
                     <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#2B548F]"></div>
                 </div>
             ) : funds.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 overflow-y-auto">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto">
                     {funds.map(f => {
                         // DB에서 가져온 creatorName이 없을 경우, 현재 로드된 학생 목록(students)에서 이름을 한 번 더 찾음
                         const creator = students.find(s => s.userId === f.creatorId);
@@ -1685,9 +1697,9 @@ const FundManagementView: React.FC<{ students: User[] }> = ({ students }) => {
                                         <h3 className="font-black text-lg text-black">{f.name}</h3>
                                         <p className="text-[10px] text-indigo-700 font-black">신청자: {applicantName}</p>
                                     </div>
-                                    <div className="flex gap-1">
-                                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-black ${f.status === FundStatus.RECRUITING ? 'bg-blue-100 text-blue-700' : f.status === FundStatus.ONGOING ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
-                                            {f.status}
+                                    <div className="flex gap-1 items-center">
+                                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-black whitespace-nowrap shrink-0 ${f.status === FundStatus.RECRUITING ? 'bg-blue-100 text-blue-700' : f.status === FundStatus.ONGOING ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
+                                            {f.status === FundStatus.RECRUITING ? '모집 중' : f.status === FundStatus.ONGOING ? '운용 중' : f.status === FundStatus.SUCCESS ? '성공' : f.status === FundStatus.FAIL ? '실패' : f.status === FundStatus.EXCEED ? '인센티브' : f.status}
                                         </span>
                                         <button onClick={(e) => handleDeleteClick(e, f.id)} className="text-gray-400 hover:text-red-500 p-1"><XIcon className="w-4 h-4"/></button>
                                     </div>
@@ -1731,7 +1743,7 @@ const FundManagementView: React.FC<{ students: User[] }> = ({ students }) => {
                                     )}
                                     {f.status !== FundStatus.RECRUITING && f.status !== FundStatus.ONGOING && (
                                         <div className="w-full py-2 bg-gray-100 text-gray-800 text-center rounded-lg text-[10px] font-black">
-                                            정산됨: {f.status} {f.executionRate !== undefined && `(${f.executionRate}%)`}
+                                            정산됨: {f.status === FundStatus.SUCCESS ? '성공' : f.status === FundStatus.FAIL ? '실패' : f.status === FundStatus.EXCEED ? '인센티브' : f.status} {f.executionRate !== undefined && `(${f.executionRate}%)`}
                                         </div>
                                     )}
                                 </div>
@@ -1748,7 +1760,7 @@ const FundManagementView: React.FC<{ students: User[] }> = ({ students }) => {
             )}
 
             {showAddModal && <AddFundModal students={students} onClose={() => setShowAddModal(false)} onComplete={fetchFunds} />}
-            {selectedFundForInvestors && <FundInvestorsModal fund={selectedFundForInvestors} onClose={() => setSelectedFundForInvestors(null)} />}
+            {selectedFundForInvestors && <FundInvestorsModal fund={selectedFundForInvestors} students={students} onClose={() => setSelectedFundForInvestors(null)} />}
             {selectedFundForFail && <FailSettlementModal fund={selectedFundForFail} onClose={() => setSelectedFundForFail(null)} onConfirm={(rate) => handleSettle(selectedFundForFail.id, FundStatus.FAIL, rate)} />}
             
             {/* 성공/인센티브 정산 확인 모달 (보상금 안내 포함) */}

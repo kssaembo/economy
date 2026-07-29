@@ -2,7 +2,7 @@ import React, { useState, useEffect, useContext, useCallback, useMemo } from 're
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
 import { 
-    Account, Transaction, StockProduct, StudentStock, SavingsProduct, 
+    Account, Transaction, TransactionType, StockProduct, StudentStock, SavingsProduct, 
     StudentSaving, User, Role, StockHistory, Fund, FundInvestment, FundStatus,
     Donation
 } from '../types';
@@ -111,16 +111,44 @@ const HomeView: React.FC<{ account: Account, currentUser: User, refreshAccount: 
     const savingsValue = mySavings.reduce((sum, item) => sum + item.amount, 0);
     const totalAssets = account.balance + stockValue + savingsValue;
 
+    const sortedTransactions = useMemo(() => {
+        return [...transactions].sort((a, b) => {
+            const timeA = new Date(a.date).getTime();
+            const timeB = new Date(b.date).getTime();
+
+            // 1차 정렬: 시간 내림차순 (최신순)
+            if (timeA !== timeB) {
+                return timeB - timeA;
+            }
+
+            // 2차 정렬: 동일 시각(동일 타임스탬프)인 경우
+            // 실제 발생 순서: 1) 직업 급여 지급 -> 2) 소득세 차감
+            // 내림차순(최신순) 목록 상단에는 나중에 일어난 소득세 차감이, 하단에는 먼저 일어난 급여 지급이 배치됩니다.
+            const getPriority = (t: Transaction) => {
+                const typeStr = String(t.type);
+                const isTax = typeStr === 'Tax' || typeStr === 'TAX' || t.description?.includes('소득세') || t.description?.includes('세금');
+                const isSalary = typeStr === 'Salary' || typeStr === 'SALARY' || t.description?.includes('급여');
+                if (isTax) return 2;   // 최신순 상단 (index가 앞섬)
+                if (isSalary) return 1; // 최신순 하단 (index가 뒤섬)
+                return 0;
+            };
+
+            return getPriority(b) - getPriority(a);
+        });
+    }, [transactions]);
+
     const transactionsWithBalance = useMemo(() => {
         let current = account.balance;
         const result = [];
-        for (let i = 0; i < transactions.length; i++) {
-            const t = transactions[i];
+        for (let i = 0; i < sortedTransactions.length; i++) {
+            const t = sortedTransactions[i];
             result.push({ ...t, runningBalance: current });
-            current -= t.amount;
+            const isIncome = ['Deposit', 'Salary', 'StockSell', 'SavingsMaturity', 'FundSettle'].includes(t.type);
+            const signedAmount = isIncome ? Math.abs(t.amount) : -Math.abs(t.amount);
+            current -= signedAmount;
         }
         return result;
-    }, [transactions, account.balance]);
+    }, [sortedTransactions, account.balance]);
 
     const handleConfirmPayment = async () => {
         if (!taxToPay) return;
@@ -1070,7 +1098,7 @@ const SavingsView: React.FC<{ currentUser: User, refreshAccount: () => void, sho
     );
 };
 
-const FundView: React.FC<{ currentUser: User, refreshAccount: () => void, showNotification: (type: 'success' | 'error', text: string) => void }> = ({ currentUser, refreshAccount, showNotification }) => {
+const FundView: React.FC<{ currentUser: User, students?: User[], refreshAccount: () => void, showNotification: (type: 'success' | 'error', text: string) => void }> = ({ currentUser, students, refreshAccount, showNotification }) => {
     const unit = currentUser?.currencyUnit || '권';
     const [funds, setFunds] = useState<Fund[]>([]);
     const [myInvestments, setMyInvestments] = useState<FundInvestment[]>([]);
@@ -1100,11 +1128,16 @@ const FundView: React.FC<{ currentUser: User, refreshAccount: () => void, showNo
 
     const getStatusBadge = (status: FundStatus) => {
         switch (status) {
-            case FundStatus.RECRUITING: return <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-[10px] font-black uppercase">모집중</span>;
-            case FundStatus.ONGOING: return <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-[10px] font-black uppercase">운용중</span>;
-            default: return <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-[10px] font-black uppercase">{status}</span>;
+            case FundStatus.RECRUITING: return <span className="px-3.5 py-1 bg-green-100 text-green-700 rounded-full text-[11px] font-black uppercase whitespace-nowrap inline-block shrink-0">모집중</span>;
+            case FundStatus.ONGOING: return <span className="px-3.5 py-1 bg-blue-100 text-blue-700 rounded-full text-[11px] font-black uppercase whitespace-nowrap inline-block shrink-0">운용중</span>;
+            case FundStatus.SUCCESS: return <span className="px-3.5 py-1 bg-emerald-100 text-emerald-700 rounded-full text-[11px] font-black uppercase whitespace-nowrap inline-block shrink-0">성공</span>;
+            case FundStatus.FAIL: return <span className="px-3.5 py-1 bg-rose-100 text-rose-700 rounded-full text-[11px] font-black uppercase whitespace-nowrap inline-block shrink-0">실패</span>;
+            case FundStatus.EXCEED: return <span className="px-3.5 py-1 bg-purple-100 text-purple-700 rounded-full text-[11px] font-black uppercase whitespace-nowrap inline-block shrink-0">인센티브</span>;
+            default: return <span className="px-3.5 py-1 bg-gray-100 text-gray-700 rounded-full text-[11px] font-black uppercase whitespace-nowrap inline-block shrink-0">{status}</span>;
         }
     };
+
+    const activeFunds = funds.filter(f => f.status === FundStatus.RECRUITING || f.status === FundStatus.ONGOING);
 
     return (
         <div className="space-y-8">
@@ -1112,21 +1145,67 @@ const FundView: React.FC<{ currentUser: User, refreshAccount: () => void, showNo
                 <div>
                     <h3 className="text-lg font-black text-gray-900 mb-4 ml-1 tracking-tight">내 투자 현황</h3>
                     <div className="space-y-4">
-                        {myInvestments.map(inv => (
-                            <div key={inv.id} className="bg-white p-6 rounded-[32px] shadow-sm border-l-[12px] border-indigo-500">
-                                <div className="flex justify-between items-start mb-4">
-                                    <div className="font-black text-xl text-gray-900">{inv.fund?.name}</div>
-                                    <div className="flex items-center gap-2">
-                                        <span className="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full text-[10px] font-black">{inv.units}좌 보유</span>
-                                        {inv.fund && getStatusBadge(inv.fund.status)}
+                        {myInvestments.map(inv => {
+                            const currentFund = funds.find(f => String(f.id) === String(inv.fundId || inv.fund?.id)) || inv.fund;
+                            const currentStatus = currentFund?.status || inv.fund?.status || FundStatus.RECRUITING;
+                            const unitPrice = currentFund?.unitPrice || inv.fund?.unitPrice || 0;
+                            const principal = inv.units * unitPrice;
+
+                            const isSettled = currentStatus === FundStatus.SUCCESS || currentStatus === FundStatus.EXCEED || currentStatus === FundStatus.FAIL;
+
+                            let profit = 0;
+                            let profitText = '';
+                            if (currentStatus === FundStatus.SUCCESS) {
+                                profit = currentFund?.baseReward || 0;
+                                profitText = `+${profit.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}${unit}`;
+                            } else if (currentStatus === FundStatus.EXCEED) {
+                                profit = (currentFund?.baseReward || 0) + (currentFund?.incentiveReward || 0);
+                                profitText = `+${profit.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}${unit} (인센티브 포함)`;
+                            } else if (currentStatus === FundStatus.FAIL) {
+                                const rate = currentFund?.executionRate !== undefined ? currentFund.executionRate : 50;
+                                const payout = Math.round(principal * (rate / 100));
+                                profit = payout - principal;
+                                profitText = `${profit.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}${unit} (${rate}% 반환)`;
+                            }
+
+                            const totalPayout = principal + profit;
+
+                            return (
+                                <div key={inv.id} className="bg-white p-6 rounded-[32px] shadow-sm border-l-[12px] border-indigo-500">
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div className="font-black text-xl text-gray-900">{currentFund?.name || inv.fund?.name}</div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full text-[10px] font-black whitespace-nowrap">{inv.units}좌 보유</span>
+                                            {getStatusBadge(currentStatus)}
+                                        </div>
                                     </div>
+
+                                    {isSettled ? (
+                                        <div className="bg-gray-50 p-4 rounded-2xl space-y-2 text-xs border border-gray-100">
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-gray-500 font-bold">투자 원금</span>
+                                                <span className="font-bold text-gray-900">{principal.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-gray-500 font-bold">수익(내역)</span>
+                                                <span className={`font-bold ${profit >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                                                    {profitText}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between items-center pt-2 border-t border-gray-200">
+                                                <span className="text-gray-900 font-black">정산 금액</span>
+                                                <span className="font-black text-indigo-700 text-sm">{Math.max(0, totalPayout).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</span>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-gray-700 font-bold">투자 원금</span>
+                                            <span className="font-black text-indigo-700">{principal.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</span>
+                                        </div>
+                                    )}
                                 </div>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-gray-700 font-bold">투자 원금</span>
-                                    <span className="font-black text-indigo-700">{(inv.units * (inv.fund?.unitPrice || 0)).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</span>
-                                </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
             )}
@@ -1137,8 +1216,6 @@ const FundView: React.FC<{ currentUser: User, refreshAccount: () => void, showNo
                     <h3 className="text-lg font-black text-indigo-700 mb-4 ml-1 tracking-tight">내가 신청한 펀드</h3>
                     <div className="space-y-4">
                         {funds.filter(f => f.creatorId === currentUser.userId).map(f => {
-                             const isOngoing = f.status === FundStatus.ONGOING;
-                             const isRecruiting = f.status === FundStatus.RECRUITING;
                              const successReward = (f.totalInvestedAmount || 0) * 0.1;
                              const incentiveReward = successReward + (f.incentiveReward || 0);
 
@@ -1150,7 +1227,6 @@ const FundView: React.FC<{ currentUser: User, refreshAccount: () => void, showNo
                                                 <h4 className="font-black text-2xl">{f.name}</h4>
                                                 <span className="bg-white text-indigo-600 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">기획자</span>
                                             </div>
-                                            <div className="text-[10px] opacity-80 font-bold uppercase tracking-widest">{f.status} status</div>
                                         </div>
                                         {getStatusBadge(f.status)}
                                     </div>
@@ -1178,52 +1254,74 @@ const FundView: React.FC<{ currentUser: User, refreshAccount: () => void, showNo
 
             <div>
                 <h3 className="text-lg font-black text-gray-900 mb-4 ml-1 tracking-tight">진행 중인 펀드</h3>
-                <div className="grid grid-cols-1 gap-4">
-                    {funds.map(f => (
-                        <div key={f.id} className="bg-white p-8 rounded-[40px] shadow-sm border border-gray-100">
-                            <div className="flex justify-between items-start mb-4">
-                                <div>
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <h4 className="font-black text-2xl text-gray-900">{f.name}</h4>
-                                        {f.creatorId === currentUser.userId && <span className="bg-indigo-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase">MY</span>}
+                {activeFunds.length > 0 ? (
+                    <div className="grid grid-cols-1 gap-4">
+                        {activeFunds.map(f => {
+                            const creator = students?.find(s => s.userId === f.creatorId);
+                            const applicantName = f.creatorName || creator?.name || f.creatorId?.slice(0, 8) || '미지정';
+
+                            return (
+                                <div key={f.id} className="bg-white p-8 rounded-[40px] shadow-sm border border-gray-100">
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div>
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <h4 className="font-black text-2xl text-gray-900">{f.name}</h4>
+                                                {f.creatorId === currentUser.userId && <span className="bg-indigo-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase">MY</span>}
+                                            </div>
+                                            <p className="text-[11px] text-indigo-700 font-bold mb-2">신청자: {applicantName}</p>
+                                            <p className="text-sm text-gray-800 font-bold line-clamp-2">{f.description}</p>
+                                        </div>
+                                        {getStatusBadge(f.status)}
                                     </div>
-                                    <p className="text-[11px] text-indigo-700 font-bold mb-2">신청자: {f.creatorName || f.creatorId?.slice(0,8)}</p>
-                                    <p className="text-sm text-gray-800 font-bold line-clamp-2">{f.description}</p>
-                                </div>
-                                {getStatusBadge(f.status)}
-                            </div>
 
-                            {/* 기획자 보상 안내 (모든 학생에게 노출) */}
-                            <div className="bg-indigo-50 p-4 rounded-2xl mb-6 border border-indigo-100">
-                                <div className="text-[10px] text-indigo-700 font-black mb-1 flex justify-between">
-                                    <span>기획자 보상 규칙</span>
-                                    <span>성공 시 모집액의 10% 지급</span>
-                                </div>
-                                <div className="w-full bg-indigo-200 h-1 rounded-full overflow-hidden">
-                                    <div className="bg-indigo-500 h-full w-[10%]"></div>
-                                </div>
-                            </div>
+                                    {/* 투자 현황 안내 */}
+                                    <div className="bg-indigo-50 p-4 rounded-2xl mb-6 border border-indigo-100">
+                                        <div className="text-[11px] text-indigo-700 font-black mb-1 flex justify-between items-center">
+                                            <span>투자 현황</span>
+                                            <span>목표 금액: {(f.targetAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</span>
+                                        </div>
+                                        <div className="w-full bg-indigo-200 h-2 rounded-full overflow-hidden my-1">
+                                            <div 
+                                                className="bg-indigo-600 h-full rounded-full transition-all" 
+                                                style={{ width: `${Math.min(100, ((f.totalInvestedAmount || 0) / (f.targetAmount || 1)) * 100)}%` }}
+                                            ></div>
+                                        </div>
+                                        <div className="flex justify-between text-[10px] text-indigo-600 font-bold mt-1">
+                                            <span>모집액: {(f.totalInvestedAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</span>
+                                            <span>{Math.round(((f.totalInvestedAmount || 0) / (f.targetAmount || 1)) * 100)}%</span>
+                                        </div>
+                                    </div>
 
-                            <div className="bg-gray-50 p-6 rounded-3xl grid grid-cols-2 gap-4 mb-6 border border-gray-100">
-                                <div>
-                                    <div className="text-[10px] text-gray-700 font-black uppercase mb-1">1좌당 가격</div>
-                                    <div className="font-black text-lg text-gray-900">{f.unitPrice.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</div>
+                                    <div className="bg-gray-50 p-6 rounded-3xl grid grid-cols-3 gap-2 mb-6 border border-gray-100 text-center">
+                                        <div>
+                                            <div className="text-[10px] text-gray-700 font-black uppercase mb-1">1좌당 가격</div>
+                                            <div className="font-black text-base text-gray-900">{(f.unitPrice || 0).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</div>
+                                        </div>
+                                        <div>
+                                            <div className="text-[10px] text-gray-700 font-black uppercase mb-1">기본 배당금</div>
+                                            <div className="font-black text-base text-blue-700">{(f.baseReward || 0).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</div>
+                                        </div>
+                                        <div>
+                                            <div className="text-[10px] text-gray-700 font-black uppercase mb-1">추가 인센티브</div>
+                                            <div className="font-black text-base text-indigo-700">+{(f.incentiveReward || 0).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</div>
+                                        </div>
+                                    </div>
+                                    <button 
+                                        onClick={() => setSelectedFund(f)}
+                                        disabled={f.status !== FundStatus.RECRUITING}
+                                        className={`w-full py-5 rounded-[24px] font-black text-lg transition-all active:scale-[0.98] ${f.status === FundStatus.RECRUITING ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-100' : 'bg-gray-100 text-gray-500'}`}
+                                    >
+                                        {f.status === FundStatus.RECRUITING ? '지금 투자하기' : '운용 중 (모집 종료)'}
+                                    </button>
                                 </div>
-                                <div>
-                                    <div className="text-[10px] text-gray-700 font-black uppercase mb-1">목표 금액</div>
-                                    <div className="font-black text-lg text-gray-900">{f.targetAmount.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</div>
-                                </div>
-                            </div>
-                            <button 
-                                onClick={() => setSelectedFund(f)}
-                                disabled={f.status !== FundStatus.RECRUITING}
-                                className={`w-full py-5 rounded-[24px] font-black text-lg transition-all active:scale-[0.98] ${f.status === FundStatus.RECRUITING ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-100' : 'bg-gray-100 text-gray-500'}`}
-                            >
-                                {f.status === FundStatus.RECRUITING ? '지금 투자하기' : '모집 종료'}
-                            </button>
-                        </div>
-                    ))}
-                </div>
+                            );
+                        })}
+                    </div>
+                ) : (
+                    <div className="bg-white p-10 rounded-[32px] text-center text-gray-400 font-bold border border-gray-100">
+                        현재 진행 중인 펀드가 없습니다.
+                    </div>
+                )}
             </div>
 
             {selectedFund && (
@@ -1510,7 +1608,7 @@ const StudentPage: React.FC<StudentPageProps> = ({ initialView, onBackToMenu }) 
             case 'transfer': return <TransferView currentUser={{...effectiveUser, currencyUnit: currentUnit}} account={account} refreshAccount={refreshAccount} showNotification={(type, text) => setNotification({type, text})} />;
             case 'stocks': return <StocksView currentUser={{...effectiveUser, currencyUnit: currentUnit}} refreshAccount={refreshAccount} showNotification={(type, text) => setNotification({type, text})} />;
             case 'savings': return <SavingsView currentUser={{...effectiveUser, currencyUnit: currentUnit}} refreshAccount={refreshAccount} showNotification={(type, text) => setNotification({type, text})} />;
-            case 'funds': return <FundView currentUser={{...effectiveUser, currencyUnit: currentUnit}} refreshAccount={refreshAccount} showNotification={(type, text) => setNotification({type, text})} />;
+            case 'funds': return <FundView currentUser={{...effectiveUser, currencyUnit: currentUnit}} students={students} refreshAccount={refreshAccount} showNotification={(type, text) => setNotification({type, text})} />;
             default: return <HomeView account={account} currentUser={{...effectiveUser, currencyUnit: currentUnit}} refreshAccount={refreshAccount} showNotification={(type, text) => setNotification({type, text})} />;
         }
     };
