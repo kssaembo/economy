@@ -197,7 +197,7 @@ const QrPrintModal: React.FC<{ students: (User & { account: Account | null })[],
                 <div class="qr-card">
                     <div class="student-info">${s.grade}-${s.class} ${s.number} ${s.name}</div>
                     <div class="qr-svg-container">${qrSvg}</div>
-                    <div class="qr-footer">QR 코드를 스캔하면 계좌로 바로 접속됩니다.</div>
+                    <div class="qr-footer">QR 코드를 스캔하면 계좌로 바로 접속됩니다.<br/><span style="color:#666; font-size:9px;">※ 모바일에서 QR코드 인식 시 Chrome 브라우저로 접속 할 수 있도록 해주세요.</span></div>
                 </div>
             `;
         }).join('');
@@ -270,12 +270,14 @@ const QrPrintModal: React.FC<{ students: (User & { account: Account | null })[],
                                     <QRCodeSVG value={`${baseUrl}/?token=${s.account?.qrToken}&view=transfer`} size={140} level="H" />
                                 </div>
                                 <p className="text-[10px] text-gray-400 font-medium">QR 코드를 스캔하면 계좌로 바로 접속됩니다.</p>
+                                <p className="text-[9px] text-indigo-600 font-semibold mt-1">※ 모바일에서 QR코드 인식 시 Chrome 브라우저로 접속 할 수 있도록 해주세요.</p>
                             </div>
                         ))}
                     </div>
                 </div>
-                <div className="p-4 border-t bg-gray-50 text-center text-xs text-gray-400 rounded-b-2xl">
-                    인쇄 시 '배경 그래픽' 옵션을 켜주시면 더 깔끔하게 출력됩니다.
+                <div className="p-4 border-t bg-gray-50 text-center text-xs text-gray-500 rounded-b-2xl space-y-1">
+                    <p>인쇄 시 '배경 그래픽' 옵션을 켜주시면 더 깔끔하게 출력됩니다.</p>
+                    <p className="font-bold text-indigo-600">※ 모바일에서 QR코드 인식 시 Chrome 브라우저로 접속 할 수 있도록 해주세요.</p>
                 </div>
             </div>
         </div>

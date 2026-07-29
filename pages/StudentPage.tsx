@@ -1587,7 +1587,9 @@ const StudentPage: React.FC<StudentPageProps> = ({ initialView, onBackToMenu }) 
                         </div>
                     </div>
                     <div className="flex gap-2">
-                        <EconomyTutorialLauncher userId={effectiveUser.userId} userName={effectiveUser.name} isMobile />
+                        <button onClick={() => setShowDonationModal(true)} className="p-2.5 bg-pink-50 text-pink-700 rounded-2xl shadow-sm border border-pink-100 transition-all active:scale-90" title="기부왕">
+                            <HeartIcon className="w-5 h-5" />
+                        </button>
                         <button onClick={() => setShowReadingModal(true)} className="p-2.5 bg-indigo-50 text-indigo-700 rounded-2xl shadow-sm border border-indigo-100 transition-all active:scale-90" title="경제 상식 알기">
                             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
@@ -1603,7 +1605,12 @@ const StudentPage: React.FC<StudentPageProps> = ({ initialView, onBackToMenu }) 
                 </header>
 
                 <main className="flex-grow overflow-y-auto p-4 md:p-10 pb-28 md:pb-10">
-                    <div className="max-w-4xl mx-auto">{renderView()}</div>
+                    <div className="max-w-4xl mx-auto">
+                        <div className="md:hidden flex justify-end mb-2">
+                            <EconomyTutorialLauncher userId={effectiveUser.userId} userName={effectiveUser.name} isMobile />
+                        </div>
+                        {renderView()}
+                    </div>
                 </main>
 
                 {(activeStudent || currentUser.role === Role.STUDENT) && (

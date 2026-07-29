@@ -40,15 +40,14 @@ export const EconomyTutorialLauncher: React.FC<EconomyTutorialLauncherProps> = (
         <button
           id="tutorial-mobile-btn"
           onClick={() => setIsOpen(true)}
-          className={`p-2.5 rounded-2xl shadow-sm border transition-all active:scale-95 flex items-center gap-1.5 justify-center ${
+          className={`w-7 h-7 rounded-xl shadow-sm border transition-all active:scale-90 flex items-center justify-center text-xs shrink-0 ${
             isCompleted 
-              ? 'bg-emerald-50/90 text-emerald-700 border-emerald-200 font-bold' 
-              : 'bg-indigo-50/90 text-indigo-700 border-indigo-200 font-black'
+              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 font-bold' 
+              : 'bg-indigo-50 text-indigo-700 border-indigo-200 font-black'
           }`}
-          title="가이드"
+          title="금융 가이드"
         >
-          <span>🔖</span>
-          <span className="text-xs">{isCompleted ? '완료' : '가이드'}</span>
+          <span>{isCompleted ? '🎓' : '🔖'}</span>
         </button>
         <EconomyTutorialModal isOpen={isOpen} onClose={() => setIsOpen(false)} userId={userId} userName={userName} onComplete={checkCompletion} />
       </>
