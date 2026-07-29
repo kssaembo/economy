@@ -15,6 +15,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'rec
 import { EconomyReadingModal } from '../components/EconomyReadingModal';
 import { EconomyTypingModal } from '../components/EconomyTypingModal';
 import { EconomyTutorialLauncher } from '../components/EconomyTutorialModal';
+import { EconomyNewsModal } from '../components/EconomyNewsModal';
 
 type View = 'home' | 'transfer' | 'stocks' | 'savings' | 'funds';
 type NotificationType = { type: 'success' | 'error', text: string };
@@ -1431,6 +1432,7 @@ const StudentPage: React.FC<StudentPageProps> = ({ initialView, onBackToMenu }) 
     const [showDonationModal, setShowDonationModal] = useState(false);
     const [showReadingModal, setShowReadingModal] = useState(false);
     const [showTypingModal, setShowTypingModal] = useState(false);
+    const [showNewsModal, setShowNewsModal] = useState(false);
     const [account, setAccount] = useState<Account | null>(null);
     const [notification, setNotification] = useState<NotificationType | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -1555,14 +1557,12 @@ const StudentPage: React.FC<StudentPageProps> = ({ initialView, onBackToMenu }) 
                         >
                             기부왕
                         </button>
-                        <a 
-                            href={newsUrl} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
+                        <button 
+                            onClick={() => setShowNewsModal(true)} 
                             className="flex items-center justify-center p-3.5 bg-sky-50 text-sky-700 rounded-2xl font-black text-xs hover:bg-sky-100 hover:scale-[1.02] active:scale-95 transition-all text-center"
                         >
                             경제뉴스
-                        </a>
+                        </button>
                     </div>
                     <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 p-3.5 text-gray-600 hover:text-red-600 font-black text-xs rounded-2xl hover:bg-red-50 transition-all">
                         <LogoutIcon className="w-4 h-4" /> {onBackToMenu ? '메뉴로' : '로그아웃'}
@@ -1598,7 +1598,7 @@ const StudentPage: React.FC<StudentPageProps> = ({ initialView, onBackToMenu }) 
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
                         </button>
-                        <a href={newsUrl} target="_blank" rel="noopener noreferrer" className="p-2.5 bg-sky-50 text-sky-700 rounded-2xl shadow-sm border border-sky-100 transition-all active:scale-90" title="경제 뉴스"><NewspaperIcon className="w-5 h-5" /></a>
+                        <button onClick={() => setShowNewsModal(true)} className="p-2.5 bg-sky-50 text-sky-700 rounded-2xl shadow-sm border border-sky-100 transition-all active:scale-90" title="경제 뉴스"><NewspaperIcon className="w-5 h-5" /></button>
                     </div>
                 </header>
 
@@ -1634,6 +1634,12 @@ const StudentPage: React.FC<StudentPageProps> = ({ initialView, onBackToMenu }) 
             <EconomyTypingModal 
                 isOpen={showTypingModal}
                 onClose={() => setShowTypingModal(false)}
+            />
+
+            <EconomyNewsModal 
+                isOpen={showNewsModal}
+                onClose={() => setShowNewsModal(false)}
+                newsUrl={newsUrl}
             />
 
             {notification && (

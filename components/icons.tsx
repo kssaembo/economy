@@ -1,6 +1,64 @@
 
 import React from 'react';
 
+/**
+ * ============================================================================
+ * THIRD-PARTY OPEN SOURCE LICENSE ATTRIBUTIONS
+ * ============================================================================
+ * 
+ * 1. HEROICONS
+ * ------------
+ * Many of the outline style SVG icons in this file (e.g., BankIcon, MartIcon, 
+ * StudentIcon, LogoutIcon, DashboardIcon, etc.) are sourced from Heroicons.
+ * 
+ * GitHub: https://github.com/tailwindlabs/heroicons
+ * License: MIT License
+ * Copyright (c) 2020 Tailwind Labs
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ * 
+ * ============================================================================
+ * 
+ * 2. LUCIDE ICONS
+ * ---------------
+ * The newly added/replaced inline SVG icons (NewJobIcon, NewStockIcon, 
+ * NewPiggyBankIcon, NewMartIcon, NewHistoryIcon, NewBankerIcon) are sourced 
+ * from Lucide Icons.
+ * 
+ * GitHub: https://github.com/lucide-icons/lucide
+ * License: ISC License
+ * Copyright (c) Lucide Contributors
+ * 
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ * ============================================================================
+ */
+
 type IconProps = React.SVGProps<SVGSVGElement>;
 type ImgIconProps = React.ImgHTMLAttributes<HTMLImageElement>;
 
@@ -173,32 +231,61 @@ export const NewBriefcaseIcon: React.FC<ImgIconProps> = (props) => (
     <img src="https://anvdmcqszhmipbnxltsg.supabase.co/storage/v1/object/public/images/admin_role-removebg-preview.png" alt="Jobs" {...props} />
 );
 
-export const NewJobIcon: React.FC<ImgIconProps> = (props) => (
-    <img src="https://cdn-icons-png.flaticon.com/512/942/942749.png" alt="Jobs" {...props} />
+export const NewJobIcon: React.FC<IconProps> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+        <path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+        <rect width="20" height="14" x="2" y="6" rx="2" />
+    </svg>
 );
 
 export const NewManageAccountsIcon: React.FC<ImgIconProps> = (props) => (
     <img src="https://anvdmcqszhmipbnxltsg.supabase.co/storage/v1/object/public/images/admin_account-removebg-preview.png" alt="Account Management" {...props} />
 );
 
-export const NewStockIcon: React.FC<ImgIconProps> = (props) => (
-    <img src="https://cdn-icons-png.flaticon.com/512/3843/3843966.png" alt="Stocks" {...props} />
+export const NewStockIcon: React.FC<IconProps> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+        <path d="m3 3 3 3 4-3 7 8 4-2" />
+        <path d="M21 7V3h-4" />
+        <path d="M3 21h18" />
+    </svg>
 );
 
-export const NewPiggyBankIcon: React.FC<ImgIconProps> = (props) => (
-    <img src="https://cdn-icons-png.flaticon.com/512/2447/2447436.png" alt="Savings" {...props} />
+export const NewPiggyBankIcon: React.FC<IconProps> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+        <path d="M19 5c-1.5 0-2.8 1.4-3 2-2.5-1.7-6.1-1.9-8.3-.3C5.7 8.2 5 10.3 5 12c0 2.5 1.8 4.3 4 4h5c2.2 0 4-1.8 4-4 0-.8-.3-1.6-.7-2.3.4-.7.7-1.4.7-2.3 0-.4-.3-.7-.7-.7" />
+        <path d="M16 11h.01" />
+        <path d="M12 2v2" />
+        <path d="M11 16v3a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-3" />
+        <path d="M8 16v2a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-2" />
+    </svg>
 );
 
-export const NewMartIcon: React.FC<ImgIconProps> = (props) => (
-    <img src="https://cdn-icons-png.flaticon.com/512/3081/3081986.png" alt="Mart" {...props} />
+export const NewMartIcon: React.FC<IconProps> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+        <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
+        <path d="M3 6h18" />
+        <path d="M16 10a4 4 0 0 1-8 0" />
+    </svg>
 );
 
-export const NewHistoryIcon: React.FC<ImgIconProps> = (props) => (
-    <img src="https://cdn-icons-png.flaticon.com/512/6433/6433807.png" alt="History" {...props} />
+export const NewHistoryIcon: React.FC<IconProps> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <path d="M14 2v6h6" />
+        <circle cx="11.5" cy="14.5" r="2.5" />
+        <path d="M16 19l-2-2" />
+    </svg>
 );
 
-export const NewBankerIcon: React.FC<ImgIconProps> = (props) => (
-    <img src="https://cdn-icons-png.flaticon.com/512/831/831466.png" alt="Banker" {...props} />
+export const NewBankerIcon: React.FC<IconProps> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+        <line x1="3" x2="21" y1="22" y2="22" />
+        <line x1="6" x2="6" y1="18" y2="11" />
+        <line x1="10" x2="10" y1="18" y2="11" />
+        <line x1="14" x2="14" y1="18" y2="11" />
+        <line x1="18" x2="18" y1="18" y2="11" />
+        <polygon points="12 2 20 7 4 7" />
+    </svg>
 );
 
 export const NewTaxIcon: React.FC<ImgIconProps> = (props) => (
