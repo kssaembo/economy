@@ -539,8 +539,13 @@ const IssueCurrencyModal: React.FC<{ onClose: () => void, onComplete: () => void
         if (!amount || parseInt(amount) <= 0 || !currentUser) return;
         setLoading(true);
         try {
-            await api.issueCurrency(currentUser.userId, parseInt(amount));
-            onComplete();
+            const targetId = currentUser.teacher_id || currentUser.userId;
+            const res = await api.issueCurrency(targetId, parseInt(amount));
+            const msg = typeof res === 'object' && (res as any)?.message 
+                ? (res as any).message 
+                : (typeof res === 'string' ? res : `${amount}${unit} 화폐가 성공적으로 발행되었습니다.`);
+            alert(msg);
+            await onComplete();
             onClose();
         } catch (e: any) {
             alert(e.message || '발행 중 오류가 발생했습니다.');
@@ -827,7 +832,8 @@ const DashboardView: React.FC<{ students: (User & { account: Account | null })[]
 
     const fetchTeacherData = useCallback(async () => {
         try {
-            const acc = await api.getTeacherAccount();
+            const targetId = currentUser?.teacher_id || currentUser?.userId;
+            const acc = await api.getTeacherAccount(targetId);
             setTeacherAccount(acc);
             if (acc) {
                 const trans = await api.getTransactionsByAccountId(acc.accountId);
@@ -836,7 +842,7 @@ const DashboardView: React.FC<{ students: (User & { account: Account | null })[]
         } catch (err) {
             console.error("Failed to fetch teacher account", err);
         }
-    }, []);
+    }, [currentUser?.teacher_id, currentUser?.userId]);
 
     useEffect(() => {
         fetchTeacherData();

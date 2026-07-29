@@ -2,7 +2,7 @@
 import { supabase } from './supabaseClient';
 // Added missing FundInvestment import
 import { Role, User, Account, StockProduct, StockProductWithDetails, StudentStock, SavingsProduct, StudentSaving, Job, TaxItemWithRecipients, StockHistory, Fund, FundStatus, FundInvestment, Donation } from '../types';
-import { isGuestSession, guestDb } from './guestDb';
+// Guest imports removed for direct Supabase usage
 
 // Helper function to handle Supabase errors
 const handleSupabaseError = (error: any, context: string) => {
@@ -384,29 +384,73 @@ const getStudentAccountByUserId = async (userId: string): Promise<Account | null
     } as Account;
 };
 
-const getTeacherAccount = async (): Promise<Account | null> => {
-    const storedUserId = localStorage.getItem('class_bank_user_id');
-    if (!storedUserId) return null;
+const getTeacherAccount = async (teacherIdParam?: string): Promise<Account | null> => {
+    const storedUserId = teacherIdParam 
+        || sessionStorage.getItem('class_bank_user_id') 
+        || localStorage.getItem('class_bank_user_id');
 
-    const { data: user } = await supabase
-        .from('users')
-        .select('userId, role, teacher_id')
-        .eq('userId', storedUserId)
-        .single();
-    
-    if (!user) return null;
+    let currentUserId = storedUserId;
+    if (!currentUserId) {
+        const { data: authData } = await supabase.auth.getUser();
+        currentUserId = authData?.user?.id || '';
+    }
 
-    const teacherId = user.role === Role.TEACHER ? user.userId : user.teacher_id;
-    if (!teacherId) return null;
+    const candidateIds = new Set<string>();
+    if (currentUserId) candidateIds.add(currentUserId);
 
-    const { data, error = null } = await supabase
+    if (currentUserId) {
+        const { data: user } = await supabase
+            .from('users')
+            .select('userId, role, teacher_id')
+            .or(`userId.eq.${currentUserId},teacher_id.eq.${currentUserId}`)
+            .maybeSingle();
+
+        if (user) {
+            if (user.userId) candidateIds.add(user.userId);
+            if (user.teacher_id) candidateIds.add(user.teacher_id);
+        }
+    }
+
+    const ids = Array.from(candidateIds).filter(Boolean);
+
+    // 1. Query accounts where account_type = 'treasury'
+    const { data: treasuryAccounts, error } = await supabase
         .from('accounts')
         .select('*')
-        .eq('userId', teacherId);
-        
-    if (error || !data || data.length === 0) return null;
-    
-    const treasuryAcc = data.find(acc => acc.account_type === 'treasury') || data[0];
+        .eq('account_type', 'treasury');
+
+    if (!error && treasuryAccounts && treasuryAccounts.length > 0) {
+        if (ids.length > 0) {
+            const matched = treasuryAccounts.find(acc => 
+                ids.includes(acc.userId) || 
+                ids.includes(acc.teacher_id) || 
+                ids.includes(acc.accountId)
+            );
+            if (matched) {
+                return {
+                    ...matched,
+                    accountId: matched.accountId || matched.accountid || matched.id
+                } as Account;
+            }
+        }
+        const first = treasuryAccounts[0];
+        return {
+            ...first,
+            accountId: first.accountId || first.accountid || first.id
+        } as Account;
+    }
+
+    // 2. Fallback: query all accounts
+    const { data } = await supabase.from('accounts').select('*');
+    if (!data || data.length === 0) return null;
+
+    let treasuryAcc = data.find(acc => acc.account_type === 'treasury');
+    if (!treasuryAcc) {
+        if (ids.length > 0) {
+            treasuryAcc = data.find(acc => ids.includes(acc.userId) || ids.includes(acc.teacher_id));
+        }
+        if (!treasuryAcc) treasuryAcc = data[0];
+    }
 
     return {
         ...treasuryAcc,

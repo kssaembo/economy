@@ -870,27 +870,27 @@ const AuthPage: React.FC = () => {
 
 
     return (
-        <div className="flex flex-col h-full bg-[#F2F4F7] items-center justify-center p-4 transition-all duration-700 overflow-y-auto">
-            <div className="w-full max-w-[420px] text-center mb-6 pt-10">
-                <div className="w-16 h-16 bg-[#0066FF] rounded-[20px] flex items-center justify-center mx-auto mb-4 shadow-[0_12px_24px_rgba(0,102,255,0.25)] border-2 border-white/20">
-                    <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="flex flex-col h-full bg-[#F2F4F7] items-center justify-center p-4 transition-all duration-700 overflow-y-auto md:overflow-hidden">
+            <div className="w-full max-w-[420px] text-center mb-3 md:mb-4 pt-2 md:pt-4">
+                <div className="w-12 h-12 md:w-14 md:h-14 bg-[#0066FF] rounded-[18px] flex items-center justify-center mx-auto mb-2 shadow-[0_10px_20px_rgba(0,102,255,0.22)] border-2 border-white/20">
+                    <svg className="w-6 h-6 md:w-7 md:h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                     </svg>
                 </div>
-                <h1 className="text-5xl font-black text-gray-900 tracking-tighter mb-2" style={{fontFamily: "'Gamja Flower', cursive"}}>Class Bank</h1>
-                <p className="text-gray-500 font-medium tracking-tight text-sm">우리 학급만의 특별한 경제활동 시스템</p>
+                <h1 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tighter mb-1" style={{fontFamily: "'Gamja Flower', cursive"}}>Class Bank</h1>
+                <p className="text-gray-500 font-medium tracking-tight text-xs md:text-sm">우리 학급만의 특별한 경제활동 시스템</p>
             </div>
 
-            <div className="w-full max-w-[380px] bg-white p-8 rounded-[32px] shadow-[0_24px_48px_rgba(0,0,0,0.1)] border border-white relative transition-shadow hover:shadow-[0_32px_64px_rgba(0,0,0,0.12)]">
-                <h2 className="text-lg font-black mb-6 text-gray-900 text-center tracking-tight">선생님 로그인</h2>
-                <div className="space-y-3.5">
+            <div className="w-full max-w-[380px] bg-white p-6 md:p-7 rounded-[28px] shadow-[0_20px_40px_rgba(0,0,0,0.08)] border border-white relative transition-shadow hover:shadow-[0_28px_56px_rgba(0,0,0,0.1)]">
+                <h2 className="text-base md:text-lg font-black mb-4 text-gray-900 text-center tracking-tight">선생님 로그인</h2>
+                <div className="space-y-3">
                     <InputField type="email" placeholder="이메일" value={teacherEmail} onChange={e => setTeacherEmail(e.target.value)} />
                     <InputField type="password" placeholder="비밀번호" value={password} onChange={e => setTeacherEmailPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleTeacherLogin()} />
                     {error && <p className="text-red-500 text-[11px] font-bold text-center">{error}</p>}
-                    <PrimaryButton onClick={handleTeacherLogin} disabled={loading} className="mt-2 bg-[#0066FF] hover:bg-[#0055DD] shadow-md shadow-blue-200">
+                    <PrimaryButton onClick={handleTeacherLogin} disabled={loading} className="mt-1 bg-[#0066FF] hover:bg-[#0055DD] shadow-md shadow-blue-200">
                         {loading ? '인증 중...' : '로그인'}
                     </PrimaryButton>
-                    <div className="flex justify-between px-1 mt-4">
+                    <div className="flex justify-between px-1 mt-3">
                         <button onClick={() => { resetStates(); setMode('recovery'); }} className="text-[11px] font-bold text-black hover:text-[#0066FF] transition-colors">비밀번호 찾기</button>
                         <button onClick={() => { resetStates(); setMode('signup'); }} className="text-[11px] font-bold text-[#0066FF] hover:underline">무료 회원가입</button>
                     </div>
@@ -899,20 +899,20 @@ const AuthPage: React.FC = () => {
 
             <button 
                 onClick={() => { resetStates(); setMode('student-login'); }}
-                className="w-full max-w-[380px] mt-6 p-4 bg-white text-gray-800 border border-gray-100 rounded-[24px] shadow-lg font-black text-base hover:bg-white hover:border-[#0066FF] hover:ring-4 hover:ring-blue-50 transition-all active:scale-[0.98] flex items-center justify-center"
+                className="w-full max-w-[380px] mt-3.5 p-3.5 bg-white text-gray-800 border border-gray-100 rounded-[20px] shadow-md font-black text-sm md:text-base hover:bg-white hover:border-[#0066FF] hover:ring-4 hover:ring-blue-50 transition-all active:scale-[0.98] flex items-center justify-center"
             >
                 학생 로그인 페이지로 이동
             </button>
 
             <button 
                 onClick={() => setGuestModalOpen(true)}
-                className="w-full max-w-[380px] mt-3.5 p-4 bg-gradient-to-r from-[#0066FF] via-blue-600 to-indigo-600 text-white border-2 border-blue-300/60 rounded-[24px] shadow-[0_4px_20px_rgba(0,102,255,0.35)] hover:shadow-[0_6px_25px_rgba(0,102,255,0.5)] font-black text-base hover:scale-[1.02] transition-all active:scale-[0.98] flex items-center justify-center gap-2 ring-4 ring-blue-200/80 animate-pulse"
+                className="w-full max-w-[380px] mt-2.5 p-3.5 bg-gradient-to-r from-[#0066FF] via-blue-600 to-indigo-600 text-white border-2 border-blue-300/60 rounded-[20px] shadow-[0_4px_18px_rgba(0,102,255,0.3)] hover:shadow-[0_6px_22px_rgba(0,102,255,0.45)] font-black text-sm md:text-base hover:scale-[1.01] transition-all active:scale-[0.98] flex items-center justify-center gap-2 ring-4 ring-blue-200/80 animate-pulse"
             >
                 체험용 게스트 모드로 둘러보기 👥
             </button>
 
-            <footer className="mt-12 mb-10 text-center">
-                <div className="flex flex-wrap justify-center items-center gap-x-4 gap-y-2 mb-6">
+            <footer className="mt-4 md:mt-5 mb-2 text-center">
+                <div className="flex flex-wrap justify-center items-center gap-x-4 gap-y-2">
                     <button onClick={() => setModalState({ type: 'terms' })} className="text-[10px] font-bold text-gray-400 hover:text-gray-600 transition-colors underline underline-offset-2">이용약관</button>
                     <button onClick={() => setModalState({ type: 'privacy' })} className="text-[10px] font-bold text-gray-400 hover:text-gray-600 transition-colors underline underline-offset-2">개인정보처리방침</button>
                     <button 
@@ -923,13 +923,6 @@ const AuthPage: React.FC = () => {
                         사용 가이드
                     </button>
                 </div>
-                <p className="text-[11px] text-gray-400 font-medium leading-relaxed mb-1">
-                    제안이나 문의사항이 있으시면 언제든 메일 주세요.<br/>
-                    <span className="text-gray-900 font-bold">Contact: sinjoppo@naver.com</span>
-                </p>
-                <p className="text-[10px] text-gray-300 font-bold uppercase tracking-widest">
-                    &copy; 2025 Class Bank Economy.
-                </p>
             </footer>
 
             <LegalModal title="이용약관" content={TERMS_CONTENT} isOpen={modalState.type === 'terms'} onClose={() => setModalState({ type: null })} />
