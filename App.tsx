@@ -133,15 +133,26 @@ const AppContent: React.FC = () => {
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 
-  // Auto-login on mount
+  // Auto-login on mount (session-based to allow clean login when reopening browser)
   useEffect(() => {
-    const storedUserId = localStorage.getItem('class_bank_user_id');
+    const storedUserId = sessionStorage.getItem('class_bank_user_id') || localStorage.getItem('class_bank_user_id');
     if (storedUserId) {
         api.login(storedUserId).then(user => {
-            if(user) setCurrentUser(user);
+            if (user) {
+                setCurrentUser(user);
+                sessionStorage.setItem('class_bank_user_id', user.userId);
+            } else {
+                localStorage.removeItem('class_bank_user_id');
+                localStorage.removeItem('class_bank_is_guest');
+                sessionStorage.removeItem('class_bank_user_id');
+                sessionStorage.removeItem('class_bank_is_guest');
+            }
         }).catch(err => {
             console.error("Auto login failed", err);
             localStorage.removeItem('class_bank_user_id');
+            localStorage.removeItem('class_bank_is_guest');
+            sessionStorage.removeItem('class_bank_user_id');
+            sessionStorage.removeItem('class_bank_is_guest');
         });
     }
   }, []);
@@ -149,20 +160,22 @@ const App: React.FC = () => {
   const authContextValue = useMemo(() => ({
     currentUser,
     login: (user: User) => {
-        // Save to local storage for persistence
-        localStorage.setItem('class_bank_user_id', user.userId);
+        // Save session in sessionStorage (clears automatically when closing browser/tab)
+        sessionStorage.setItem('class_bank_user_id', user.userId);
+        localStorage.removeItem('class_bank_user_id');
+        localStorage.removeItem('class_bank_is_guest');
         setCurrentUser(user);
     },
     logout: () => {
         // 현재 유저의 역할을 명확히 확인
         const role = currentUser?.role;
-        // Fix: Removed redundant string comparison ('student') to resolve TypeScript narrowing error.
-        // Role.STUDENT is already 'student', and the first part of the original comparison 
-        // narrowed the 'role' variable such that the second part was considered unreachable/unintentional.
         const isStudent = role === Role.STUDENT;
         
-        // 로컬 스토리지 비우기
+        // 세션 및 로컬 스토리지 완벽히 비우기
         localStorage.removeItem('class_bank_user_id');
+        localStorage.removeItem('class_bank_is_guest');
+        sessionStorage.removeItem('class_bank_user_id');
+        sessionStorage.removeItem('class_bank_is_guest');
         
         // 주소 깨짐 방지를 위해 상대 경로 기반으로 리다이렉트 주소 설정
         // 학생인 경우 mode=app 파라미터를 붙여 학생 로그인 창이 뜨도록 함

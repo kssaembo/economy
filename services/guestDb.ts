@@ -16,7 +16,7 @@ const uuidv4 = () => {
 // Check if the current session is a guest session
 export const isGuestSession = (): boolean => {
     try {
-        return localStorage.getItem('class_bank_is_guest') === 'true';
+        return sessionStorage.getItem('class_bank_is_guest') === 'true' || localStorage.getItem('class_bank_is_guest') === 'true';
     } catch (e) {
         return false;
     }
@@ -25,7 +25,7 @@ export const isGuestSession = (): boolean => {
 // Get current guest user ID
 export const getGuestUserId = (): string | null => {
     try {
-        return localStorage.getItem('class_bank_user_id');
+        return sessionStorage.getItem('class_bank_user_id') || localStorage.getItem('class_bank_user_id');
     } catch (e) {
         return null;
     }
@@ -90,7 +90,7 @@ const createDefaultMockState = () => {
             type: TransactionType.SALARY,
             amount: 3000,
             date: dayBeforeYesterday.toISOString(),
-            description: '6월 기본 월급 지급',
+            description: '6월 기본 급여 지급',
             teacher_id: teacherId
         });
         transactions.push({
@@ -995,7 +995,7 @@ class GuestDbManager {
             type: TransactionType.WITHDRAWAL,
             amount: amount,
             date: txDate,
-            description: `${this.state.students.find((s: any) => s.userId === userId)?.name || '학생'} 월급 지급`,
+            description: `${this.state.students.find((s: any) => s.userId === userId)?.name || '학생'} 급여 지급`,
             teacher_id: 'guest_teacher'
         });
 

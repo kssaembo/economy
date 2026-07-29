@@ -244,8 +244,10 @@ const AuthPage: React.FC = () => {
         try {
             setIsReplicating(true);
             const user = await replicateMasterData(role);
-            localStorage.setItem('class_bank_is_guest', 'true');
-            localStorage.setItem('class_bank_user_id', user.userId);
+            sessionStorage.setItem('class_bank_is_guest', 'true');
+            sessionStorage.setItem('class_bank_user_id', user.userId);
+            localStorage.removeItem('class_bank_is_guest');
+            localStorage.removeItem('class_bank_user_id');
             login(user);
             setGuestModalOpen(false);
         } catch (error: any) {
@@ -282,8 +284,10 @@ const AuthPage: React.FC = () => {
                 classCode: teacherObj.classCode || teacherObj.class_code || '1111',
             };
 
-            localStorage.setItem('class_bank_is_guest', 'true');
-            localStorage.setItem('class_bank_user_id', userObj.userId);
+            sessionStorage.setItem('class_bank_is_guest', 'true');
+            sessionStorage.setItem('class_bank_user_id', userObj.userId);
+            localStorage.removeItem('class_bank_is_guest');
+            localStorage.removeItem('class_bank_user_id');
             login(userObj);
             setStudentGuestModalOpen(false);
         } catch (err: any) {
@@ -349,7 +353,7 @@ const AuthPage: React.FC = () => {
 1. 개인정보의 수집 및 이용 목적
   본 서비스는 수집한 개인정보를 다음의 목적을 위해 활용합니다. 
   처리하고 있는 개인정보는 다음의 목적 이외의 용도로는 이용되지 않으며, 이용 목적이 변경되는 경우에는 별도의 동의를 받는 등 필요한 조치를 이행할 예정입니다.
-    - 학급 경제 시스템 운영 : 학급 내 가상 화폐 배정, 직업별 월급 지급, 세금 징수, 물품 및 쿠폰 구매 등 경제 활동 기록 관리
+    - 학급 경제 시스템 운영 : 학급 내 가상 화폐 배정, 직업별 급여 지급, 세금 징수, 물품 및 쿠폰 구매 등 경제 활동 기록 관리
     - 학생 관리 및 서비스 제공 : 학급 코드별 학생 식별, 개인별 경제 활동 데이터 통계 제공, 교사의 학습 지도 및 피드백 제공
     - 법정대리인 동의 확인 : 만 14세 미만 아동의 개인정보 수집에 대한 법정대리인의 동의 여부 확인 및 고지사항 전달
 2. 수집하는 개인정보 항목
@@ -728,7 +732,7 @@ const AuthPage: React.FC = () => {
                     <button 
                         onClick={() => setStudentGuestModalOpen(true)}
                         disabled={isReplicating || loading}
-                        className="flex-[3.5] p-4 bg-indigo-50 hover:bg-indigo-100/80 text-indigo-700 border-2 border-indigo-500/80 rounded-[24px] shadow-md hover:shadow-lg font-black text-sm hover:ring-4 hover:ring-indigo-100/50 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                        className="flex-[3.5] p-4 bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-600 text-white border-2 border-indigo-300/60 rounded-[24px] shadow-[0_4px_20px_rgba(79,70,229,0.35)] hover:shadow-[0_6px_25px_rgba(79,70,229,0.5)] font-black text-sm hover:scale-[1.02] transition-all active:scale-[0.98] flex items-center justify-center gap-2 ring-4 ring-indigo-200/80 animate-pulse"
                     >
                         {isReplicating ? '학생 체험 환경 생성 중...' : '학생 체험용 게스트 모드로 바로 시작 👥'}
                     </button>
@@ -902,7 +906,7 @@ const AuthPage: React.FC = () => {
 
             <button 
                 onClick={() => setGuestModalOpen(true)}
-                className="w-full max-w-[380px] mt-3.5 p-4 bg-gradient-to-r from-[#0066FF]/5 to-[#0066FF]/10 text-[#0066FF] border border-[#0066FF]/20 rounded-[24px] shadow-sm font-black text-base hover:from-[#0066FF]/10 hover:to-[#0066FF]/15 hover:ring-4 hover:ring-blue-50 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                className="w-full max-w-[380px] mt-3.5 p-4 bg-gradient-to-r from-[#0066FF] via-blue-600 to-indigo-600 text-white border-2 border-blue-300/60 rounded-[24px] shadow-[0_4px_20px_rgba(0,102,255,0.35)] hover:shadow-[0_6px_25px_rgba(0,102,255,0.5)] font-black text-base hover:scale-[1.02] transition-all active:scale-[0.98] flex items-center justify-center gap-2 ring-4 ring-blue-200/80 animate-pulse"
             >
                 체험용 게스트 모드로 둘러보기 👥
             </button>

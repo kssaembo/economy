@@ -796,8 +796,8 @@ const payJobSalary = async (jobId: string): Promise<string> => {
     return data;
 };
 
-const payAllSalaries = async (): Promise<string> => {
-    const { data, error } = await supabase.rpc('pay_all_salaries');
+const payAllSalaries = async (teacherId?: string): Promise<string> => {
+    const { data, error } = await supabase.rpc('pay_all_salaries', teacherId ? { p_teacher_id: teacherId } : {});
     handleSupabaseError(error, 'payAllSalaries');
     return data;
 };

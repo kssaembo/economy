@@ -310,7 +310,7 @@ const AddJobModal: React.FC<{ onClose: () => void, onComplete: () => void }> = (
                 <div className="space-y-4">
                     <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="직업명" className="w-full p-3 border rounded-lg" />
                     <textarea value={desc} onChange={e => setDesc(e.target.value)} placeholder="설명" className="w-full p-3 border rounded-lg" rows={3} />
-                    <input type="number" step="1" value={salary} onChange={e => setSalary(e.target.value)} placeholder="월급" className="w-full p-3 border rounded-lg" />
+                    <input type="number" step="1" value={salary} onChange={e => setSalary(e.target.value)} placeholder="급여" className="w-full p-3 border rounded-lg" />
                     <button onClick={handleSubmit} disabled={loading} className="w-full py-3 bg-[#2B548F] text-white font-bold rounded-lg disabled:bg-gray-300">
                         {loading ? '추가 중...' : '추가하기'}
                     </button>
@@ -1355,7 +1355,7 @@ const JobManagementView: React.FC<{ refresh: () => void }> = ({ refresh }) => {
 
     const handlePaySalaries = async () => {
         try {
-            const msg = await api.payAllSalaries();
+            const msg = await api.payAllSalaries(currentUser?.userId);
             setMessage({ type: 'success', text: msg });
         } catch (e: any) {
             setMessage({ type: 'error', text: e.message });
@@ -1410,7 +1410,7 @@ const JobManagementView: React.FC<{ refresh: () => void }> = ({ refresh }) => {
                         + 직업 추가
                     </button>
                     <button onClick={() => setConfirmAction({ type: 'pay_all', data: null })} className="px-3 py-2 bg-green-600 text-white rounded-lg text-sm font-bold shadow hover:bg-green-700">
-                        월급 일괄 지급
+                        급여 일괄 지급
                     </button>
                 </div>
             </div>
@@ -1424,7 +1424,7 @@ const JobManagementView: React.FC<{ refresh: () => void }> = ({ refresh }) => {
                         <p className="text-sm text-gray-600 mb-2 flex-grow">{job.description}</p>
                         <div className="bg-gray-50 p-3 rounded-lg text-sm mb-3 space-y-2">
                             <div className="flex justify-between items-center">
-                                <span className="text-gray-500">기본 월급</span>
+                                <span className="text-gray-500">기본 급여</span>
                                 <span className="font-bold">{job.salary.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}{unit}</span>
                             </div>
                             <div className="flex justify-between items-center">
@@ -1454,7 +1454,7 @@ const JobManagementView: React.FC<{ refresh: () => void }> = ({ refresh }) => {
                                     학생 배정
                                 </button>
                                 <button onClick={() => setConfirmAction({ type: 'pay_one', data: job.id })} className="py-2 bg-indigo-100 text-indigo-700 rounded-lg text-sm font-bold hover:bg-indigo-200 transition-colors">
-                                    주급 지급
+                                    급여 지급
                                 </button>
                             </div>
                         </div>
@@ -1463,9 +1463,9 @@ const JobManagementView: React.FC<{ refresh: () => void }> = ({ refresh }) => {
             </div>
             {showAddModal && <AddJobModal onClose={() => setShowAddModal(false)} onComplete={fetchData} />}
             {assignJob && <AssignJobModal job={assignJob} students={students} onClose={() => setAssignJob(null)} onComplete={fetchData} />}
-            <ConfirmModal isOpen={confirmAction?.type === 'pay_all'} title="월급 일괄 지급" message="배정된 모든 학생들에게 월급(기본급+인센티브)을 지급하시겠습니까?" onConfirm={handlePaySalaries} onCancel={() => setConfirmAction(null)} />
+            <ConfirmModal isOpen={confirmAction?.type === 'pay_all'} title="급여 일괄 지급" message="배정된 모든 학생들에게 급여(기본급+인센티브)를 지급하시겠습니까?" onConfirm={handlePaySalaries} onCancel={() => setConfirmAction(null)} />
             <ConfirmModal isOpen={confirmAction?.type === 'delete'} title="직업 삭제" message="이 직업을 삭제하시겠습니까? 배정된 학생 정보가 사라집니다." onConfirm={handleDeleteJob} onCancel={() => setConfirmAction(null)} isDangerous />
-            <ConfirmModal isOpen={confirmAction?.type === 'pay_one'} title="주급 지급" message="이 직업을 담당하는 모든 학생들에게 주급을 지급하시겠습니까?" onConfirm={handlePayOneSalary} onCancel={() => setConfirmAction(null)} />
+            <ConfirmModal isOpen={confirmAction?.type === 'pay_one'} title="급여 지급" message="이 직업을 담당하는 모든 학생들에게 급여를 지급하시겠습니까?" onConfirm={handlePayOneSalary} onCancel={() => setConfirmAction(null)} />
             {message && <MessageModal isOpen={true} type={message.type} message={message.text} onClose={() => setMessage(null)} />}
         </div>
     );
