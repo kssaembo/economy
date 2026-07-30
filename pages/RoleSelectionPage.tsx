@@ -162,17 +162,7 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
         {/* 경제 자판 연습 모달 */}
         <EconomyTypingModal isOpen={showTypingModal} onClose={() => setShowTypingModal(false)} />
         
-        <footer className="mt-16 text-center text-black">
-            <p className="text-sm font-bold mb-1">
-                제안이나 문의사항이 있으시면 언제든 메일 주세요.
-            </p>
-            <p className="text-sm font-bold mb-4">
-                Contact: sinjoppo@naver.com
-            </p>
-            <p className="text-[10px] font-medium opacity-80">
-                ⓒ 2026. Kwon's class. All rights reserved.
-            </p>
-        </footer>
+
       </div>
     </div>
   );
