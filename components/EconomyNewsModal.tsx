@@ -42,18 +42,6 @@ export const EconomyNewsModal: React.FC<EconomyNewsModalProps> = ({ isOpen, onCl
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <a
-              href={newsUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-2 bg-gray-200/60 text-gray-600 hover:bg-gray-200 rounded-xl font-bold text-xs transition-all flex items-center gap-1"
-              title="새 창에서 열기"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-              </svg>
-              <span className="hidden sm:inline">새 창</span>
-            </a>
             <button 
               onClick={onClose}
               className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 rounded-xl transition-all"
