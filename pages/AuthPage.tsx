@@ -382,7 +382,6 @@ const AuthPage: React.FC = () => {
 7. 개인정보 보호책임자
   서비스 운영자는 개인정보 처리에 관한 업무를 총괄해서 책임지고, 정보주체의 불만처리 및 피해구제 등을 위하여 아래와 같이 개인정보 보호책임자를 지정하고 있습니다.
     - 성명(부서) : 클래스 뱅크 운영팀
-    - 연락처(이메일) :sinjoppo@naver.com
 
 8. 개인정보의 기술적 보호 조치
   - 비밀번호 암호화 : 모든 비밀번호는 일방향 해시 함수(bcrypt)를 사용하여 안전하게 암호화 저장됩니다.
@@ -404,7 +403,7 @@ const AuthPage: React.FC = () => {
                 </h4>
                 <div className="space-y-3 pl-8">
                     <p className="text-gray-700 leading-relaxed">
-                        <strong className="text-gray-900">비밀번호와 복구코드:</strong> 회원가입 시 발급되는 <span className="text-red-600 font-bold">'복구코드'</span>를 반드시 안전한 곳에 기록하세요. 비밀번호 분실 시 유일한 해결책입니다. (복구코드까지 잃어버렸다면? 관리자 메일 sinjoppo@naver.com으로 연락 주세요!)
+                        <strong className="text-gray-900">비밀번호와 복구코드:</strong> 회원가입 시 발급되는 <span className="text-red-600 font-bold">'복구코드'</span>를 반드시 안전한 곳에 기록하세요. 비밀번호 분실 시 유일한 해결책입니다.
                     </p>
                     <p className="text-gray-700 leading-relaxed">
                         <strong className="text-gray-900">신중한 초기 설정:</strong> 가입 시 입력하는 교사 별칭과 화폐 단위은 경제 시스템의 기초가 되며, 추후 수정이 불가능합니다. 우리 학급만의 개성 있는 이름을 신중히 결정해 주세요.
@@ -503,8 +502,6 @@ const AuthPage: React.FC = () => {
                     <li>• <strong className="text-blue-900">수수료의 비밀:</strong> 매도 시 발생하는 수수료를 통해 단타 매매보다는 장기 투자의 중요성을 안내해 주세요.</li>
                 </ul>
             </section>
-
-            <p className="text-center text-[10px] text-gray-400 font-bold">의견이나 제안이 있으신가요? sinjoppo@naver.com으로 소중한 의견을 보내주세요!</p>
         </div>
     );
 
@@ -683,7 +680,6 @@ const AuthPage: React.FC = () => {
                     >
                         시작하기
                     </PrimaryButton>
-                    <p className="mt-6 text-[10px] text-gray-300">분실 시 문의: sinjoppo@naver.com</p>
                 </div>
             </div>
         );
@@ -840,10 +836,6 @@ const AuthPage: React.FC = () => {
                         <PrimaryButton onClick={handleRecoveryVerify} disabled={loading} className="mt-4">
                             코드 확인
                         </PrimaryButton>
-                        <div className="text-center pt-8 border-t border-gray-50 mt-4">
-                            <p className="text-xs text-gray-400 mb-1">복구 코드를 분실하셨나요?</p>
-                            <p className="text-xs font-black text-gray-900">문의: sinjoppo@naver.com</p>
-                        </div>
                     </div>
                 </div>
             </div>
